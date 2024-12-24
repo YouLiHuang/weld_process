@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-23 10:17:14
+ * @LastEditTime: 2024-12-24 16:24:09
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -581,7 +581,7 @@ bool command_get_comp_str(Component_Queue *list, const char *name, const char *c
 bool Page_id_get(void)
 {
   /*清缓存*/
-  uart_init(115200);
+  // uart_init(115200);
   for (u16 i = 0; i < USART_REC_LEN; i++)
     USART_RX_BUF[i] = 0;
 
