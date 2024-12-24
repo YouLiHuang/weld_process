@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-24 16:03:51
+ * @LastEditTime: 2024-12-24 16:28:14
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -1267,7 +1267,7 @@ static void page_process(Page_ID id)
 		}
 
 #endif
-		// command_set_comp_val("step3", "val", weld_controller->realtime_temp);
+		command_set_comp_val("step3", "val", weld_controller->realtime_temp);
 		/*更新坐标*/
 		u16 total_time = 0;		// 总焊接时长
 		u16 delta_tick = 0;		// 坐标间隔
