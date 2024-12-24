@@ -494,9 +494,9 @@ static void End_of_Weld()
 	weld_controller->Duty_Cycle = 0;
 	weld_controller->state = IDEAL_STATE;
 
-	RLY10 = 0; // 气阀1启动
-	RLY11 = 0; // 气阀2启动
-	RLY12 = 0; // 气阀3启动
+	RLY10 = 0; // 气阀1关闭
+	RLY11 = 0; // 气阀2关闭
+	RLY12 = 0; // 气阀3关闭
 	CUNT = 1;  // 1为计数，0清除计数信号
 	OVER = 1;  // 1为焊接结束信号
 }

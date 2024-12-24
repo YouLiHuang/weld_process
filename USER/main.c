@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-23 10:17:48
+ * @LastEditTime: 2024-12-24 16:03:51
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -215,8 +215,8 @@ static char *param_page_name_list[] = {
 	"SGW_CTW"};
 
 static char *setting_page_name_list[] = {
-	"cb0",
-	"cb1",
+	"adress",
+	"baudrate",
 };
 
 /*--------------------------------------------------------全局变量------------------------------------------------------------------*/
@@ -733,9 +733,9 @@ void error_task(void *p_arg)
 
 			/*2、关闭气阀*/
 			ERROR1 = 1; // 出错信号置1
-			RLY10 = 0;	// 气阀1松掉，0/1还得自行检验一下
-			RLY11 = 0;	// 气阀2松掉
-			RLY12 = 0;	// 气阀3松掉
+			RLY10 = 0;	// 气阀1关
+			RLY11 = 0;	// 气阀2关
+			RLY12 = 0;	// 气阀3关
 
 			/*3、错误处理*/
 			user_tim_delay(20);
@@ -746,6 +746,7 @@ void error_task(void *p_arg)
 			{
 				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
 					err_ctrl->err_list[i]->error_callback(i);
+				ERROR1 = 0;
 			}
 
 			/*4、等待用户复位操作*/
@@ -910,13 +911,13 @@ static void key_action_callback_param(Component_Queue *page_list)
 			{
 				/*参数读取*/
 				command_get_comp_val(page_list, weld_temp_name_list[i], "val");
-				wait_data_parse(10);
+				wait_data_parse(15);
 			}
 			for (u8 i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
 			{
 				/*参数读取*/
 				command_get_comp_val(page_list, weld_time_name_list[i], "val");
-				wait_data_parse(10);
+				wait_data_parse(15);
 			}
 
 			/*Ⅱ、读取用户设定的参数*/
@@ -1004,13 +1005,13 @@ static void key_action_callback_param(Component_Queue *page_list)
 		{
 			/*参数读取*/
 			command_get_comp_val(page_list, weld_temp_name_list[i], "val");
-			wait_data_parse(10);
+			wait_data_parse(15);
 		}
 		for (u8 i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
 		{
 			/*参数读取*/
 			command_get_comp_val(page_list, weld_time_name_list[i], "val");
-			wait_data_parse(10);
+			wait_data_parse(15);
 		}
 	}
 	// 状态同步
@@ -1019,6 +1020,7 @@ static void key_action_callback_param(Component_Queue *page_list)
 	page_param->key2 = (ION_OFF_STATE)get_comp(page_list, "ION_OFF")->val;
 	page_param->key3 = (SGW_CTW_STATE)get_comp(page_list, "SGW_CTW")->val;
 }
+
 static void key_action_callback_temp(Component_Queue *page_list)
 {
 
@@ -1037,13 +1039,13 @@ static void key_action_callback_temp(Component_Queue *page_list)
 			{
 				/*参数读取*/
 				command_get_comp_val(page_list, gain_name_list[i], "val");
-				wait_data_parse(10);
+				wait_data_parse(15);
 			}
 			for (u8 i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
 			{
 				/*参数读取*/
 				command_get_comp_val(page_list, alarm_temp_name_list[i], "val");
-				wait_data_parse(10);
+				wait_data_parse(15);
 			}
 
 			/*Ⅱ、保存用户设定的参数*/
@@ -1126,13 +1128,13 @@ static void key_action_callback_temp(Component_Queue *page_list)
 		{
 			/*参数读取*/
 			command_get_comp_val(page_list, gain_name_list[i], "val");
-			wait_data_parse(10);
+			wait_data_parse(15);
 		}
 		for (u8 i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
 		{
 			/*参数读取*/
 			command_get_comp_val(page_list, alarm_temp_name_list[i], "val");
-			wait_data_parse(10);
+			wait_data_parse(15);
 		}
 	}
 
@@ -1142,6 +1144,7 @@ static void key_action_callback_temp(Component_Queue *page_list)
 	page_param->key2 = (ION_OFF_STATE)get_comp(page_list, "ION_OFF")->val;
 	page_param->key3 = (SGW_CTW_STATE)get_comp(page_list, "SGW_CTW")->val;
 }
+
 static void parse_key_action(Page_ID id)
 {
 	switch (id)
@@ -1299,28 +1302,24 @@ static void page_process(Page_ID id)
 	case ALARM_PAGE:
 	{
 		/*1、订阅报警复位信号*/
-		// uint8_t *msg = NULL;
-		// OS_ERR err;
-		// OS_MSG_SIZE msg_size = 0;
-		// msg = (uint8_t *)OSQPend(&UART_Msg,				   // 消息队列指针
-		// 						 0,						   // 等待时长
-		// 						 OS_OPT_PEND_NON_BLOCKING, // 非阻塞等待模式
-		// 						 &msg_size,				   // 获取消息大小
-		// 						 NULL,					   // 获取消息的时间戳
-		// 						 &err);					   // 返回错误代码
-		// if (err == OS_ERR_NONE && msg != NULL && msg_size >= MIN_CMD_LEN && msg[msg_size - 1] == END_FLAG && msg[msg_size - 2] == END_FLAG && msg[msg_size - 3] == END_FLAG)
-		// {
-		// 	/*满足标准通信格式*/
-		// 	if (msg[0] == CMD_ALARM_RESET)
-		// 		OSSemPost(&ALARM_RESET_SEM, OS_OPT_POST_ALL, &err);
-		// }
-		// /*2、响应不同的出错类型*/
-		// if (true == err_occur(err_ctrl))
-		// {
-		// 	OS_ERR err;
-		// 	/*唤醒错误处理线程*/
-		// 	OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-		// }
+		if (true == err_occur(err_ctrl))
+		{
+			uint8_t *msg = NULL;
+			OS_ERR err;
+			OS_MSG_SIZE msg_size = 0;
+			msg = (uint8_t *)OSQPend(&UART_Msg,				   // 消息队列指针
+									 0,						   // 等待时长
+									 OS_OPT_PEND_NON_BLOCKING, // 非阻塞等待模式
+									 &msg_size,				   // 获取消息大小
+									 NULL,					   // 获取消息的时间戳
+									 &err);					   // 返回错误代码
+			if (err == OS_ERR_NONE && msg != NULL && msg_size >= MIN_CMD_LEN && msg[msg_size - 1] == END_FLAG && msg[msg_size - 2] == END_FLAG && msg[msg_size - 3] == END_FLAG)
+			{
+				/*满足标准通信格式*/
+				if (msg[0] == CMD_ALARM_RESET)
+					OSSemPost(&ALARM_RESET_SEM, OS_OPT_POST_ALL, &err);
+			}
+		}
 	}
 	break;
 
@@ -1328,19 +1327,17 @@ static void page_process(Page_ID id)
 	{
 		/*...机地址以及波特率修改，同步到上位机...*/
 		/*1、读取界面设定的地址*/
-		//		bool status = false;
-		// status = command_get_comp_val(setting_page_list, "cb0", "val");
-		// /*2、读取页面设定的波特率*/
-		// status = command_get_comp_val(setting_page_list, "cb1", "val");
-		// if (status)
-		// {
-		// 	/*更新波特率*/
-		// 	if (get_comp(setting_page_list, "cb0") != NULL)
-		// 	{
-		// 		uint8_t index = get_comp(setting_page_list, "cb0")->val;
-		// 		usart3_set_bound(baud_list[index]);
-		// 	}
-		// }
+		command_get_comp_val(setting_page_list, "adress", "val");
+		wait_data_parse(20);
+		/*2、读取页面设定的波特率*/
+		command_get_comp_val(setting_page_list, "baudrate", "val");
+		wait_data_parse(20);
+		/*更新波特率*/
+		if (get_comp(setting_page_list, "baudrate") != NULL)
+		{
+			uint8_t index = get_comp(setting_page_list, "baudrate")->val;
+			usart3_set_bound(baud_list[index]);
+		}
 	}
 	break;
 
@@ -1350,72 +1347,44 @@ static void page_process(Page_ID id)
 	}
 }
 
-/*
- *整型数据返回回调
- */
-static void CMD_INT_VAR_RETURN_match_callback(uint8_t *data_buffer)
-{
-	// 根据不同界面进行不同的参数更新
-	if (PARAM_PAGE == page_param->id)
-	{
-		param_page_list->updata->val = data_buffer[1] | data_buffer[2] << 8 | data_buffer[3] << 16 | data_buffer[4] << 24;
-	}
-	else if (TEMP_PAGE == page_param->id)
-	{
-		temp_page_list->updata->val = data_buffer[1] | data_buffer[2] << 8 | data_buffer[3] << 16 | data_buffer[4] << 24;
-	}
-	else if (UART_PAGE == page_param->id)
-	{
-		setting_page_list->updata->val = data_buffer[1] | data_buffer[2] << 8 | data_buffer[3] << 16 | data_buffer[4] << 24;
-	}
-}
 static void CMD_touchscreen_reset_callback()
 {
 	u8 remember_array_init = 0;
 	Load_param(weld_controller, remember_array_init);
 	Load_param_alarm(weld_controller, remember_array_init);
 
-	char *name = (char *)malloc(sizeof(char) * 10);
-	if (name != NULL)
+	command_send_raw("page 4");
+	command_set_comp_val("ION_OFF", "pic", ION);
+	for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
 	{
-		command_send_raw("page 4");
-		command_set_comp_val("ION_OFF", "pic", ION);
-		for (uint8_t i = 1; i <= 6; i++)
-		{
-			memset(name, 0, 10);
-			sprintf(name, "temp%d", i);
-			if (get_comp(temp_page_list, name) != NULL)
-				command_set_comp_val(name, "val", get_comp(temp_page_list, name)->val);
-		}
-		for (uint8_t i = 1; i <= 2; i++)
-		{
-			memset(name, 0, 10);
-			sprintf(name, "GAIN%d", i);
-			if (get_comp(temp_page_list, name) != NULL)
-				command_set_comp_val(name, "val", get_comp(temp_page_list, name)->val);
-		}
-
-		command_send("page 1");
-		command_set_comp_val("ION_OFF", "pic", ION);
-		for (uint8_t i = 1; i <= 6; i++)
-		{
-			memset(name, 0, 10);
-			sprintf(name, "time%d", i);
-			if (get_comp(param_page_list, name) != NULL)
-				command_set_comp_val(name, "val", get_comp(param_page_list, name)->val);
-		}
-		for (uint8_t i = 1; i <= 3; i++)
-		{
-			memset(name, 0, 10);
-			sprintf(name, "temp%d", i);
-			if (get_comp(param_page_list, name) != NULL)
-				command_set_comp_val(name, "val", get_comp(param_page_list, name)->val);
-		}
-		/*焊接计数值复位*/
-		command_set_comp_val("count", "val", 0);
-		/*释放内存*/
-		free(name);
+		Component *comp = get_comp(temp_page_list, alarm_temp_name_list[i]);
+		if (comp != NULL)
+			command_set_comp_val(alarm_temp_name_list[i], "val", comp->val);
 	}
+	for (uint8_t i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
+	{
+		Component *comp = get_comp(temp_page_list, gain_name_list[i]);
+		if (comp != NULL)
+			command_set_comp_val(gain_name_list[i], "val", comp->val);
+	}
+	command_set_comp_val("count", "val", 0);
+
+	command_send("page 1");
+	command_set_comp_val("ION_OFF", "pic", ION);
+	/*发送到触摸屏*/
+	for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
+	{
+		Component *comp = get_comp(param_page_list, weld_time_name_list[i]);
+		if (comp != NULL)
+			command_set_comp_val(weld_time_name_list[i], "val", comp->val);
+	}
+	for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
+	{
+		Component *comp = get_comp(param_page_list, weld_temp_name_list[i]);
+		if (comp != NULL)
+			command_set_comp_val(weld_temp_name_list[i], "val", comp->val);
+	}
+	command_set_comp_val("count", "val", 0);
 }
 
 static bool wait_data_parse(OS_TICK wait_time)
@@ -1433,39 +1402,42 @@ static bool wait_data_parse(OS_TICK wait_time)
 							 NULL,				   // 获取消息的时间戳
 							 &err);				   // 返回错误代码
 
-	if (err == OS_ERR_NONE && msg != NULL && msg_size >= MIN_CMD_LEN)
+	/*满足标准通信格式*/
+	if (err == OS_ERR_NONE && msg != NULL && msg_size >= MIN_CMD_LEN && msg[msg_size - 1] == END_FLAG && msg[msg_size - 2] == END_FLAG && msg[msg_size - 3] == END_FLAG)
 	{
-		/*满足标准通信格式*/
-		if (msg[msg_size - 1] == END_FLAG && msg[msg_size - 2] == END_FLAG && msg[msg_size - 3] == END_FLAG)
+
+		/*处理消息*/
+		switch (msg[0])
 		{
-			/*处理消息*/
-			switch (msg[0])
-			{
-			case CMD_FAIL:
-				ret = true;
-				break;
-			case CMD_OK:
-				ret = true;
-				break;
-			case CMD_PAGEID_RETURN:
-				ret = true;
-				/*更新页面id*/
-				if (msg[1] <= UART_PAGE && msg[1] >= PARAM_PAGE)
-					page_param->id = (Page_ID)msg[1];
-				break;
-			case CMD_INT_VAR_RETURN:
-				ret = true;
-				CMD_INT_VAR_RETURN_match_callback(msg);
-				break;
-			case CMD_STR_VAR_RETURN:
-				ret = true;
-				break;
-			case CMD_DATA_TRANSFER_READY:
-				ret = true;
-				break;
-			default:
-				break;
-			}
+		case CMD_FAIL:
+			ret = true;
+			break;
+		case CMD_OK:
+			ret = true;
+			break;
+		case CMD_PAGEID_RETURN:
+			ret = true;
+			/*更新页面id*/
+			if (msg[1] <= UART_PAGE && msg[1] >= PARAM_PAGE)
+				page_param->id = (Page_ID)msg[1];
+			break;
+		case CMD_INT_VAR_RETURN:
+			ret = true;
+			if (PARAM_PAGE == page_param->id)
+				param_page_list->updata->val = msg[1] | msg[2] << 8 | msg[3] << 16 | msg[4] << 24;
+			else if (TEMP_PAGE == page_param->id)
+				temp_page_list->updata->val = msg[1] | msg[2] << 8 | msg[3] << 16 | msg[4] << 24;
+			else if (UART_PAGE == page_param->id)
+				setting_page_list->updata->val = msg[1] | msg[2] << 8 | msg[3] << 16 | msg[4] << 24;
+			break;
+		case CMD_STR_VAR_RETURN:
+			ret = true;
+			break;
+		case CMD_DATA_TRANSFER_READY:
+			ret = true;
+			break;
+		default:
+			break;
 		}
 
 		if (msg[msg_size - 1] == END_FLAG && msg[msg_size - 2] == END_FLAG && msg[msg_size - 3] == END_FLAG && msg_size >= 10 && msg[6] == CMD_SYSTEM_START_OK)
@@ -1844,23 +1816,6 @@ void computer_read_task(void *p_arg)
 /*-------------------------------------------------------------------------------------------------------------------------*/
 /*----------------------------------------------------绘图线程--------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
-// static void draw_temp_line(const uint8_t *buf, const uint16_t len)
-//{
-//	command_send("cle wave_line.id,0");
-//	for (u16 i = 0; i < len; i++)
-//	{
-//		char pre_cmd[50] = "add wave_line.id,0,";
-//		char value_buf[5] = {0};
-//		user_value_convert_to_string(value_buf, 5, buf[i]);
-//		strcat(pre_cmd, value_buf);
-//		strcat(pre_cmd, END_OF_CMD);
-//		RS485_send(pre_cmd, strlen(pre_cmd));
-//		user_tim_delay(1);
-//	}
-// }
-
-static u8 temp_draw_buffer[WIN_WIDTH] = {0};
-
 void draw_task(void *p_arg)
 {
 	OS_ERR err;
@@ -1876,23 +1831,23 @@ void draw_task(void *p_arg)
 			/*三段均温显示*/
 			temp_display[0] = temp_draw_ctrl->temp_buf[temp_draw_ctrl->first_step_index_end];
 			u32 sum = 0;
-			for (u16 i = temp_draw_ctrl->second_step_index_start; i < temp_draw_ctrl->second_step_index_end; i++)
+			for (u16 i = temp_draw_ctrl->second_step_stable_start; i < temp_draw_ctrl->second_step_index_end; i++)
 			{
 				sum += temp_draw_ctrl->temp_buf[i];
 			}
-			temp_display[1] = sum / (temp_draw_ctrl->second_step_index_end - temp_draw_ctrl->second_step_index_start + 1);
+			temp_display[1] = sum / (temp_draw_ctrl->second_step_index_end - temp_draw_ctrl->second_step_stable_start + 1);
 			/*一二段均值发送到触摸屏*/
-			command_set_comp_val(temp_display_name[0], "val", temp_display[0]);
-			user_tim_delay(20);
-			command_set_comp_val(temp_display_name[1], "val", temp_display[0]);
-			user_tim_delay(20);
+			if (page_param->id == WAVE_PAGE)
+			{
+				command_set_comp_val(temp_display_name[0], "val", temp_display[0]);
+				command_set_comp_val(temp_display_name[1], "val", temp_display[0]);
+			}
 
 			/*绘图控制器复位*/
 			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
 
 			/*绘图结束清空缓存*/
 			memset(temp_draw_ctrl->temp_buf, 0, sizeof(temp_draw_ctrl->temp_buf) / sizeof(u16));
-			memset(temp_draw_buffer, 0, sizeof(temp_draw_buffer) / sizeof(u8));
 		}
 
 		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err); // 休眠

@@ -230,19 +230,12 @@ void spi_data_init(void)
 		command_set_comp_val_raw("wave_page.kp", "val", 1200);
 		command_set_comp_val_raw("wave_page.ki", "val", 1);
 		command_set_comp_val_raw("wave_page.kd", "val", 0);
-		command_set_comp_val_raw("temp_page.alarm1", "val", 500);
+		command_set_comp_val_raw("temp_page.alarm1", "val", 600);
 		command_set_comp_val_raw("temp_page.alarm2", "val", 100);
-		command_set_comp_val_raw("temp_page.alarm3", "val", 650);
+		command_set_comp_val_raw("temp_page.alarm3", "val", 600);
 		command_set_comp_val_raw("temp_page.alarm4", "val", 100);
-		command_set_comp_val_raw("temp_page.alarm5", "val", 650);
+		command_set_comp_val_raw("temp_page.alarm5", "val", 600);
 		command_set_comp_val_raw("temp_page.alarm6", "val", 100);
-		command_set_comp_val_raw("wave_page.n0", "aph", 127);
-		command_set_comp_val_raw("wave_page.n0", "val", 0);
-		command_set_comp_val_raw("wave_page.n1", "aph", 127);
-		command_set_comp_val_raw("wave_page.n1", "val", 0);
-		command_set_comp_val_raw("wave_page.n2", "aph", 127);
-		command_set_comp_val_raw("wave_page.n2", "aph", 0);
-
 		/*释放内存*/
 		free(name);
 	}

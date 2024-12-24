@@ -59,6 +59,8 @@ Temp_draw_ctrl *new_temp_draw_ctrl(u16 *buf, u16 len1, u16 len2, u16 len3)
 
 	ctrl->second_step_index_start = 0;
 	ctrl->second_step_index_end = 0;
+	ctrl->second_step_stable_end = 0;
+	ctrl->second_step_stable_start = 0;
 
 	ctrl->third_step_index_start = 0;
 	ctrl->third_step_index_end = 0;
@@ -86,6 +88,8 @@ void reset_temp_draw_ctrl(Temp_draw_ctrl *ctrl, const u16 welding_time[])
 
 	ctrl->second_step_index_start = 0;
 	ctrl->second_step_index_end = 0;
+	ctrl->second_step_stable_start = 0;
+	ctrl->second_step_stable_end = 0;
 
 	ctrl->third_step_index_start = 0;
 	ctrl->third_step_index_end = 0;
@@ -313,6 +317,7 @@ void TIM5_IRQHandler(void)
 			{
 				/*到达刹车点，转阶段*/
 				weld_controller->pid_ctrl->stable_flag = true;
+				temp_draw_ctrl->second_step_stable_start = temp_draw_ctrl->current_index;
 			}
 
 			if (weld_controller->pid_ctrl->stable_flag == false)

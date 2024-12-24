@@ -12,7 +12,7 @@
 #include "touchscreen.h"
 #include "usart.h"
 
-const u32 baud_list[11] = {2400, 4800, 9600, 19200, 38400, 57600, 115200, 128000, 230400, 256000, 460800};
+const u32 baud_list[] = {2400, 4800, 9600, 19200, 31200, 38400, 57600, 115200, 230400, 250000, 256000, 512000, 921600};
 
 extern OS_SEM CMD_SUCCESS_SEM;  // 指令成功执行信号
 extern OS_SEM PAGE_UPDATE_SEM;  // 页面刷新信号
