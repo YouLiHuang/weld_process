@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-24 15:23:46
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-24 16:07:27
+ * @LastEditTime: 2024-12-24 16:25:44
  * @Description: 
  * @
  * @Copyright (c) 2024 by huangyouli, All Rights Reserved. 
@@ -44,7 +44,7 @@
 #define ERROR1 PDout(4) // 出错信号
 #define CUNT PDout(5)   // 计数
 #define RLY13 PDout(6)  // 交流接触器
-#define TRAN1 PDout(7)  // 变压器
+#define TRAN1 PDout(7)  // 变压器（交流接触器）
 #define OUT1 PDout(8)   // 输出1
 #define OUT2 PDout(9)   // 输出2
 #define OUT3 PDout(10)  // 输出3
