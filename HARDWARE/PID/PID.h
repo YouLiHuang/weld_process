@@ -8,6 +8,8 @@
 #define PD_MAX 8000
 #define PD_MIN 10
 
+#define STABLE_THRESHOLD 30
+
 int INC_PID(u16 Set, u16 Sample, int now_current, float PROPORTION, float INTEGRAL, float Derivative);
 int INC_PID_div(int Set, int Sample, int now_PDC, float PROPORTION, float INTEGRAL, float Derivative);
 int INC_PID_div01(int Set, int Sample, int now_PDC, float PROPORTION, float INTEGRAL, float Derivative);
@@ -25,6 +27,9 @@ typedef struct PID_Feedforword_ctrl
     int err;
     int pre_err;
     int pre_pre_err;
+
+    int stable_threshold;
+    int stable_threshold_cnt;
     float delta;
 
 } pid_feedforword_ctrl;

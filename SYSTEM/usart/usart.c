@@ -2,6 +2,7 @@
 #include "usart.h"
 #include "crc16.h"
 #include "protect.h"
+#include "touchscreen.h"
 //////////////////////////////////////////////////////////////////////////////////
 // 如果使用ucos,则包括下面的头文件即可.
 #if SYSTEM_SUPPORT_OS
@@ -79,6 +80,8 @@ extern u8 welding_flag;
 /*消息队列*/
 extern OS_Q UART_Msg;
 extern Error_ctrl *err_ctrl;
+extern Page_Param *page_param;
+extern OS_SEM ALARM_RESET_SEM;
 
 /**
  * @description: 串口初始化，用于触摸屏通讯处理
@@ -173,10 +176,15 @@ void UART4_IRQHandler(void) // 串口4中断服务程序
 
 	if (USART_GetITStatus(UART4, USART_IT_IDLE) == SET) // 空闲中断
 	{
+		OS_ERR err;
 		if (receive_number >= 2)
 		{
+			/*实在没办法，页面刷新需要特别及时，因此在中断当中刷新*/
+			if (USART_RX_BUF[0] == CMD_PAGEID_RETURN && USART_RX_BUF[1] <= UART_PAGE && USART_RX_BUF[1] >= PARAM_PAGE)
+				page_param->id = (Page_ID)USART_RX_BUF[1];
+			if (USART_RX_BUF[0] == CMD_ALARM_RESET && USART_RX_BUF[1] <= UART_PAGE && USART_RX_BUF[1] >= PARAM_PAGE)
+				OSSemPost(&ALARM_RESET_SEM, OS_OPT_POST_ALL, &err);
 
-			OS_ERR err;
 			OSQPost(&UART_Msg,
 					(void *)&USART_RX_BUF[0],
 					sizeof(u8) * receive_number,

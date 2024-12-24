@@ -24,7 +24,7 @@ void welding_process(void);
 #define REALTIME_TEMP_DISPLAY 1 // 实时温度绘制开关
 
 /*温升控制*/
-#define STABLE_ERR 40                 // 稳态误差补偿
+#define STABLE_ERR 15                 // 稳态误差补偿
 #define CTRL_SET_TIME_DIV 50          // 最小调控周期
 #define TMEP_RISE_MIN_TIME 200        // 最短温升时间
 #define TEMP_RISE_SECOND_STEP_MIN 400 // 直接爬坡到二阶段的最小时长

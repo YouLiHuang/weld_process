@@ -613,6 +613,14 @@ bool Page_to(const Page_Param *page_param, const Page_ID id)
   /*已经处于该界面，不重复发送*/
   if (page_param->id == id)
     return true;
+
+  /*触发报警，翻页到报警页面，通知读写线程更新页面id*/
+  if (id == ALARM_PAGE)
+  {
+    OS_ERR err;
+    OSSemPost(&PAGE_UPDATE_SEM, OS_OPT_POST_ALL, &err);
+  }
+
   /*清空接收缓存*/
   memset(USART_RX_BUF, 0, USART_REC_LEN);
 

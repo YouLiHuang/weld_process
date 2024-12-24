@@ -111,15 +111,13 @@ OS_Q UART_Msg;									// 串口数据队列
 ////////////////////////UART3资源保护：互斥锁（暂时未用）////////////////////////
 OS_MUTEX UARTMutex;
 ////////////////////////线程同步：信号量////////////////////////////////////////
-OS_SEM CMD_SUCCESS_SEM;			 // 指令成功执行信号（用于同步set page 等设定指令）
-OS_SEM PAGE_UPDATE_SEM;			 // 页面刷新信号
-OS_SEM COMP_VAL_GET_SEM;		 // 组件属性值成功获取信号
-OS_SEM COMP_STR_GET_SEM;		 // 组件属性值(字符串型)成功获取信号
-OS_SEM ADDT_READY_SEM;			 // 透传准备完成信号
-OS_SEM ALARM_RESET_SEM;			 // 报警复位信号
-OS_SEM COMPUTER_DATA_SYN_SEM;	 // 上位机数据同步信号
-OS_SEM USER_PARAM_SYN_SEM;		 // 用户修改参数信号
-OS_SEM USER_BAUD_ADRESS_SYN_SEM; // 用户地址/波特率同步信号
+OS_SEM CMD_SUCCESS_SEM;		  // 指令成功执行信号（用于同步set page 等设定指令）
+OS_SEM PAGE_UPDATE_SEM;		  // 页面刷新信号
+OS_SEM COMP_VAL_GET_SEM;	  // 组件属性值成功获取信号
+OS_SEM COMP_STR_GET_SEM;	  // 组件属性值(字符串型)成功获取信号
+OS_SEM ADDT_READY_SEM;		  // 透传准备完成信号
+OS_SEM ALARM_RESET_SEM;		  // 报警复位信号
+OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
 /*主线程使用*/
 OS_SEM ERROR_HANDLE_SEM; // 错误信号
 OS_SEM TEMP_DRAW_SEM;	 // 绘图信号
@@ -428,22 +426,6 @@ void start_task(void *p_arg)
 	}
 	// 创建上位机数据同步信号
 	OSSemCreate(&COMPUTER_DATA_SYN_SEM, "data sync", 0, &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
-
-	// 创建波特率/地址同步信号
-	OSSemCreate(&USER_BAUD_ADRESS_SYN_SEM, "user baud sem", 0, &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
-
-	//   创建参数设定同步信号
-	OSSemCreate(&USER_PARAM_SYN_SEM, "user param sem", 0, &err);
 	if (err != OS_ERR_NONE)
 	{
 		;
@@ -889,7 +871,6 @@ static void key_action_callback_param(Component_Queue *page_list);
 static void key_action_callback_temp(Component_Queue *page_list);
 static void parse_key_action(Page_ID id);
 
-static void CMD_INT_VAR_RETURN_match_callback(uint8_t *data_buffer);
 static void CMD_touchscreen_reset_callback(void);
 static bool wait_data_parse(OS_TICK wait_time);
 
@@ -1301,24 +1282,11 @@ static void page_process(Page_ID id)
 
 	case ALARM_PAGE:
 	{
-		/*1、订阅报警复位信号*/
+		/*响应错误*/
 		if (true == err_occur(err_ctrl))
 		{
-			uint8_t *msg = NULL;
 			OS_ERR err;
-			OS_MSG_SIZE msg_size = 0;
-			msg = (uint8_t *)OSQPend(&UART_Msg,				   // 消息队列指针
-									 0,						   // 等待时长
-									 OS_OPT_PEND_NON_BLOCKING, // 非阻塞等待模式
-									 &msg_size,				   // 获取消息大小
-									 NULL,					   // 获取消息的时间戳
-									 &err);					   // 返回错误代码
-			if (err == OS_ERR_NONE && msg != NULL && msg_size >= MIN_CMD_LEN && msg[msg_size - 1] == END_FLAG && msg[msg_size - 2] == END_FLAG && msg[msg_size - 3] == END_FLAG)
-			{
-				/*满足标准通信格式*/
-				if (msg[0] == CMD_ALARM_RESET)
-					OSSemPost(&ALARM_RESET_SEM, OS_OPT_POST_ALL, &err);
-			}
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 		}
 	}
 	break;
@@ -1533,17 +1501,20 @@ void read_task(void *p_arg)
 
 	while (1)
 	{
+		/*触发报警后更新页面*/
+		OSSemPend(&PAGE_UPDATE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+		if (err == OS_ERR_NONE)
+			page_param->id = ALARM_PAGE;
+
 		/*1、查询页面id，根据所处页面执行不同动作*/
 		Page_id_get();
-		if (wait_data_parse(100) == true)
-		{
-			/*2、处理页面逻辑*/
-			page_process(page_param->id);
-			/*3、数据同步*/
-			data_syn(page_param->id);
-		}
+		wait_data_parse(100);
+		/*2、处理页面逻辑*/
+		page_process(page_param->id);
+		/*3、数据同步*/
+		data_syn(page_param->id);
 
-		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err); // 休眠
+		OSTimeDlyHMSM(0, 0, 0, 20, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
 }
 
@@ -1829,18 +1800,18 @@ void draw_task(void *p_arg)
 		if (err == OS_ERR_NONE)
 		{
 			/*三段均温显示*/
-			temp_display[0] = temp_draw_ctrl->temp_buf[temp_draw_ctrl->first_step_index_end];
+			temp_display[0] = weld_controller->second_step_start_temp;
 			u32 sum = 0;
-			for (u16 i = temp_draw_ctrl->second_step_stable_start; i < temp_draw_ctrl->second_step_index_end; i++)
+			for (u16 i = temp_draw_ctrl->second_step_stable_index; i < temp_draw_ctrl->second_step_index_end; i++)
 			{
 				sum += temp_draw_ctrl->temp_buf[i];
 			}
-			temp_display[1] = sum / (temp_draw_ctrl->second_step_index_end - temp_draw_ctrl->second_step_stable_start + 1);
+			temp_display[1] = sum / (temp_draw_ctrl->second_step_index_end - temp_draw_ctrl->second_step_stable_index + 1);
 			/*一二段均值发送到触摸屏*/
 			if (page_param->id == WAVE_PAGE)
 			{
 				command_set_comp_val(temp_display_name[0], "val", temp_display[0]);
-				command_set_comp_val(temp_display_name[1], "val", temp_display[0]);
+				command_set_comp_val(temp_display_name[1], "val", temp_display[1]);
 			}
 
 			/*绘图控制器复位*/

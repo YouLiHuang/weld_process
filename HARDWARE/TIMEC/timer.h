@@ -25,8 +25,7 @@ typedef struct Temp_draw_controller
 
     u16 second_step_index_start;
     u16 second_step_index_end;
-    u16 second_step_stable_start;
-    u16 second_step_stable_end;
+    u16 second_step_stable_index;
 
     u16 third_step_index_start;
     u16 third_step_index_end;

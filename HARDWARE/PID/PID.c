@@ -28,6 +28,8 @@ pid_feedforword_ctrl *new_pid_forword_ctrl(float kp_f, float kp, float ki, float
 	ctrl->pre_pre_err = 0;
 
 	ctrl->stable_flag = false;
+	ctrl->stable_threshold_cnt = 0;
+	ctrl->stable_threshold = STABLE_THRESHOLD;
 
 	return ctrl;
 }
@@ -39,6 +41,9 @@ void reset_forword_ctrl(pid_feedforword_ctrl *ctrl)
 	ctrl->pre_err = 0;
 	ctrl->pre_pre_err = 0;
 	ctrl->stable_flag = false;
+
+	ctrl->stable_threshold_cnt = 0;
+	ctrl->stable_threshold = STABLE_THRESHOLD;
 }
 
 pid_feedforword_ctrl feedforword_ctrl;
@@ -54,11 +59,11 @@ int PI_ff_ctrl_output(int target, int feedback, int current_output, pid_feedforw
 				  ctrl->ki * ctrl->err +
 				  ctrl->kd * (ctrl->err - 2 * ctrl->pre_err + ctrl->pre_pre_err);
 
-	if (feedback <= 1.1 * target && feedback >= 0.9 * target)
-	{
-		if (ctrl->delta > PD_MAX * 0.05)
-			ctrl->delta = PD_MAX * 0.05;
-	}
+	// if (feedback <= 1.05 * target && feedback >= 0.95 * target)
+	// {
+	// 	if (ctrl->delta > PD_MAX * 0.05)
+	// 		ctrl->delta = PD_MAX * 0.05;
+	// }
 
 	/*forword  delta*/
 	/*...*/
