@@ -192,10 +192,6 @@ void UART4_IRQHandler(void) // 串口4中断服务程序
 		USART_ClearITPendingBit(UART4, USART_IT_IDLE);
 	}
 
-	// if (USART_GetFlagStatus(UART4, USART_FLAG_IDLE) != RESET)
-	// {
-	// }
-
 	if (USART_GetITStatus(UART4, USART_IT_TC) == SET)
 	{
 		USART_ITConfig(UART4, USART_IT_TC, DISABLE);
