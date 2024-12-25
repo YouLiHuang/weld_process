@@ -198,14 +198,20 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 		ctrl->temp_gain2 = 1;
 
 	/*一阶段参数*/
-	ctrl->first_step_turn = (0.98 + weld_controller->temp_gain1 * 0.02) * (double)ctrl->weld_temp[0]; // 刹车点(0.95-1.0)
-	ctrl->first_step_set = (0.8 + 0.18 * weld_controller->temp_gain1) * (double)ctrl->weld_temp[0];	  // 第1个阶跃目标(0.8-0.95)
-																									  // ctrl->first_step_turn = ctrl->first_step_set + ((double)ctrl->weld_temp[0] - ctrl->first_step_set) * (1 - weld_controller->temp_gain1);
+	ctrl->first_step_turn = (0.95 + weld_controller->temp_gain1 * 0.05) * (double)ctrl->weld_temp[0]; // 刹车点(0.95-1.0)
+	ctrl->first_step_set = (0.85 + 0.15 * weld_controller->temp_gain1) * (double)ctrl->weld_temp[0];  // 第1个阶跃目标(0.8-0.95)
+	if (ctrl->first_step_set >= ctrl->first_step_turn)
+	{
+		ctrl->first_step_set = ctrl->first_step_turn;
+	}
 
 	/*二阶段参数*/
-	ctrl->second_step_turn = (0.98 + weld_controller->temp_gain2 * 0.02) * (double)ctrl->weld_temp[1]; // 刹车点(0.95-1.0)
-	ctrl->second_step_set = (0.8 + 0.18 * weld_controller->temp_gain2) * (double)ctrl->weld_temp[1];   // 第2个阶跃目标(0.8-0.95)
-																									   // ctrl->second_step_turn = ctrl->second_step_set + ((double)ctrl->weld_temp[1] - ctrl->second_step_set) * (1 - weld_controller->temp_gain2);
+	ctrl->second_step_turn = (0.95 + weld_controller->temp_gain2 * 0.05) * (double)ctrl->weld_temp[1]; // 刹车点(0.95-1.0)
+	ctrl->second_step_set = (0.85 + 0.15 * weld_controller->temp_gain2) * (double)ctrl->weld_temp[1];  // 第2个阶跃目标(0.8-0.95)
+	if (ctrl->second_step_set >= ctrl->second_step_turn)
+	{
+		ctrl->second_step_set = ctrl->second_step_turn;
+	}
 }
 
 /**
@@ -511,7 +517,6 @@ static void End_of_Weld()
 	RLY12 = 0; // 气阀3关闭
 	CUNT = 1;  // 1为计数，0清除计数信号
 	OVER = 1;  // 1为焊接结束信号
-
 }
 
 /**
@@ -689,7 +694,7 @@ void welding_process(void)
 			/*温度显示*/
 			Temp_Data_Process();
 			/*发送焊接计数值*/
-			//command_set_comp_val("count", "val", weld_controller->weld_count);
+			// command_set_comp_val("count", "val", weld_controller->weld_count);
 
 #if COMMUNICATE == 1
 			/*数据传输到上位机*/
@@ -727,7 +732,7 @@ void welding_process(void)
 			Temp_Data_Process();
 			/*发送焊接计数值*/
 
-			//command_set_comp_val("count", "val", weld_controller->weld_count);
+			// command_set_comp_val("count", "val", weld_controller->weld_count);
 
 #if COMMUNICATE == 1
 			/*数据传输到上位机*/
