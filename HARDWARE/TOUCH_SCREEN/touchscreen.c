@@ -14,8 +14,6 @@
 
 const u32 baud_list[] = {2400, 4800, 9600, 19200, 31200, 38400, 57600, 115200, 230400, 250000, 256000, 512000, 921600};
 
-extern OS_SEM CMD_SUCCESS_SEM;  // 指令成功执行信号
-extern OS_SEM PAGE_UPDATE_SEM;  // 页面刷新信号
 extern OS_SEM COMP_VAL_GET_SEM; // 组件属性值成功获取信号
 extern OS_SEM COMP_STR_GET_SEM; // 组件属性值(字符串型)成功获取信号
 //////////////////////////////////////////////////////////////////////////////////////////////页面参数API//////////////////////////////////////////////////////////////////////////////////////////////
@@ -613,13 +611,6 @@ bool Page_to(const Page_Param *page_param, const Page_ID id)
   /*已经处于该界面，不重复发送*/
   if (page_param->id == id)
     return true;
-
-  /*触发报警，翻页到报警页面，通知读写线程更新页面id*/
-  if (id == ALARM_PAGE)
-  {
-    OS_ERR err;
-    OSSemPost(&PAGE_UPDATE_SEM, OS_OPT_POST_ALL, &err);
-  }
 
   /*清空接收缓存*/
   memset(USART_RX_BUF, 0, USART_REC_LEN);

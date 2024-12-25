@@ -27,7 +27,7 @@
 
 /*调试接口——测试版本*/
 
-#define DRAW_DEBUG 0	 // 绘图调试使能
+#define TEMP_ADJUST 0	 // 温度校准
 #define REALTIME_TEMP 1	 // 实时温度显示使能
 #define TEMP_CHECK 1	 // 热电偶检测
 #define VOLTAGE_CHECK 1	 // 过欠压报警
@@ -111,12 +111,11 @@ OS_Q UART_Msg;									// 串口数据队列
 ////////////////////////UART3资源保护：互斥锁（暂时未用）////////////////////////
 OS_MUTEX UARTMutex;
 ////////////////////////线程同步：信号量////////////////////////////////////////
-OS_SEM CMD_SUCCESS_SEM;		  // 指令成功执行信号（用于同步set page 等设定指令）
 OS_SEM PAGE_UPDATE_SEM;		  // 页面刷新信号
 OS_SEM COMP_VAL_GET_SEM;	  // 组件属性值成功获取信号
 OS_SEM COMP_STR_GET_SEM;	  // 组件属性值(字符串型)成功获取信号
-OS_SEM ADDT_READY_SEM;		  // 透传准备完成信号
 OS_SEM ALARM_RESET_SEM;		  // 报警复位信号
+OS_SEM RESET_FINISH;		  // 复位完成信号
 OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
 /*主线程使用*/
 OS_SEM ERROR_HANDLE_SEM; // 错误信号
@@ -409,14 +408,6 @@ void start_task(void *p_arg)
 		// 创建失败
 	}
 
-	//  创建透传准备完成信号
-	OSSemCreate(&ADDT_READY_SEM, "addt ready", 0, &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
-
 	//  创建报警复位信号量
 	OSSemCreate(&ALARM_RESET_SEM, "alarm reset", 0, &err);
 	if (err != OS_ERR_NONE)
@@ -424,6 +415,15 @@ void start_task(void *p_arg)
 		;
 		// 创建失败
 	}
+
+	// 创建复位完成信号
+	OSSemCreate(&RESET_FINISH, "reset finish", 0, &err);
+	if (err != OS_ERR_NONE)
+	{
+		;
+		// 创建失败
+	}
+
 	// 创建上位机数据同步信号
 	OSSemCreate(&COMPUTER_DATA_SYN_SEM, "data sync", 0, &err);
 	if (err != OS_ERR_NONE)
@@ -570,11 +570,11 @@ static bool Temp_up_check(void)
 	TIM_Cmd(TIM1, ENABLE);
 
 	// 重启定时器，固定脉宽pwm输出50ms，检测温升。
-	TIM_SetCompare1(TIM1, 5000);
-	TIM_SetCompare1(TIM4, 5000);
+	TIM_SetCompare1(TIM1, 6000);
+	TIM_SetCompare1(TIM4, 6000);
 
 	// 加热80ms
-	user_tim_delay(150);
+	user_tim_delay(100);
 
 	// 关闭
 	TIM_SetCompare1(TIM1, 0);
@@ -724,32 +724,44 @@ void error_task(void *p_arg)
 			Page_to(page_param, ALARM_PAGE);
 			user_tim_delay(20);
 			Page_to(page_param, ALARM_PAGE);
+			OSSemPost(&PAGE_UPDATE_SEM, OS_OPT_POST_ALL, &err);
 			for (u8 i = 0; i < err_ctrl->error_cnt; i++)
 			{
 				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
 					err_ctrl->err_list[i]->error_callback(i);
-				ERROR1 = 0;
 			}
-
-			/*4、等待用户复位操作*/
-			OSSemPend(&ALARM_RESET_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
-			if (err == OS_ERR_NONE)
+		}
+		/*等待用户复位操作*/
+		OSSemPend(&ALARM_RESET_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+		if (err == OS_ERR_NONE)
+		{
+			for (u8 i = 0; i < err_ctrl->error_cnt; i++)
 			{
-				for (u8 i = 0; i < err_ctrl->error_cnt; i++)
-				{
-					if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->reset_callback != NULL)
-						err_ctrl->err_list[i]->reset_callback(i);
-				}
+				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->reset_callback != NULL)
+					err_ctrl->err_list[i]->reset_callback(i);
 			}
+			/*重新配置*/
+			uart_init(115200);
+			/*串口屏复位*/
+			touchscreen_init();
+			/*该接口已适配*/
+			spi_data_init();
+			/*该接口已适配*/
+			welding_data_and_mode_reproduce();
 
-			/*5、检查是否还有其他错误*/
-			if (err_occur(err_ctrl) == false)
-			{
-				err_clear(err_ctrl); // 清除出错标志
-				ERROR1 = 0;			 // 报警信号（模拟量）清除
-				alram_clear(page_param);
-				Page_to(page_param, PARAM_PAGE);
-			}
+			/*复位完成*/
+			OSSemPost(&RESET_FINISH, OS_OPT_POST_ALL, &err);
+			err_clear(err_ctrl); // 清除出错标志
+			ERROR1 = 0;			 // 报警信号（模拟量）清除
+
+			// /*检查是否还有其他错误*/
+			// if (err_occur(err_ctrl) == false)
+			// {
+			// 	err_clear(err_ctrl); // 清除出错标志
+			// 	ERROR1 = 0;			 // 报警信号（模拟量）清除
+			// 	alram_clear(page_param);
+			// 	Page_to(page_param, PARAM_PAGE);
+			// }
 		}
 
 		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err); // 休眠
@@ -775,14 +787,18 @@ static void Power_on_check(void)
 
 static void Temp_updata_realtime()
 {
-
-	// u16 voltage = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10; //*3300/4096
+#if TEMP_ADJUST == 1
+	u16 voltage = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10; //*3300/4096
+#endif
 	weld_controller->realtime_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2;
 	//	float temp2=0.1618 * adcx7 + 11.048;
 
-#if REALTIME_TEMP
-	command_set_comp_val("temp33", "val", weld_controller->realtime_temp); // °C
+#if TEMP_ADJUST == 1
+	command_set_comp_val("temp22", "val", voltage);
 #endif
+
+	if (page_param->id == PARAM_PAGE)
+		command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
 }
 
 static void Thermocouple_check(void)
@@ -859,7 +875,7 @@ void main_task(void *p_arg)
 		/*part5：空闲温度采集*/
 		Temp_updata_realtime();
 
-		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠50ms
+		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err); // 休眠50ms
 	}
 }
 
@@ -1501,18 +1517,22 @@ void read_task(void *p_arg)
 
 	while (1)
 	{
-		/*触发报警后更新页面*/
+		/*触发报警*/
 		OSSemPend(&PAGE_UPDATE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
+		{
 			page_param->id = ALARM_PAGE;
-
-		/*1、查询页面id，根据所处页面执行不同动作*/
-		Page_id_get();
-		wait_data_parse(100);
-		/*2、处理页面逻辑*/
-		page_process(page_param->id);
-		/*3、数据同步*/
-		data_syn(page_param->id);
+		}
+		else
+		{
+			/*1、查询页面id，根据所处页面执行不同动作*/
+			Page_id_get();
+			wait_data_parse(100);
+			/*2、处理页面逻辑*/
+			page_process(page_param->id);
+			/*3、数据同步*/
+			data_syn(page_param->id);
+		}
 
 		OSTimeDlyHMSM(0, 0, 0, 20, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}

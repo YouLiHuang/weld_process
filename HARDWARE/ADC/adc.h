@@ -21,8 +21,8 @@
 #define __ADC_H
 #include "sys.h"
 
-#define TEMP_GAIN1 0.1701
-#define TEMP_GAIN2 -3.0
+#define TEMP_GAIN1 0.17
+#define TEMP_GAIN2 0
 
 /*NEW API*/
 void ADC_DMA_INIT(void);

@@ -180,9 +180,9 @@ void UART4_IRQHandler(void) // 串口4中断服务程序
 		if (receive_number >= 2)
 		{
 			/*实在没办法，页面刷新需要特别及时，因此在中断当中刷新*/
-			if (USART_RX_BUF[0] == CMD_PAGEID_RETURN && USART_RX_BUF[1] <= UART_PAGE && USART_RX_BUF[1] >= PARAM_PAGE)
+			if (USART_RX_BUF[0] == CMD_PAGEID_RETURN && USART_RX_BUF[1] <= UART_PAGE && USART_RX_BUF[1] >= PARAM_PAGE && USART_RX_BUF[receive_number] == END_FLAG && USART_RX_BUF[receive_number - 1] == END_FLAG && USART_RX_BUF[receive_number - 2] == END_FLAG)
 				page_param->id = (Page_ID)USART_RX_BUF[1];
-			if (USART_RX_BUF[0] == CMD_ALARM_RESET && USART_RX_BUF[1] <= UART_PAGE && USART_RX_BUF[1] >= PARAM_PAGE)
+			if (USART_RX_BUF[0] == CMD_ALARM_RESET)
 				OSSemPost(&ALARM_RESET_SEM, OS_OPT_POST_ALL, &err);
 
 			OSQPost(&UART_Msg,
@@ -190,6 +190,8 @@ void UART4_IRQHandler(void) // 串口4中断服务程序
 					sizeof(u8) * receive_number,
 					OS_OPT_POST_FIFO,
 					&err); // 发送消息到队列
+
+			receive_number = 0;
 		}
 		// 清除空闲中断标志位
 		receive_number = 0;

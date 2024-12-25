@@ -198,14 +198,14 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 		ctrl->temp_gain2 = 1;
 
 	/*一阶段参数*/
-	// ctrl->first_step_turn = (0.95 + weld_controller->temp_gain1 * 0.05) * (double)ctrl->weld_temp[0]; // 刹车点(0.95-1.0)
-	ctrl->first_step_set = (0.8 + 0.18 * weld_controller->temp_gain1) * (double)ctrl->weld_temp[0]; // 第1个阶跃目标(0.8-0.95)
-	ctrl->first_step_turn = ctrl->first_step_set + ((double)ctrl->weld_temp[0] - ctrl->first_step_set) * (1 - weld_controller->temp_gain1);
+	ctrl->first_step_turn = (0.98 + weld_controller->temp_gain1 * 0.02) * (double)ctrl->weld_temp[0]; // 刹车点(0.95-1.0)
+	ctrl->first_step_set = (0.8 + 0.18 * weld_controller->temp_gain1) * (double)ctrl->weld_temp[0];	  // 第1个阶跃目标(0.8-0.95)
+																									  // ctrl->first_step_turn = ctrl->first_step_set + ((double)ctrl->weld_temp[0] - ctrl->first_step_set) * (1 - weld_controller->temp_gain1);
 
 	/*二阶段参数*/
-	// ctrl->second_step_turn = (0.95 + weld_controller->temp_gain2 * 0.05) * (double)ctrl->weld_temp[1]; // 刹车点(0.95-1.0)
-	ctrl->second_step_set = (0.8 + 0.18 * weld_controller->temp_gain2) * (double)ctrl->weld_temp[1]; // 第2个阶跃目标(0.8-0.95)
-	ctrl->second_step_turn = ctrl->second_step_set + ((double)ctrl->weld_temp[1] - ctrl->second_step_set) * (1 - weld_controller->temp_gain2);
+	ctrl->second_step_turn = (0.98 + weld_controller->temp_gain2 * 0.02) * (double)ctrl->weld_temp[1]; // 刹车点(0.95-1.0)
+	ctrl->second_step_set = (0.8 + 0.18 * weld_controller->temp_gain2) * (double)ctrl->weld_temp[1];   // 第2个阶跃目标(0.8-0.95)
+																									   // ctrl->second_step_turn = ctrl->second_step_set + ((double)ctrl->weld_temp[1] - ctrl->second_step_set) * (1 - weld_controller->temp_gain2);
 }
 
 /**
@@ -605,7 +605,8 @@ static void weld_real_time_ctrl()
 			goto STOP_LABEL;
 
 		/*二阶段*/
-		err_cnt_clear(err_ctrl);																	 // 报错统计值复位
+		err_cnt_clear(err_ctrl); // 报错统计值复位
+		// reset_forword_ctrl(weld_controller->pid_ctrl);												 // pid控制器复位
 		pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->second_step_set); // kp动态调整
 		weld_controller->pid_ctrl->stable_flag = false;												 // 稳态标志复位
 		Second_Step();																				 // 二阶段
