@@ -287,12 +287,12 @@ void TIM5_IRQHandler(void)
 
 			/*3：错误检测*/
 			/*注意：阶段之间需要将错误计数值清空(此处为了报警的实时性，暂时不使用阈值模式)*/
-			if (current_temp_comp < 30 && weld_controller->weld_time_tick > weld_controller->weld_time[1] / 2)
+			if (current_temp_comp < 30 && weld_controller->step_time_tick > weld_controller->weld_time[1] / 2)
 			{
 #if PROTECT_ON == 1
-				// err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-				// OS_ERR err;
-				// OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+				OS_ERR err;
+				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 #endif
 			}
 			if (current_temp_comp > weld_controller->alarm_temp[0])
@@ -337,12 +337,12 @@ void TIM5_IRQHandler(void)
 			TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
 
 			/*3、错误检测*/
-			if (current_temp_comp < 30 && weld_controller->weld_time_tick > weld_controller->weld_time[2] / 2)
+			if (current_temp_comp < 30 && weld_controller->step_time_tick > weld_controller->weld_time[2] / 2)
 			{
 #if PROTECT_ON == 1
-				// err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-				// OS_ERR err;
-				// OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+				OS_ERR err;
+				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 #endif
 			}
 			if (current_temp_comp > weld_controller->alarm_temp[2])
