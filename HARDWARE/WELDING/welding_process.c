@@ -511,6 +511,7 @@ static void End_of_Weld()
 	RLY12 = 0; // 气阀3关闭
 	CUNT = 1;  // 1为计数，0清除计数信号
 	OVER = 1;  // 1为焊接结束信号
+
 }
 
 /**
@@ -688,7 +689,7 @@ void welding_process(void)
 			/*温度显示*/
 			Temp_Data_Process();
 			/*发送焊接计数值*/
-			command_set_comp_val("count", "val", weld_controller->weld_count);
+			//command_set_comp_val("count", "val", weld_controller->weld_count);
 
 #if COMMUNICATE == 1
 			/*数据传输到上位机*/
@@ -725,7 +726,8 @@ void welding_process(void)
 			/*温度显示*/
 			Temp_Data_Process();
 			/*发送焊接计数值*/
-			command_set_comp_val("count", "val", weld_controller->weld_count);
+
+			//command_set_comp_val("count", "val", weld_controller->weld_count);
 
 #if COMMUNICATE == 1
 			/*数据传输到上位机*/

@@ -82,6 +82,9 @@ extern OS_Q UART_Msg;
 extern Error_ctrl *err_ctrl;
 extern Page_Param *page_param;
 extern OS_SEM ALARM_RESET_SEM;
+extern OS_SEM PAGE_UPDATE_SEM;
+extern OS_SEM COMP_VAL_GET_SEM;
+extern OS_SEM COMP_STR_GET_SEM;
 
 /**
  * @description: 串口初始化，用于触摸屏通讯处理
@@ -177,19 +180,33 @@ void UART4_IRQHandler(void) // 串口4中断服务程序
 	if (USART_GetITStatus(UART4, USART_IT_IDLE) == SET) // 空闲中断
 	{
 		OS_ERR err;
-		if (receive_number >= 2)
+		if (receive_number >= MIN_CMD_LEN)
 		{
 			/*实在没办法，页面刷新需要特别及时，因此在中断当中刷新*/
-			if (USART_RX_BUF[0] == CMD_PAGEID_RETURN && USART_RX_BUF[1] <= UART_PAGE && USART_RX_BUF[1] >= PARAM_PAGE && USART_RX_BUF[receive_number] == END_FLAG && USART_RX_BUF[receive_number - 1] == END_FLAG && USART_RX_BUF[receive_number - 2] == END_FLAG)
+			switch (USART_RX_BUF[0])
+			{
+			case CMD_PAGEID_RETURN:
+				OSSemPost(&PAGE_UPDATE_SEM, OS_OPT_POST_ALL, &err);
 				page_param->id = (Page_ID)USART_RX_BUF[1];
-			if (USART_RX_BUF[0] == CMD_ALARM_RESET)
-				OSSemPost(&ALARM_RESET_SEM, OS_OPT_POST_ALL, &err);
+				break;
 
-			OSQPost(&UART_Msg,
-					(void *)&USART_RX_BUF[0],
-					sizeof(u8) * receive_number,
-					OS_OPT_POST_FIFO,
-					&err); // 发送消息到队列
+			case CMD_ALARM_RESET:
+				OSSemPost(&ALARM_RESET_SEM, OS_OPT_POST_ALL, &err);
+				break;
+
+			case CMD_INT_VAR_RETURN:
+				OSSemPost(&COMP_VAL_GET_SEM, OS_OPT_POST_ALL, &err);
+				break;
+
+			case CMD_STR_VAR_RETURN:
+				OSSemPost(&COMP_STR_GET_SEM, OS_OPT_POST_ALL, &err);
+				break;
+			case CMD_DATA_TRANSFER_READY:
+				break;
+
+			default:
+				break;
+			}
 
 			receive_number = 0;
 		}

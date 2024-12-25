@@ -111,10 +111,12 @@ OS_Q UART_Msg;									// 串口数据队列
 ////////////////////////UART3资源保护：互斥锁（暂时未用）////////////////////////
 OS_MUTEX UARTMutex;
 ////////////////////////线程同步：信号量////////////////////////////////////////
-OS_SEM PAGE_UPDATE_SEM;		  // 页面刷新信号
-OS_SEM COMP_VAL_GET_SEM;	  // 组件属性值成功获取信号
-OS_SEM COMP_STR_GET_SEM;	  // 组件属性值(字符串型)成功获取信号
-OS_SEM ALARM_RESET_SEM;		  // 报警复位信号
+OS_SEM PAGE_UPDATE_SEM;	 // 页面刷新信号
+OS_SEM COMP_VAL_GET_SEM; // 组件属性值成功获取信号
+OS_SEM COMP_STR_GET_SEM; // 组件属性值(字符串型)成功获取信号
+OS_SEM ALARM_RESET_SEM;	 // 报警复位信号
+
+OS_SEM ALARM_PAGE_UPDATE_SEM; // 报警翻页信号
 OS_SEM RESET_FINISH;		  // 复位完成信号
 OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
 /*主线程使用*/
@@ -402,6 +404,14 @@ void start_task(void *p_arg)
 
 	//   创建页面更新信号
 	OSSemCreate(&PAGE_UPDATE_SEM, "page update", 0, &err);
+	if (err != OS_ERR_NONE)
+	{
+		;
+		// 创建失败
+	}
+
+	// 报警翻页信号
+	OSSemCreate(&ALARM_PAGE_UPDATE_SEM, "alarm page update", 0, &err);
 	if (err != OS_ERR_NONE)
 	{
 		;
@@ -724,7 +734,7 @@ void error_task(void *p_arg)
 			Page_to(page_param, ALARM_PAGE);
 			user_tim_delay(20);
 			Page_to(page_param, ALARM_PAGE);
-			OSSemPost(&PAGE_UPDATE_SEM, OS_OPT_POST_ALL, &err);
+			page_param->id = ALARM_PAGE;
 			for (u8 i = 0; i < err_ctrl->error_cnt; i++)
 			{
 				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
@@ -796,9 +806,6 @@ static void Temp_updata_realtime()
 #if TEMP_ADJUST == 1
 	command_set_comp_val("temp22", "val", voltage);
 #endif
-
-	if (page_param->id == PARAM_PAGE)
-		command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
 }
 
 static void Thermocouple_check(void)
@@ -888,7 +895,7 @@ static void key_action_callback_temp(Component_Queue *page_list);
 static void parse_key_action(Page_ID id);
 
 static void CMD_touchscreen_reset_callback(void);
-static bool wait_data_parse(OS_TICK wait_time);
+// static bool wait_data_parse(OS_TICK wait_time);
 
 static void key_action_callback_param(Component_Queue *page_list)
 {
@@ -908,13 +915,11 @@ static void key_action_callback_param(Component_Queue *page_list)
 			{
 				/*参数读取*/
 				command_get_comp_val(page_list, weld_temp_name_list[i], "val");
-				wait_data_parse(15);
 			}
 			for (u8 i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
 			{
 				/*参数读取*/
 				command_get_comp_val(page_list, weld_time_name_list[i], "val");
-				wait_data_parse(15);
 			}
 
 			/*Ⅱ、读取用户设定的参数*/
@@ -949,24 +954,19 @@ static void key_action_callback_param(Component_Queue *page_list)
 			/*Ⅰ、从内存加载参数*/
 			uint8_t GP = get_comp(page_list, "GP")->val; // 当前设定的GP值
 			if (GP != page_param->GP && GP <= GP_MAX)	 // GP值和上次不一致（用户修改）降低内存读写次数
-			{
-				/*加载时间参数 温度参数*/
 				Load_param(weld_controller, GP);
-				/*发送参数到触摸屏————三个温度，5个时间点*/
-
-				/*发送到触摸屏*/
-				for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
-				{
-					Component *comp = get_comp(page_list, weld_time_name_list[i]);
-					if (comp != NULL)
-						command_set_comp_val(weld_time_name_list[i], "val", comp->val);
-				}
-				for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
-				{
-					Component *comp = get_comp(page_list, weld_temp_name_list[i]);
-					if (comp != NULL)
-						command_set_comp_val(weld_temp_name_list[i], "val", comp->val);
-				}
+			/*发送到触摸屏*/
+			for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
+			{
+				Component *comp = get_comp(page_list, weld_time_name_list[i]);
+				if (comp != NULL)
+					command_set_comp_val(weld_time_name_list[i], "val", comp->val);
+			}
+			for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
+			{
+				Component *comp = get_comp(page_list, weld_temp_name_list[i]);
+				if (comp != NULL)
+					command_set_comp_val(weld_temp_name_list[i], "val", comp->val);
 			}
 		}
 	}
@@ -1002,13 +1002,11 @@ static void key_action_callback_param(Component_Queue *page_list)
 		{
 			/*参数读取*/
 			command_get_comp_val(page_list, weld_temp_name_list[i], "val");
-			wait_data_parse(15);
 		}
 		for (u8 i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
 		{
 			/*参数读取*/
 			command_get_comp_val(page_list, weld_time_name_list[i], "val");
-			wait_data_parse(15);
 		}
 	}
 	// 状态同步
@@ -1036,13 +1034,11 @@ static void key_action_callback_temp(Component_Queue *page_list)
 			{
 				/*参数读取*/
 				command_get_comp_val(page_list, gain_name_list[i], "val");
-				wait_data_parse(15);
 			}
 			for (u8 i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
 			{
 				/*参数读取*/
 				command_get_comp_val(page_list, alarm_temp_name_list[i], "val");
-				wait_data_parse(15);
 			}
 
 			/*Ⅱ、保存用户设定的参数*/
@@ -1076,22 +1072,19 @@ static void key_action_callback_temp(Component_Queue *page_list)
 			/*Ⅰ、从内存加载参数————两个温度系数，6个温度*/
 			uint8_t GP = get_comp(page_list, "GP")->val; // 当前设定的GP值
 			if (GP != page_param->GP && GP <= GP_MAX)	 // GP值和上次不一致（用户修改）
+				Load_param_alarm(weld_controller, GP);	 // 加载温度限制/温度增益参数
+			/*发送到触摸屏*/
+			for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
 			{
-				/*降低内存读写次数*/
-				Load_param_alarm(weld_controller, GP); // 加载温度限制/温度增益参数
-				/*发送到触摸屏*/
-				for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
-				{
-					Component *comp = get_comp(page_list, alarm_temp_name_list[i]);
-					if (comp != NULL)
-						command_set_comp_val(alarm_temp_name_list[i], "val", comp->val);
-				}
-				for (uint8_t i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
-				{
-					Component *comp = get_comp(page_list, gain_name_list[i]);
-					if (comp != NULL)
-						command_set_comp_val(gain_name_list[i], "val", comp->val);
-				}
+				Component *comp = get_comp(page_list, alarm_temp_name_list[i]);
+				if (comp != NULL)
+					command_set_comp_val(alarm_temp_name_list[i], "val", comp->val);
+			}
+			for (uint8_t i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
+			{
+				Component *comp = get_comp(page_list, gain_name_list[i]);
+				if (comp != NULL)
+					command_set_comp_val(gain_name_list[i], "val", comp->val);
 			}
 		}
 	}
@@ -1125,13 +1118,11 @@ static void key_action_callback_temp(Component_Queue *page_list)
 		{
 			/*参数读取*/
 			command_get_comp_val(page_list, gain_name_list[i], "val");
-			wait_data_parse(15);
 		}
 		for (u8 i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
 		{
 			/*参数读取*/
 			command_get_comp_val(page_list, alarm_temp_name_list[i], "val");
-			wait_data_parse(15);
 		}
 	}
 
@@ -1227,13 +1218,11 @@ static void page_process(Page_ID id)
 		for (u8 i = 0; i < sizeof(key_name_list) / sizeof(char *); i++)
 		{
 			command_get_comp_val(param_page_list, key_name_list[i], "pic");
-			wait_data_parse(20);
 		}
 		command_get_comp_val(param_page_list, "GP", "val");
-		wait_data_parse(20);
 		// command_get_comp_val(param_page_list, "sensortype", "val");
-		// wait_data_parse(20);
 		parse_key_action(page_param->id);
+		command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
 	}
 	break;
 
@@ -1243,10 +1232,8 @@ static void page_process(Page_ID id)
 		for (u8 i = 0; i < sizeof(key_name_list) / sizeof(char *); i++)
 		{
 			command_get_comp_val(temp_page_list, key_name_list[i], "pic");
-			wait_data_parse(20);
 		}
 		command_get_comp_val(temp_page_list, "GP", "val");
-		wait_data_parse(20);
 		parse_key_action(page_param->id);
 	}
 	break;
@@ -1293,6 +1280,33 @@ static void page_process(Page_ID id)
 		{
 			command_set_comp_val(tick_name[i], "val", (1 + i) * delta_tick);
 		}
+
+		/*焊接结束后继续采集温度*/
+		OS_ERR err;
+		u16 temp_display[3] = {0};
+		char *temp_display_name[] = {"step1", "step2", "step3"};
+		OSSemPend(&TEMP_DRAW_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+		if (err == OS_ERR_NONE)
+		{
+			/*三段均温显示*/
+			temp_display[0] = weld_controller->second_step_start_temp;
+			u32 sum = 0;
+			for (u16 i = temp_draw_ctrl->second_step_stable_index; i < temp_draw_ctrl->second_step_index_end; i++)
+				sum += temp_draw_ctrl->temp_buf[i];
+			temp_display[1] = sum / (temp_draw_ctrl->second_step_index_end - temp_draw_ctrl->second_step_stable_index + 1);
+			/*一二段均值发送到触摸屏*/
+			if (page_param->id == WAVE_PAGE)
+			{
+				command_set_comp_val(temp_display_name[0], "val", temp_display[0]);
+				command_set_comp_val(temp_display_name[1], "val", temp_display[1]);
+			}
+
+			/*绘图控制器复位*/
+			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
+
+			/*绘图结束清空缓存*/
+			memset(temp_draw_ctrl->temp_buf, 0, sizeof(temp_draw_ctrl->temp_buf) / sizeof(u16));
+		}
 	}
 	break;
 
@@ -1312,10 +1326,8 @@ static void page_process(Page_ID id)
 		/*...机地址以及波特率修改，同步到上位机...*/
 		/*1、读取界面设定的地址*/
 		command_get_comp_val(setting_page_list, "adress", "val");
-		wait_data_parse(20);
 		/*2、读取页面设定的波特率*/
 		command_get_comp_val(setting_page_list, "baudrate", "val");
-		wait_data_parse(20);
 		/*更新波特率*/
 		if (get_comp(setting_page_list, "baudrate") != NULL)
 		{
@@ -1371,74 +1383,74 @@ static void CMD_touchscreen_reset_callback()
 	command_set_comp_val("count", "val", 0);
 }
 
-static bool wait_data_parse(OS_TICK wait_time)
-{
-	/*补充一个页面切换的处理*/
-	uint8_t *msg = NULL;
-	OS_ERR err;
-	OS_MSG_SIZE msg_size = 0;
-	bool ret = false;
-	/*订阅队列，并进行消息处理*/
-	msg = (uint8_t *)OSQPend(&UART_Msg,			   // 消息队列指针
-							 wait_time,			   // 等待时长
-							 OS_OPT_PEND_BLOCKING, // 等待模式
-							 &msg_size,			   // 获取消息大小
-							 NULL,				   // 获取消息的时间戳
-							 &err);				   // 返回错误代码
+// static bool wait_data_parse(OS_TICK wait_time)
+// {
+// 	/*补充一个页面切换的处理*/
+// 	uint8_t *msg = NULL;
+// 	OS_ERR err;
+// 	OS_MSG_SIZE msg_size = 0;
+// 	bool ret = false;
+// 	/*订阅队列，并进行消息处理*/
+// 	msg = (uint8_t *)OSQPend(&UART_Msg,			   // 消息队列指针
+// 							 wait_time,			   // 等待时长
+// 							 OS_OPT_PEND_BLOCKING, // 等待模式
+// 							 &msg_size,			   // 获取消息大小
+// 							 NULL,				   // 获取消息的时间戳
+// 							 &err);				   // 返回错误代码
 
-	/*满足标准通信格式*/
-	if (err == OS_ERR_NONE && msg != NULL && msg_size >= MIN_CMD_LEN && msg[msg_size - 1] == END_FLAG && msg[msg_size - 2] == END_FLAG && msg[msg_size - 3] == END_FLAG)
-	{
+// 	/*满足标准通信格式*/
+// 	if (err == OS_ERR_NONE && msg != NULL && msg_size >= MIN_CMD_LEN && msg[msg_size - 1] == END_FLAG && msg[msg_size - 2] == END_FLAG && msg[msg_size - 3] == END_FLAG)
+// 	{
 
-		/*处理消息*/
-		switch (msg[0])
-		{
-		case CMD_FAIL:
-			ret = true;
-			break;
-		case CMD_OK:
-			ret = true;
-			break;
-		case CMD_PAGEID_RETURN:
-			ret = true;
-			/*更新页面id*/
-			if (msg[1] <= UART_PAGE && msg[1] >= PARAM_PAGE)
-				page_param->id = (Page_ID)msg[1];
-			break;
-		case CMD_INT_VAR_RETURN:
-			ret = true;
-			if (PARAM_PAGE == page_param->id)
-				param_page_list->updata->val = msg[1] | msg[2] << 8 | msg[3] << 16 | msg[4] << 24;
-			else if (TEMP_PAGE == page_param->id)
-				temp_page_list->updata->val = msg[1] | msg[2] << 8 | msg[3] << 16 | msg[4] << 24;
-			else if (UART_PAGE == page_param->id)
-				setting_page_list->updata->val = msg[1] | msg[2] << 8 | msg[3] << 16 | msg[4] << 24;
-			break;
-		case CMD_STR_VAR_RETURN:
-			ret = true;
-			break;
-		case CMD_DATA_TRANSFER_READY:
-			ret = true;
-			break;
-		default:
-			break;
-		}
+// 		/*处理消息*/
+// 		switch (msg[0])
+// 		{
+// 		case CMD_FAIL:
+// 			ret = true;
+// 			break;
+// 		case CMD_OK:
+// 			ret = true;
+// 			break;
+// 		case CMD_PAGEID_RETURN:
+// 			ret = true;
+// 			/*更新页面id*/
+// 			if (msg[1] <= UART_PAGE && msg[1] >= PARAM_PAGE)
+// 				page_param->id = (Page_ID)msg[1];
+// 			break;
+// 		case CMD_INT_VAR_RETURN:
+// 			ret = true;
+// 			if (PARAM_PAGE == page_param->id)
+// 				param_page_list->updata->val = msg[1] | msg[2] << 8 | msg[3] << 16 | msg[4] << 24;
+// 			else if (TEMP_PAGE == page_param->id)
+// 				temp_page_list->updata->val = msg[1] | msg[2] << 8 | msg[3] << 16 | msg[4] << 24;
+// 			else if (UART_PAGE == page_param->id)
+// 				setting_page_list->updata->val = msg[1] | msg[2] << 8 | msg[3] << 16 | msg[4] << 24;
+// 			break;
+// 		case CMD_STR_VAR_RETURN:
+// 			ret = true;
+// 			break;
+// 		case CMD_DATA_TRANSFER_READY:
+// 			ret = true;
+// 			break;
+// 		default:
+// 			break;
+// 		}
 
-		if (msg[msg_size - 1] == END_FLAG && msg[msg_size - 2] == END_FLAG && msg[msg_size - 3] == END_FLAG && msg_size >= 10 && msg[6] == CMD_SYSTEM_START_OK)
-		{
-			CMD_touchscreen_reset_callback();
-			ret = true;
-		}
-	}
+// 		if (msg[msg_size - 1] == END_FLAG && msg[msg_size - 2] == END_FLAG && msg[msg_size - 3] == END_FLAG && msg_size >= 10 && msg[6] == CMD_SYSTEM_START_OK)
+// 		{
+// 			CMD_touchscreen_reset_callback();
+// 			ret = true;
+// 		}
+// 	}
 
-	/*清空缓存*/
-	set_receive_number(0);
-	for (u16 i = 0; i < USART_REC_LEN; i++)
-	{
-		USART_RX_BUF[i] = 0;
-	}
-	return ret;
-}
+// 	/*清空缓存*/
+// 	set_receive_number(0);
+// 	for (u16 i = 0; i < USART_REC_LEN; i++)
+// 	{
+// 		USART_RX_BUF[i] = 0;
+// 	}
+// 	return ret;
+// }
 
 static bool data_syn(Page_ID id)
 {
@@ -1513,28 +1525,17 @@ void read_task(void *p_arg)
 {
 
 	OS_ERR err;
-	uart_init(115200);
 
 	while (1)
 	{
-		/*触发报警*/
-		OSSemPend(&PAGE_UPDATE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
-		if (err == OS_ERR_NONE)
+		/*处理页面逻辑*/
+		if (Page_id_get() == true)
 		{
-			page_param->id = ALARM_PAGE;
-		}
-		else
-		{
-			/*1、查询页面id，根据所处页面执行不同动作*/
-			Page_id_get();
-			wait_data_parse(100);
-			/*2、处理页面逻辑*/
 			page_process(page_param->id);
-			/*3、数据同步*/
 			data_syn(page_param->id);
 		}
 
-		OSTimeDlyHMSM(0, 0, 0, 20, OS_OPT_TIME_PERIODIC, &err); // 休眠
+		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
 }
 
@@ -1810,37 +1811,8 @@ void computer_read_task(void *p_arg)
 void draw_task(void *p_arg)
 {
 	OS_ERR err;
-	const char *temp_display_name[] = {"step1", "step2", "step3"};
-	u16 temp_display[3] = {0};
 	while (1)
 	{
-
-		/*焊接结束后继续采集温度*/
-		OSSemPend(&TEMP_DRAW_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
-		if (err == OS_ERR_NONE)
-		{
-			/*三段均温显示*/
-			temp_display[0] = weld_controller->second_step_start_temp;
-			u32 sum = 0;
-			for (u16 i = temp_draw_ctrl->second_step_stable_index; i < temp_draw_ctrl->second_step_index_end; i++)
-			{
-				sum += temp_draw_ctrl->temp_buf[i];
-			}
-			temp_display[1] = sum / (temp_draw_ctrl->second_step_index_end - temp_draw_ctrl->second_step_stable_index + 1);
-			/*一二段均值发送到触摸屏*/
-			if (page_param->id == WAVE_PAGE)
-			{
-				command_set_comp_val(temp_display_name[0], "val", temp_display[0]);
-				command_set_comp_val(temp_display_name[1], "val", temp_display[1]);
-			}
-
-			/*绘图控制器复位*/
-			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
-
-			/*绘图结束清空缓存*/
-			memset(temp_draw_ctrl->temp_buf, 0, sizeof(temp_draw_ctrl->temp_buf) / sizeof(u16));
-		}
-
-		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err); // 休眠
+		OSTimeDlyHMSM(0, 0, 0, 1000, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
 }

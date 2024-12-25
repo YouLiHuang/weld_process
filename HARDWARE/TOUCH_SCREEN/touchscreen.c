@@ -8,12 +8,15 @@
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
  */
 
-#define FAST_MODE 1
+#define FAST_MODE 0
 #include "touchscreen.h"
 #include "usart.h"
 
 const u32 baud_list[] = {2400, 4800, 9600, 19200, 31200, 38400, 57600, 115200, 230400, 250000, 256000, 512000, 921600};
 
+extern OS_Q UART_Msg;           // 串口数据队列
+extern Page_Param *page_param;  // 记录当前所在界面id及RDY三个按钮的状态
+extern OS_SEM PAGE_UPDATE_SEM;  // 页面更新信号
 extern OS_SEM COMP_VAL_GET_SEM; // 组件属性值成功获取信号
 extern OS_SEM COMP_STR_GET_SEM; // 组件属性值(字符串型)成功获取信号
 //////////////////////////////////////////////////////////////////////////////////////////////页面参数API//////////////////////////////////////////////////////////////////////////////////////////////
@@ -410,6 +413,7 @@ void command_set_comp_str_raw(const char *name, const char *compatible, const ch
   free(buffer);
 }
 
+static char buffer[50] = {0};
 /**
  * @description: send the raw command spcifies by cmd
  * @param {char} *cmd
@@ -418,9 +422,9 @@ void command_set_comp_str_raw(const char *name, const char *compatible, const ch
 bool command_send(const char *cmd)
 {
   /*清空接收缓存*/
-  // memset(USART_RX_BUF, 0, USART_REC_LEN);
-  /*数据处理*/
-  char buffer[50] = {0};
+  for (u8 i = 0; i < 50; i++)
+    buffer[i] = 0;
+
   sprintf(buffer, "%s%s", cmd, END_OF_CMD); // 指令预处理
 
 #if FAST_MODE == 1
@@ -450,7 +454,8 @@ bool command_set_comp_val(const char *name, const char *compatible, const int va
     return false;
 
   /*数据处理*/
-  char buffer[50] = {0};
+  for (u8 i = 0; i < 50; i++)
+    buffer[i] = 0;
 
   sprintf(buffer, "%s.%s=%d", name, compatible, val); // 指令预处理
   strcat(buffer, END_OF_CMD);                         // 加上结束符
@@ -481,7 +486,8 @@ bool command_set_comp_str(const char *name, const char *compatible, const char *
     return false;
 
   /*数据处理*/
-  char buffer[50] = {0};
+  for (u8 i = 0; i < 50; i++)
+    buffer[i] = 0;
 
   sprintf(buffer, "%s.%s=%s", name, compatible, str); // 指令预处理
   strcat(buffer, END_OF_CMD);                         // 加上结束符
@@ -508,19 +514,23 @@ bool command_set_comp_str(const char *name, const char *compatible, const char *
 bool command_get_comp_val(Component_Queue *list, const char *name, const char *compatible)
 {
   /*清缓存*/
-  memset(USART_RX_BUF, 0, USART_REC_LEN);
+  for (u16 i = 0; i < USART_REC_LEN; i++)
+  {
+    USART_RX_BUF[i] = 0;
+  }
+  for (u8 i = 0; i < 50; i++)
+    buffer[i] = 0;
   /*参数检查*/
   if (list == NULL || name == NULL || compatible == NULL)
     return false;
 
   /*数据处理*/
-  char buffer[50] = {0};
   sprintf(buffer, "get %s.%s", name, compatible); // 指令预处理
   strcat(buffer, END_OF_CMD);                     // 加上结束符
 
 #if FAST_MODE == 1
-  list->updata = get_comp(list, name); // 组件属性值更新
-  RS485_send(buffer, strlen(buffer));  // 发送数据
+  list->updata = get_comp(list, name);
+  RS485_send(buffer, strlen(buffer)); // 发送数据
 #else
   CPU_SR_ALLOC();
   OS_CRITICAL_ENTER();                 // 进入临界区
@@ -528,6 +538,10 @@ bool command_get_comp_val(Component_Queue *list, const char *name, const char *c
   RS485_send(buffer, strlen(buffer));  // 发送数据
   OS_CRITICAL_EXIT();                  // 退出临界区
 #endif
+  OS_ERR err;
+  OSSemPend(&COMP_VAL_GET_SEM, 200, OS_OPT_PEND_BLOCKING, NULL, &err);
+  if (err == OS_ERR_NONE)
+    list->updata->val = USART_RX_BUF[1] | USART_RX_BUF[2] << 8 | USART_RX_BUF[3] << 16 | USART_RX_BUF[4] << 24;
 
   return true;
 }
@@ -541,22 +555,18 @@ bool command_get_comp_val(Component_Queue *list, const char *name, const char *c
  */
 bool command_get_comp_str(Component_Queue *list, const char *name, const char *compatible)
 {
-
-  /*等待数据处理线程的通知*/
-  OS_ERR err;
-  /*消息错位滤波*/
-  OSSemPend(&COMP_VAL_GET_SEM, 5, OS_OPT_PEND_BLOCKING, NULL, &err);
-  /*此时上一条消息返回————消息错位（丢弃）*/
-  if (err == OS_ERR_NONE)
-    return false;
+  uart_init(115200);
   /*清缓存*/
-  memset(USART_RX_BUF, 0, USART_REC_LEN);
+  for (u16 i = 0; i < USART_REC_LEN; i++)
+  {
+    USART_RX_BUF[i] = 0;
+  }
   /*参数检查*/
   if (list == NULL || name == NULL || compatible == NULL)
     return false;
 
-  /*发送数据*/
-  char buffer[50] = {0};
+  for (u8 i = 0; i < 50; i++)
+    buffer[i] = 0;
 
   /*数据处理*/
   sprintf(buffer, "get %s.%s", name, compatible); // 指令预处理
@@ -572,19 +582,22 @@ bool command_get_comp_str(Component_Queue *list, const char *name, const char *c
   RS485_send(buffer, strlen(buffer));  // 发送数据
   OS_CRITICAL_EXIT();                  // 退出临界区
 #endif
+  OS_ERR err;
+  OSSemPend(&COMP_STR_GET_SEM, 100, OS_OPT_PEND_BLOCKING, NULL, &err);
+  if (err == OS_ERR_NONE)
+    list->updata->val = USART_RX_BUF[1] | USART_RX_BUF[2] << 8 | USART_RX_BUF[3] << 16 | USART_RX_BUF[4] << 24;
 
   return true;
 }
 
 bool Page_id_get(void)
 {
+	uart_init(115200);
   /*清缓存*/
-  // uart_init(115200);
   for (u16 i = 0; i < USART_REC_LEN; i++)
     USART_RX_BUF[i] = 0;
-
-  /*发送数据*/
-  char buffer[50] = {0};
+  for (u8 i = 0; i < 50; i++)
+    buffer[i] = 0;
 
   /*数据处理*/
   strcpy(buffer, "sendme");   // 指令预处理
@@ -594,7 +607,12 @@ bool Page_id_get(void)
   RS485_send(buffer, strlen(buffer)); // 发送数据
   OS_CRITICAL_EXIT();                 // 退出临界区
 
-  return true;
+  OS_ERR err;
+  OSSemPend(&PAGE_UPDATE_SEM, 100, OS_OPT_PEND_BLOCKING, NULL, &err);
+  if (err == OS_ERR_NONE)
+    return true;
+  else
+    return false;
 }
 
 /**
