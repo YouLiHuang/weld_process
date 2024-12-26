@@ -148,7 +148,6 @@ static void Load_Data()
 	GP_Temp = comp->val;
 	if ((GP_Temp % 2 == 0)) // 如果GP是双数
 	{
-		// key = KEY_Scan(0);
 		key = new_key_scan();
 		if (key == KEY_PC1_PRES) // 踩下单数
 		{
@@ -160,7 +159,6 @@ static void Load_Data()
 	}
 	else // 如果GP是单数
 	{
-		// key = KEY_Scan(0);
 		key = new_key_scan();
 		if ((key == KEY_PC0_PRES)) // 踩下双数
 		{
