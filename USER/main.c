@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-26 08:46:19
+ * @LastEditTime: 2024-12-26 09:25:55
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -1104,7 +1104,7 @@ static void key_action_callback_temp(Component_Queue *page_list)
 					command_set_comp_val(gain_name_list[i], "val", comp->val);
 			}
 		}
-		/*Ⅰ、读取界面上的参数*/
+		/*Ⅱ、读取界面上的参数*/
 		for (u8 i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
 		{
 			/*参数读取*/
