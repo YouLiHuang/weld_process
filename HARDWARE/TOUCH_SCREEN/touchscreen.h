@@ -31,7 +31,7 @@
 #define END_OF_CMD "\xff\xff\xff"
 #define END_FLAG 0xff
 #define MIN_CMD_LEN 5
-#define WAIT_TIME_OUT 10
+#define CMD_BUFFER_LEN 50
 /*------------------------------------------------------------------指令集------------------------------------------------------------------*/
 #define CMD_FAIL 0x00
 #define CMD_OK 0x01

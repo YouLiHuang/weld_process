@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-13 19:22:56
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-21 10:24:24
+ * @LastEditTime: 2024-12-26 09:19:22
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -172,76 +172,61 @@ void spi_data_init(void)
 	int remember_array_init = 0;
 	remember_array_init = SPI_Load_Word(0); // 从内存加载首个GP值
 	if (remember_array_init >= 20)
-	{
 		remember_array_init = 0;
-	}
+	remember_array = remember_array_init;
+	
 	/*首次从内存读取数据*/
 	Load_param(weld_controller, remember_array_init);
 	Load_param_alarm(weld_controller, remember_array_init);
 
-/*旧接口*/
-#if 0
-	output_data_plus(0x06, 0x00, 0x01, 0x00, remember_array_init); // 将上一次的GP值发给从机
-#endif
-/*新接口*/
-#if 1
-	command_set_comp_val_raw("param_page.GP", "val", remember_array_init);
-	/*发送到触摸屏*/
-	char *name = (char *)malloc(sizeof(char) * 10);
-	if (name != NULL)
+	/*首次加载参数后需要发送到触摸屏*/
+	char *param_name_list[] = {
+		"time1",
+		"time2",
+		"time3",
+		"time4",
+		"time5",
+		"temp1",
+		"temp2",
+		"temp3",
+	};
+	char *temp_name_list[] = {
+		"alarm1",
+		"alarm2",
+		"alarm3",
+		"alarm4",
+		"alarm5",
+		"alarm6",
+		"GAIN1",
+		"GAIN2",
+		"GAIN3",
+	};
+
+	command_set_comp_val_raw("wave_page.kpf", "val", 0);
+	command_set_comp_val_raw("wave_page.kp", "val", 0);
+	command_set_comp_val_raw("wave_page.ki", "val", 0);
+	command_set_comp_val_raw("wave_page.kd", "val", 0);
+	/*温度限制界面UI初始化*/
+	command_send("page 4");
+	for (u8 i = 0; i < sizeof(temp_name_list) / sizeof(char *); i++)
 	{
-		command_send_raw("page 4");
-		command_set_comp_val_raw("ION_OFF", "pic", ION);
-		for (uint8_t i = 1; i <= 6; i++)
-		{
-			memset(name, 0, 10);
-			sprintf(name, "temp%d", i);
-			if (get_comp(temp_page_list, name) != NULL)
-				command_set_comp_val_raw(name, "val", get_comp(temp_page_list, name)->val);
-		}
-		for (uint8_t i = 1; i <= 2; i++)
-		{
-			memset(name, 0, 10);
-			sprintf(name, "GAIN%d", i);
-			if (get_comp(temp_page_list, name) != NULL)
-				command_set_comp_val_raw(name, "val", get_comp(temp_page_list, name)->val);
-		}
-
-		command_send_raw("page 1");
-		command_set_comp_val_raw("ION_OFF", "pic", ION);
-		for (uint8_t i = 1; i <= 6; i++)
-		{
-			memset(name, 0, 10);
-			sprintf(name, "time%d", i);
-			if (get_comp(param_page_list, name) != NULL)
-				command_set_comp_val_raw(name, "val", get_comp(param_page_list, name)->val);
-		}
-		for (uint8_t i = 1; i <= 3; i++)
-		{
-			memset(name, 0, 10);
-			sprintf(name, "temp%d", i);
-			if (get_comp(param_page_list, name) != NULL)
-				command_set_comp_val_raw(name, "val", get_comp(param_page_list, name)->val);
-		}
-		/*焊接计数值复位*/
-		command_set_comp_val_raw("count", "val", 0);
-		/*调试接口复位*/
-		command_set_comp_val_raw("wave_page.kpf", "val", 0);
-		command_set_comp_val_raw("wave_page.kp", "val", 1200);
-		command_set_comp_val_raw("wave_page.ki", "val", 1);
-		command_set_comp_val_raw("wave_page.kd", "val", 0);
-		command_set_comp_val_raw("temp_page.alarm1", "val", 600);
-		command_set_comp_val_raw("temp_page.alarm2", "val", 100);
-		command_set_comp_val_raw("temp_page.alarm3", "val", 600);
-		command_set_comp_val_raw("temp_page.alarm4", "val", 100);
-		command_set_comp_val_raw("temp_page.alarm5", "val", 600);
-		command_set_comp_val_raw("temp_page.alarm6", "val", 100);
-		/*释放内存*/
-		free(name);
+		Component *comp = get_comp(temp_page_list, temp_name_list[i]);
+		if (comp != NULL)
+			command_set_comp_val_raw(temp_name_list[i], "val", comp->val);
 	}
-
-#endif
-	remember_array = remember_array_init;
+	/*参数页面UI初始化*/
+	command_send("page 1");
+	command_set_comp_val_raw("RDY_SCH", "pic", RDY);
+	command_set_comp_val_raw("ION_OFF", "pic", ION);
+	command_set_comp_val_raw("SGW_CTW", "pic", SGW);
+	command_set_comp_val_raw("GP", "val", 0);
+	command_set_comp_val_raw("count", "val", 0);
+	for (u8 i = 0; i < sizeof(param_name_list) / sizeof(char *); i++)
+	{
+		Component *comp = get_comp(param_page_list, param_name_list[i]);
+		if (comp != NULL)
+			command_set_comp_val_raw(param_name_list[i], "val", comp->val);
+	}
 }
 
 void save_param(weld_ctrl *ctrl, int array_of_data, const u16 *temp, const u8 temp_len, const u16 *time, const u8 time_len)

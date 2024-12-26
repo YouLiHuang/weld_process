@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-24 16:28:14
+ * @LastEditTime: 2024-12-26 08:46:19
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -116,7 +116,6 @@ OS_SEM COMP_VAL_GET_SEM; // 组件属性值成功获取信号
 OS_SEM COMP_STR_GET_SEM; // 组件属性值(字符串型)成功获取信号
 OS_SEM ALARM_RESET_SEM;	 // 报警复位信号
 
-OS_SEM ALARM_PAGE_UPDATE_SEM; // 报警翻页信号
 OS_SEM RESET_FINISH;		  // 复位完成信号
 OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
 /*主线程使用*/
@@ -404,14 +403,6 @@ void start_task(void *p_arg)
 
 	//   创建页面更新信号
 	OSSemCreate(&PAGE_UPDATE_SEM, "page update", 0, &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
-
-	// 报警翻页信号
-	OSSemCreate(&ALARM_PAGE_UPDATE_SEM, "alarm page update", 0, &err);
 	if (err != OS_ERR_NONE)
 	{
 		;

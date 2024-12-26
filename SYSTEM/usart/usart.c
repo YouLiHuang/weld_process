@@ -185,6 +185,8 @@ void UART4_IRQHandler(void) // 串口4中断服务程序
 			/*实在没办法，页面刷新需要特别及时，因此在中断当中刷新*/
 			switch (USART_RX_BUF[0])
 			{
+			case CMD_OK:
+				break;
 			case CMD_PAGEID_RETURN:
 				OSSemPost(&PAGE_UPDATE_SEM, OS_OPT_POST_ALL, &err);
 				page_param->id = (Page_ID)USART_RX_BUF[1];
