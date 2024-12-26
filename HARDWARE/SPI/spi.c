@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-13 19:22:56
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-26 09:19:22
+ * @LastEditTime: 2024-12-26 09:28:36
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -174,7 +174,7 @@ void spi_data_init(void)
 	if (remember_array_init >= 20)
 		remember_array_init = 0;
 	remember_array = remember_array_init;
-	
+
 	/*首次从内存读取数据*/
 	Load_param(weld_controller, remember_array_init);
 	Load_param_alarm(weld_controller, remember_array_init);
@@ -292,12 +292,8 @@ void Load_param(weld_ctrl *ctrl, int array_of_data)
 	welding_Temp_load[0] = SPI_Load_Word(40 * (array_of_data + 1) + 12); // temp1~temp3
 	welding_Temp_load[1] = SPI_Load_Word(40 * (array_of_data + 1) + 14);
 	welding_Temp_load[2] = SPI_Load_Word(40 * (array_of_data + 1) + 16);
+
 	/*数据校验*/
-	// for (int i = 0; i < 6; i++)
-	// {
-	// 	if ((i != 2 && welding_time_load[i] > 999) || (i == 2 && welding_time_load[i] > 9999))
-	// 		return;
-	// }
 
 	/*参数修改*/
 	for (u8 i = 0; i < sizeof(welding_time_load) / sizeof(u16); i++)
@@ -349,11 +345,11 @@ void Load_param_alarm(weld_ctrl *ctrl, int array_of_data)
 	alarm_temperature_load[5] = SPI_Load_Word(40 * (array_of_data + 1) + 28);
 
 	/*参数校验*/
-	// for (u8 i = 0; i < sizeof(alarm_temperature_load) / sizeof(u16); i++)
-	// {
-	// 	if (alarm_temperature_load[i] > MAX_TEMP)
-	// 		return;
-	// }
+	for (u8 i = 0; i < sizeof(alarm_temperature_load) / sizeof(u16); i++)
+	{
+		if (alarm_temperature_load[i] > MAX_TEMP)
+			alarm_temperature_load[i] = MAX_TEMP;
+	}
 
 	for (u8 i = 0; i < sizeof(alarm_temperature_load) / sizeof(u16); i++)
 	{
