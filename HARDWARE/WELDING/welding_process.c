@@ -353,13 +353,13 @@ static void First_Step()
 		}
 
 		/*4、第一段结束后，将一些标志位清零*/
-		TIM_Cmd(TIM5, DISABLE);										// 关闭实时控制器
-		weld_controller->step_time_tick = 0;						// 实时控制器阶段性时间刻度复位
-		TIM5->CNT = 0;												// 计数值复位
-		TIM_SetCompare1(TIM1, 0);									// 关闭pwm 输出
-		TIM_SetCompare1(TIM4, 0);									// 关闭pwm 输出
-		weld_controller->state = IDEAL_STATE;						// 焊接状态复位
-		weld_controller->second_step_start_temp = kalman_comp_temp; // 记录二阶段起始温度
+		TIM_Cmd(TIM5, DISABLE);													  // 关闭实时控制器
+		weld_controller->step_time_tick = 0;									  // 实时控制器阶段性时间刻度复位
+		TIM5->CNT = 0;															  // 计数值复位
+		TIM_SetCompare1(TIM1, 0);												  // 关闭pwm 输出
+		TIM_SetCompare1(TIM4, 0);												  // 关闭pwm 输出
+		weld_controller->state = IDEAL_STATE;									  // 焊接状态复位
+		weld_controller->second_step_start_temp = weld_controller->realtime_temp; // 记录二阶段起始温度
 
 		/*5、记录一阶段结束坐标*/
 		temp_draw_ctrl->first_step_index_end = temp_draw_ctrl->current_index - 1;
@@ -388,7 +388,7 @@ static void Second_Step()
 			if (weld_controller->realtime_temp >= weld_controller->second_step_turn && weld_controller->pid_ctrl->stable_flag == false)
 				weld_controller->pid_ctrl->stable_flag = true;
 
-			/*后续计算稳定温度值索引*/
+			/*后续计算稳定温度值索引（待改进）*/
 			if (weld_controller->realtime_temp >= 0.95 * weld_controller->second_step_set && temp_draw_ctrl->second_step_stable_index == 0)
 			{
 				if (weld_controller->pid_ctrl->stable_threshold_cnt >= weld_controller->pid_ctrl->stable_threshold)
@@ -428,7 +428,7 @@ static void Second_Step()
 		TIM_SetCompare1(TIM4, 0);													// 关闭pwm 输出
 		weld_controller->third_step_start_duty_cycle = weld_controller->Duty_Cycle; // 三阶段从这个占空比往下下降
 		weld_controller->state = IDEAL_STATE;										// 焊接状态复位
-		weld_controller->third_step_start_temp = kalman_comp_temp;					// 记录三阶段起始温度
+		weld_controller->third_step_start_temp = weld_controller->realtime_temp;	// 记录三阶段起始温度
 
 		/*4、二阶段结束，记录坐标*/
 		temp_draw_ctrl->second_step_index_end = temp_draw_ctrl->current_index - 1;
