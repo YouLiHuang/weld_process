@@ -14,8 +14,8 @@
 #define TIME_CHECH 0 // 超时监测
 #define PROTECT_ON 1 // 保护开关
 
+/*实时控制*/
 extern weld_ctrl *weld_controller;
-extern pid_feedforword_ctrl *pid_ctrl;
 double fitting_curves[3] = {-0.00004, 0.0159, 12.756}; // 二次曲线拟合系数
 /*温度补偿部分*/
 extern Kalman kfp;
@@ -23,15 +23,13 @@ extern dynamical_comp dynam_comp;
 last_temp_sotre lasttemp;
 u16 kalman_comp_temp = 0; // 卡尔曼滤波+动态补偿后的温度值
 
-extern volatile u16 Init_Temperature;
-
+/*错误处理*/
 extern Error_ctrl *err_ctrl;	// 错误注册表
 extern OS_SEM ERROR_HANDLE_SEM; // 错误信号
 
 /*绘图专用数据*/
 extern Temp_draw_ctrl *temp_draw_ctrl;
 u16 realtime_temp_buf[TEMP_BUF_MAX_LEN] = {0}; // 温度保存缓冲区
-extern Page_Param *page_param;
 
 /**
  * @description: create an new controller
