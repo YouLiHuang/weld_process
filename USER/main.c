@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-26 09:27:27
+ * @LastEditTime: 2024-12-26 09:48:44
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -1334,6 +1334,7 @@ static void page_process(Page_ID id)
 	}
 }
 
+#if 0
 static void CMD_touchscreen_reset_callback()
 {
 	u8 remember_array_init = 0;
@@ -1373,6 +1374,8 @@ static void CMD_touchscreen_reset_callback()
 	}
 	command_set_comp_val("count", "val", 0);
 }
+
+#endif
 
 static bool data_syn(Page_ID id)
 {
