@@ -587,7 +587,7 @@ static void weld_real_time_ctrl()
 		weld_controller->step_time_tick = 0; // 实时控制器阶段性时间刻度复位
 		weld_controller->weld_time_tick = 0; // 焊接周期时间刻度复位
 		TIM_Cmd(TIM3, ENABLE);				 // 开启时间统计计数器，同时开启温度采集
-		while (weld_controller->weld_time_tick < weld_controller->weld_time[1] + weld_controller->weld_time[2] + weld_controller->weld_time[3])
+		while (weld_controller->weld_time_tick < weld_controller->weld_time[0] + weld_controller->weld_time[1] + weld_controller->weld_time[2] + weld_controller->weld_time[3] + weld_controller->weld_time[4])
 			;
 		TIM_Cmd(TIM3, DISABLE);				 // 关闭时间统计计数器
 		weld_controller->weld_time_tick = 0; // 焊接周期时间刻度复位
