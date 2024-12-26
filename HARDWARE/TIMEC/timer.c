@@ -107,6 +107,7 @@ void reset_temp_draw_ctrl(Temp_draw_ctrl *ctrl, const u16 welding_time[])
 void pid_param_dynamic_reload(void *controller, double *fitting_curves, u16 setting)
 {
 #if PID_DEBUG == 0
+
 	/*pid调试模式关闭时才动态调整*/
 	weld_ctrl *ctrl = (weld_ctrl *)controller;
 	double new_kp = 0;
@@ -125,6 +126,8 @@ void pid_param_dynamic_reload(void *controller, double *fitting_curves, u16 sett
 		ctrl->pid_ctrl->kp = new_kp;
 		ctrl->pid_ctrl->ki = 0.01;
 		ctrl->pid_ctrl->kd = 0.5 * new_kp;
+		/*稳态标志复位*/
+		weld_controller->pid_ctrl->stable_flag = false;
 	}
 #endif
 }
@@ -361,7 +364,10 @@ void TIM5_IRQHandler(void)
 			/*时间更新*/
 			weld_controller->step_time_tick++;
 			/*1、：算法控制——缓降，暂时不实现，直接关闭输出*/
-			weld_controller->Duty_Cycle = 10;
+			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[2] + STABLE_ERR,
+														 current_temp_comp,
+														 weld_controller->Duty_Cycle,
+														 weld_controller->pid_ctrl);
 			/*2、执行*/
 			TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
 			TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);

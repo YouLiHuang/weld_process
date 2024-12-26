@@ -506,7 +506,7 @@ bool command_get_comp_str(Component_Queue *list, const char *name, const char *c
 
   /*数据处理*/
   sprintf(buffer, "get %s.%s%s", name, compatible, END_OF_CMD); // 指令处理
-  
+
 #if FAST_MODE == 1
   list->updata = get_comp(list, name); // 组件属性值更新
   RS485_send(buffer, strlen(buffer));  // 发送数据
@@ -688,6 +688,17 @@ bool alram_clear(Page_Param *page_param)
   }
 
   return true;
+}
+
+/*绘图——绘点*/
+void draw_point(u16 val)
+{
+  char pre_cmd[50] = "add wave_line.id,0,";
+  char value_buf[5] = {0};
+  user_value_convert_to_string(value_buf, 5, val);
+  strcat(pre_cmd, value_buf);
+  strcat(pre_cmd, END_OF_CMD);
+  RS485_send(pre_cmd, strlen(pre_cmd));
 }
 
 /**

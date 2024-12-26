@@ -87,7 +87,7 @@ CPU_STK COMPUTER_TASK_STK[COMPUTER_STK_SIZE];
 void computer_read_task(void *p_arg);
 
 // 任务优先级
-#define DRAW_TASK_PRIO 7
+#define DRAW_TASK_PRIO 8
 // 任务堆栈大小
 #define DRAW_STK_SIZE 256
 // 任务控制块
@@ -883,8 +883,6 @@ static void key_action_callback_param(Component_Queue *page_list);
 static void key_action_callback_temp(Component_Queue *page_list);
 static void parse_key_action(Page_ID id);
 
-// static void CMD_touchscreen_reset_callback(void);
-// static bool wait_data_parse(OS_TICK wait_time);
 
 static void key_action_callback_param(Component_Queue *page_list)
 {
@@ -1197,7 +1195,6 @@ static bool pid_param_get(u16 *pid_raw_param)
 
 static void page_process(Page_ID id)
 {
-	//	OS_ERR err;
 	const char *tick_name[] = {"tick1", "tick2", "tick3", "tick4", "tick5"};
 	switch (page_param->id)
 	{
@@ -1214,6 +1211,32 @@ static void page_process(Page_ID id)
 		command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
 		/*显示焊接计数值*/
 		command_set_comp_val("count", "val", weld_controller->weld_count);
+
+		/*焊接结束后显示三段温度*/
+		OS_ERR err;
+		u16 temp_display[3] = {0};
+		char *temp_display_name[] = {"step1", "step2", "step3"};
+		OSSemPend(&TEMP_DRAW_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+		if (err == OS_ERR_NONE)
+		{
+			/*三段均温显示*/
+			temp_display[0] = weld_controller->second_step_start_temp;
+			u32 sum = 0;
+			for (u16 i = temp_draw_ctrl->second_step_stable_index; i < temp_draw_ctrl->second_step_index_end; i++)
+				sum += temp_draw_ctrl->temp_buf[i];
+			temp_display[1] = sum / (temp_draw_ctrl->second_step_index_end - temp_draw_ctrl->second_step_stable_index + 1);
+			/*一二段均值发送到触摸屏*/
+			if (page_param->id == WAVE_PAGE)
+			{
+				command_set_comp_val(temp_display_name[0], "val", temp_display[0]);
+				command_set_comp_val(temp_display_name[1], "val", temp_display[1]);
+			}
+
+			/*绘图控制器复位*/
+			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
+			/*绘图结束清空缓存*/
+			memset(temp_draw_ctrl->temp_buf, 0, sizeof(temp_draw_ctrl->temp_buf) / sizeof(u16));
+		}
 	}
 	break;
 
@@ -1242,7 +1265,14 @@ static void page_process(Page_ID id)
 		}
 
 #endif
+
+		// if (weld_controller->realtime_temp < weld_controller->second_step_start_temp)
+		// {
+		// 	draw_point(weld_controller->realtime_temp * 5 / 16);
+		// }
+		/*实时温度显示*/
 		command_set_comp_val("step3", "val", weld_controller->realtime_temp);
+
 		/*更新坐标*/
 		u16 total_time = 0;		// 总焊接时长
 		u16 delta_tick = 0;		// 坐标间隔

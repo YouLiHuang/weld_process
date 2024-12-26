@@ -179,58 +179,76 @@ static void Load_Data()
  */
 static void ctrl_param_config(weld_ctrl *ctrl)
 {
-	/*参数限制*/
-	if (ctrl->weld_temp[0] < USER_SET_MIN_TEMP)
-		ctrl->weld_temp[0] = USER_SET_MIN_TEMP;
-	if (ctrl->weld_temp[1] < USER_SET_MIN_TEMP)
-		ctrl->weld_temp[1] = USER_SET_MIN_TEMP;
-	if (ctrl->weld_temp[0] > USER_SET_MAX_TEMP)
-		ctrl->weld_temp[0] = USER_SET_MAX_TEMP;
-	if (ctrl->weld_temp[1] > USER_SET_MAX_TEMP)
-		ctrl->weld_temp[1] = USER_SET_MAX_TEMP;
-	if (ctrl->weld_temp[0] > ctrl->weld_temp[1])
-		ctrl->weld_temp[0] = ctrl->weld_temp[0];
-
-	if (ctrl->temp_gain1 >= 1)
-		ctrl->temp_gain1 = 1;
-	if (ctrl->temp_gain2 >= 1)
-		ctrl->temp_gain2 = 1;
 
 	/*动态调整曲线*/
 	double set_gain;
-	/*一阶段参数*/
-	/*根据起始温度调节设定值，起始温度越低，设定点就越低，防止过大的超调*/
-	set_gain = 0.4473 * log((double)ctrl->first_step_start_temp) - 2.0574; // 参见excel表格
-	if (set_gain <= 0)
-		set_gain = 0;
-	if (set_gain >= 1)
-		set_gain = 1;
+	double percent;
 
-	weld_controller->temp_gain1 = set_gain;
-	get_comp(temp_page_list, "GAIN1")->val = weld_controller->temp_gain1 * 100;
+	switch (ctrl->state)
+	{
+	case FIRST_STATE:
+		/*一阶段参数*/
+		if (ctrl->weld_temp[0] < 300) // 设定目标较小，快速升温
+		{
+			ctrl->first_step_turn = ctrl->weld_temp[0]; // 刹车点
+			ctrl->first_step_set = ctrl->weld_temp[0];
+		}
+		else
+		{
+			/*根据起始温度调节设定值，起始温度越低，设定点就越低，防止过大的超调*/
+			percent = (double)ctrl->first_step_start_temp / (double)ctrl->weld_temp[0]; // 起始温度对最终温度占比
+			set_gain = 0.3969 * log(percent) + 1.0021;									// 参见excel表格
+			if (set_gain <= 0)
+				set_gain = 0;
+			if (set_gain >= 1)
+				set_gain = 1;
 
-	/* 参数动态调整后，数据保存 */
-	ctrl->first_step_turn = ctrl->weld_temp[0];									  // 刹车点
-	ctrl->first_step_set = (0.85 + 0.15 * set_gain) * (double)ctrl->weld_temp[0]; // 第1个阶跃目标(0.8-1)
-	if (ctrl->first_step_set >= ctrl->first_step_turn)
-		ctrl->first_step_set = ctrl->first_step_turn;
+			/* 参数动态调整后，数据保存 */
+			weld_controller->temp_gain1 = set_gain;
+			get_comp(temp_page_list, "GAIN1")->val = set_gain * 100;
 
-	/*二阶段参数*/
-	/*根据起始温度调节设定值，起始温度越低，设定点就越低，防止过大的超调*/
-	set_gain = 0.4473 * log((double)ctrl->second_step_start_temp) - 2.0574; // 参见excel表格
-	if (set_gain <= 0)
-		set_gain = 0;
-	if (set_gain >= 1)
-		set_gain = 1;
+			ctrl->first_step_turn = ctrl->weld_temp[0];									// 刹车点
+			ctrl->first_step_set = (0.9 + 0.1 * set_gain) * (double)ctrl->weld_temp[0]; // 第1个阶跃目标(0.85-1)
+			if (ctrl->first_step_set >= ctrl->first_step_turn)
+				ctrl->first_step_set = ctrl->first_step_turn;
+		}
+		break;
+	case SECOND_STATE:
+		/*二阶段参数*/
+		if (ctrl->second_step_start_temp < 100) // 起始温度较小，防止超调
+		{
+			ctrl->second_step_turn = ctrl->weld_temp[1];			  // 刹车点
+			ctrl->second_step_set = 0.8 * (double)ctrl->weld_temp[1]; // 第2个阶跃目标(0.85-1)
+		}
+		else
+		{
+			/*根据起始温度调节设定值，起始温度越低，设定点就越低，防止过大的超调*/
+			percent = (double)ctrl->second_step_start_temp / (double)ctrl->weld_temp[1]; // 起始温度对最终温度占比
+			set_gain = 0.3969 * log(percent) + 1.0021;									 // 参见excel表格
+			if (set_gain <= 0)
+				set_gain = 0;
+			if (set_gain >= 1)
+				set_gain = 1;
 
-	/* 参数动态调整后，数据保存 */
-	weld_controller->temp_gain2 = set_gain;
-	get_comp(temp_page_list, "GAIN2")->val = weld_controller->temp_gain2 * 100;
+			/* 参数动态调整后，数据保存 */
+			weld_controller->temp_gain2 = set_gain;
+			get_comp(temp_page_list, "GAIN2")->val = set_gain * 100;
 
-	ctrl->second_step_turn = ctrl->weld_temp[1];								   // 刹车点
-	ctrl->second_step_set = (0.85 + 0.15 * set_gain) * (double)ctrl->weld_temp[1]; // 第2个阶跃目标(0.8-1)
-	if (ctrl->second_step_set >= ctrl->second_step_turn)
-		ctrl->second_step_set = ctrl->second_step_turn;
+			ctrl->second_step_turn = ctrl->weld_temp[1];								   // 刹车点
+			ctrl->second_step_set = (0.85 + 0.15 * set_gain) * (double)ctrl->weld_temp[1]; // 第2个阶跃目标(0.85-1)
+			if (ctrl->second_step_set >= ctrl->second_step_turn)
+				ctrl->second_step_set = ctrl->second_step_turn;
+		}
+
+		break;
+
+	case THIRD_STATE:
+
+		break;
+
+	default:
+		break;
+	}
 }
 
 /**
@@ -245,6 +263,34 @@ static void Weld_Preparation()
 	/*时间刻度复位*/
 	weld_controller->step_time_tick = 0; // 焊接周期计数值
 	weld_controller->weld_time_tick = 0; // 单段焊接时间计数
+
+	/*参数限制*/
+	if (weld_controller->weld_time[1] > MAX_WELD_TIME)
+		weld_controller->weld_time[1] = MAX_WELD_TIME;
+	if (weld_controller->weld_time[2] > MAX_WELD_TIME)
+		weld_controller->weld_time[2] = MAX_WELD_TIME;
+	if (weld_controller->weld_time[3] > MAX_WELD_TIME)
+		weld_controller->weld_time[3] = MAX_WELD_TIME;
+
+	if (weld_controller->weld_temp[0] < USER_SET_MIN_TEMP)
+		weld_controller->weld_temp[0] = USER_SET_MIN_TEMP;
+
+	if (weld_controller->weld_temp[1] < USER_SET_MIN_TEMP)
+		weld_controller->weld_temp[1] = USER_SET_MIN_TEMP;
+
+	if (weld_controller->weld_temp[0] > USER_SET_MAX_TEMP)
+		weld_controller->weld_temp[0] = USER_SET_MAX_TEMP;
+
+	if (weld_controller->weld_temp[1] > USER_SET_MAX_TEMP)
+		weld_controller->weld_temp[1] = USER_SET_MAX_TEMP;
+
+	if (weld_controller->weld_temp[0] > weld_controller->weld_temp[1])
+		weld_controller->weld_temp[0] = weld_controller->weld_temp[0];
+
+	if (weld_controller->temp_gain1 >= 1)
+		weld_controller->temp_gain1 = 1;
+	if (weld_controller->temp_gain2 >= 1)
+		weld_controller->temp_gain2 = 1;
 
 	/*算法部分*/
 	reset_forword_ctrl(weld_controller->pid_ctrl); // pid控制器初始化
@@ -328,17 +374,20 @@ static void Preload()
 static void First_Step()
 {
 
-	if ((page_param->key2 == ION) && (weld_controller->weld_time[1] != 0)) // ION_IOF==0开PWM
+	weld_controller->state = FIRST_STATE;														// 进入一阶段标志
+	ctrl_param_config(weld_controller);															// 参数动态配置
+	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->first_step_set); // kp动态调整
+	if ((page_param->key2 == ION) && (weld_controller->weld_time[1] != 0))						// ION_IOF==0开PWM
 	{
 		/*1、一阶段采样开始*/
 		temp_draw_ctrl->first_step_index_start = 0;
 		/*3、实时控制部分*/
-		weld_controller->state = FIRST_STATE; // 进入一阶段标志
-		weld_controller->Duty_Cycle = 0;	  // 占空比复位
-		weld_controller->weld_time_tick = 0;  // 总时长计数值复位
-		TIM_Cmd(TIM3, ENABLE);				  // 焊接周期统计开启
-		weld_controller->step_time_tick = 0;  // 阶段计数值复位
-		TIM_Cmd(TIM5, ENABLE);				  // 开启是实时控制器
+
+		weld_controller->Duty_Cycle = 0;	 // 占空比复位
+		weld_controller->weld_time_tick = 0; // 总时长计数值复位
+		TIM_Cmd(TIM3, ENABLE);				 // 焊接周期统计开启
+		weld_controller->step_time_tick = 0; // 阶段计数值复位
+		TIM_Cmd(TIM5, ENABLE);				 // 开启是实时控制器
 		while (weld_controller->step_time_tick < weld_controller->weld_time[1])
 		{
 
@@ -359,14 +408,7 @@ static void First_Step()
 
 			/*实时温度显示*/
 			if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
-			{
-				char pre_cmd[50] = "add wave_line.id,0,";
-				char value_buf[5] = {0};
-				user_value_convert_to_string(value_buf, 5, weld_controller->realtime_temp * 5 / 16);
-				strcat(pre_cmd, value_buf);
-				strcat(pre_cmd, END_OF_CMD);
-				RS485_send(pre_cmd, strlen(pre_cmd));
-			}
+				draw_point(weld_controller->realtime_temp * 5 / 16);
 #endif
 		}
 
@@ -388,15 +430,17 @@ static void First_Step()
  */
 static void Second_Step()
 {
-
+	weld_controller->state = SECOND_STATE;														 // 进入二阶段
+	ctrl_param_config(weld_controller);															 // 参数动态配置
+	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->second_step_set); // kp动态调整
 	if ((page_param->key2 == ION) && (weld_controller->weld_time[2] != 0))
 	{
 		/*1、进入二阶段采样*/
 		temp_draw_ctrl->second_step_index_start = temp_draw_ctrl->current_index;
 		/*2、实时控制部分*/
-		weld_controller->state = SECOND_STATE; // 进入二阶段
-		weld_controller->step_time_tick = 0;   // 计数值复位
-		TIM_Cmd(TIM5, ENABLE);				   // 开启实时控制器
+
+		weld_controller->step_time_tick = 0; // 计数值复位
+		TIM_Cmd(TIM5, ENABLE);				 // 开启实时控制器
 		while (weld_controller->step_time_tick < weld_controller->weld_time[2])
 		{
 			weld_controller->realtime_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2;
@@ -426,14 +470,7 @@ static void Second_Step()
 #if REALTIME_TEMP_DISPLAY == 1
 			/*实时温度显示*/
 			if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
-			{
-				char pre_cmd[50] = "add wave_line.id,0,";
-				char value_buf[5] = {0};
-				user_value_convert_to_string(value_buf, 5, kalman_comp_temp * 5 / 16);
-				strcat(pre_cmd, value_buf);
-				strcat(pre_cmd, END_OF_CMD);
-				RS485_send(pre_cmd, strlen(pre_cmd));
-			}
+				draw_point(weld_controller->realtime_temp * 5 / 16);
 #endif
 		}
 		/*3、第二段结束后，对变量进行复位*/
@@ -456,15 +493,15 @@ static void Second_Step()
  */
 static void Third_Step()
 {
-
+	weld_controller->state = THIRD_STATE;													  // 进入二阶段
+	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[2]); // kp动态调整
 	if ((page_param->key2 == ION) && (weld_controller->weld_time[3] != 0))
 	{
 		/*1、三阶段采样开始，坐标记录*/
 		temp_draw_ctrl->third_step_index_start = temp_draw_ctrl->current_index;
 		/*2、实时控制部分*/
-		weld_controller->state = THIRD_STATE; // 进入三阶段
-		weld_controller->step_time_tick = 0;  // 阶段计数值复位
-		TIM_Cmd(TIM5, ENABLE);				  // 开启实时控制器
+		weld_controller->step_time_tick = 0; // 阶段计数值复位
+		TIM_Cmd(TIM5, ENABLE);				 // 开启实时控制器
 		while (weld_controller->step_time_tick < weld_controller->weld_time[3])
 		{
 			weld_controller->realtime_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2;
@@ -480,14 +517,7 @@ static void Third_Step()
 #if REALTIME_TEMP_DISPLAY == 1
 			/*实时温度显示*/
 			if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
-			{
-				char pre_cmd[50] = "add wave_line.id,0,";
-				char value_buf[5] = {0};
-				user_value_convert_to_string(value_buf, 5, kalman_comp_temp * 5 / 16);
-				strcat(pre_cmd, value_buf);
-				strcat(pre_cmd, END_OF_CMD);
-				RS485_send(pre_cmd, strlen(pre_cmd));
-			}
+				draw_point(weld_controller->realtime_temp * 5 / 16);
 #endif
 		}
 
@@ -535,20 +565,6 @@ static void End_of_Weld()
 	OVER = 1;  // 1为焊接结束信号
 }
 
-/**
- * @description: Temperature data processing
- * @return {*}
- */
-static void Temp_Data_Process()
-{
-	if (page_param->id == WAVE_PAGE)
-	{
-		/*计算三段焊接温度*/
-		OS_ERR err;
-		OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
-	}
-}
-
 #if COMMUNICATE == 1
 
 /**
@@ -588,6 +604,28 @@ static void data_transfer_to_computer(const u16 Temp_Send[])
 
 #endif
 
+static void simulate_weld()
+{
+
+	/*IO控制*/
+	OVER = 0;  // 1为焊接结束信号
+	RLY10 = 1; // 气阀1启动
+	RLY11 = 1; // 气阀2启动
+	RLY12 = 1; // 气阀3启动
+	CUNT = 0;  // 1为计数，0清除计数信号
+
+	weld_controller->step_time_tick = 0; // 实时控制器阶段性时间刻度复位
+	weld_controller->weld_time_tick = 0; // 焊接周期时间刻度复位
+	TIM_Cmd(TIM3, ENABLE);				 // 开启时间统计计数器，同时开启温度采集
+	while (weld_controller->weld_time_tick < weld_controller->weld_time[0] + weld_controller->weld_time[1] + weld_controller->weld_time[2] + weld_controller->weld_time[3])
+		;
+	TIM_Cmd(TIM3, DISABLE);				 // 关闭时间统计计数器
+	weld_controller->weld_time_tick = 0; // 焊接周期时间刻度复位
+
+	/*发送焊接计数值*/
+	weld_controller->weld_count++;
+}
+
 /**
  * @description: 焊接实时控制
  * @return {*}
@@ -596,63 +634,35 @@ static void weld_real_time_ctrl()
 {
 
 	OS_ERR err;
-	/*电流关闭时无输出*/
-	if ((page_param->key2 == IOFF) && false == err_occur(err_ctrl))
-	{
+	/*变量初始化以及相关初始化工作：控制器复位、初始化、缓存擦除、参数限幅*/
+	Weld_Preparation();
 
-		weld_controller->step_time_tick = 0; // 实时控制器阶段性时间刻度复位
-		weld_controller->weld_time_tick = 0; // 焊接周期时间刻度复位
-		TIM_Cmd(TIM3, ENABLE);				 // 开启时间统计计数器，同时开启温度采集
-		while (weld_controller->weld_time_tick < weld_controller->weld_time[0] + weld_controller->weld_time[1] + weld_controller->weld_time[2] + weld_controller->weld_time[3] + weld_controller->weld_time[4])
-			;
-		TIM_Cmd(TIM3, DISABLE);				 // 关闭时间统计计数器
-		weld_controller->weld_time_tick = 0; // 焊接周期时间刻度复位
+	/*预压*/
+	Preload();
 
-		/*发送焊接计数值*/
-		weld_controller->weld_count++;
-		if (page_param->id == PARAM_PAGE)
-			command_set_comp_val("count", "val", weld_controller->weld_count);
-	}
-	/*焊接实时控制*/
-	else
-	{
-		/*变量初始化以及相关初始化工作*/
-		Weld_Preparation();
+	/*一阶段*/
+	err_cnt_clear(err_ctrl);																		 // 报错统计值复位
+	weld_controller->first_step_start_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2; // 起始温度
+	First_Step();																					 // 一阶段
+	if (true == err_occur(err_ctrl))																 // 唤醒错误处理线程
+		goto STOP_LABEL;
 
-		/*预压*/
-		Preload();
+	/*二阶段*/
+	err_cnt_clear(err_ctrl);																		  // 报错统计值复位
+	weld_controller->second_step_start_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2; // 起始温度
+	Second_Step();																					  // 二阶段
+	if (true == err_occur(err_ctrl))																  // 唤醒错误处理线程
+		goto STOP_LABEL;
 
-		/*一阶段*/
-		err_cnt_clear(err_ctrl);																		 // 报错统计值复位
-		reset_forword_ctrl(weld_controller->pid_ctrl);													 // pid控制器复位
-		weld_controller->first_step_start_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2; // 起始温度
-		ctrl_param_config(weld_controller);																 // 参数配置
-		pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->first_step_set);		 // kp动态调整
-		weld_controller->pid_ctrl->stable_flag = false;													 // 稳态标志复位
-		First_Step();																					 // 一阶段
-		if (true == err_occur(err_ctrl))																 // 唤醒错误处理线程
-			goto STOP_LABEL;
+	/*三阶段*/
+	err_cnt_clear(err_ctrl);																		 // 报错统计值复位
+	weld_controller->third_step_start_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2; // 起始温度
+	Third_Step();																					 // 三阶段
+	if (true == err_occur(err_ctrl))																 // 唤醒错误处理线程
+		goto STOP_LABEL;
 
-		/*二阶段*/
-		err_cnt_clear(err_ctrl);																		  // 报错统计值复位
-		weld_controller->second_step_start_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2; // 起始温度
-		ctrl_param_config(weld_controller);																  // 参数配置
-		pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->second_step_set);	  // kp动态调整
-		weld_controller->pid_ctrl->stable_flag = false;													  // 稳态标志复位
-		Second_Step();																					  // 二阶段
-		if (true == err_occur(err_ctrl))																  // 唤醒错误处理线程
-			goto STOP_LABEL;
-
-		/*三阶段*/
-		err_cnt_clear(err_ctrl);																		 // 报错统计值复位
-		weld_controller->third_step_start_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2; // 起始温度
-		Third_Step();																					 // 三阶段
-		if (true == err_occur(err_ctrl))																 // 唤醒错误处理线程
-			goto STOP_LABEL;
-
-		/*结束一轮焊接*/
-		End_of_Weld();
-	}
+	/*结束一轮焊接*/
+	End_of_Weld();
 
 STOP_LABEL:
 	if (true == err_occur(err_ctrl))
@@ -687,11 +697,11 @@ void welding_process(void)
 	Timer_Pre_Init();
 	/*扫描按键，根据不同按键加载不同参数组别*/
 	Load_Data();
+
 	/*----------------------------------------------------------------------------------------------------------------------------------------------*/
 	/*----------------------------------------------------------------焊接实时控制部分---------------------------------------------------------------*/
 	/*----------------------------------------------------------------------------------------------------------------------------------------------*/
-	weld_controller->realtime_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2; // 获取实时温度
-	/*连点模式*/
+	/*-------------------------------------------------------连点模式-------------------------------------------------------*/
 	if (page_param->key3 == CTW && page_param->key2 == ION)
 	{
 		OS_ERR err;
@@ -715,8 +725,8 @@ void welding_process(void)
 				break;
 			/*每一轮焊接都清空绘图缓存*/
 			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
-			/*温度显示*/
-			Temp_Data_Process();
+			/*三段温度显示*/
+			OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
 
 #if COMMUNICATE == 1
 			/*数据传输到上位机*/
@@ -731,8 +741,27 @@ void welding_process(void)
 				break;
 		}
 	}
-	/*单点模式*/
-	else if (page_param->key3 == SGW && page_param->key2 == ION)
+	/*模拟焊接*/
+	else if (page_param->key3 == CTW && page_param->key2 == IOFF)
+	{
+		OS_ERR err;
+		u8 key = 0;
+		key = new_key_scan();
+		while (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
+		{
+
+			simulate_weld();
+			/*设置连续焊接间隔——同时也腾出时间片*/
+			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
+
+			key = new_key_scan();
+			if (!(key == KEY_PC1_PRES || key == KEY_PC0_PRES))
+				break;
+		}
+	}
+
+	/*-------------------------------------------------------单点模式-------------------------------------------------------*/
+	if (page_param->key3 == SGW && page_param->key2 == ION)
 	{
 		OS_ERR err;
 		u8 key = 0;
@@ -750,13 +779,30 @@ void welding_process(void)
 
 			/*实时焊接控制*/
 			weld_real_time_ctrl();
-			/*温度显示*/
-			Temp_Data_Process();
+			/*三段温度显示*/
+			OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
 
 #if COMMUNICATE == 1
 			/*数据传输到上位机*/
 			data_transfer_to_computer(Temp_Send);
 #endif
+			OVER = 0;
+			/*设置焊接间隔*/
+			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
+		}
+	}
+	/*模拟焊接*/
+	else if (page_param->key3 == SGW && page_param->key2 == IOFF)
+	{
+		OS_ERR err;
+		u8 key = 0;
+		key = new_key_scan();
+		if (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
+		{
+
+			simulate_weld();
+			/*设置连续焊接间隔——同时也腾出时间片*/
+			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 			OVER = 0;
 			/*设置焊接间隔*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);

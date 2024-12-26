@@ -162,6 +162,7 @@ bool command_get_comp_val(Component_Queue *list, const char *name, const char *c
 /*常用接口*/
 void touchscreen_init(void);
 bool Page_to(const Page_Param *page_param, const Page_ID id);
+void draw_point(u16 val);
 bool alram_clear(Page_Param *page_param);
 bool Page_id_get(void);
 //////////////////////////////////控件数据对象API///////////////////////////////////////////
