@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-26 09:48:44
+ * @LastEditTime: 2024-12-26 09:49:47
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -883,7 +883,7 @@ static void key_action_callback_param(Component_Queue *page_list);
 static void key_action_callback_temp(Component_Queue *page_list);
 static void parse_key_action(Page_ID id);
 
-static void CMD_touchscreen_reset_callback(void);
+// static void CMD_touchscreen_reset_callback(void);
 // static bool wait_data_parse(OS_TICK wait_time);
 
 static void key_action_callback_param(Component_Queue *page_list)
