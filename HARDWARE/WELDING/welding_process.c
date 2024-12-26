@@ -531,7 +531,6 @@ static void Temp_Data_Process()
 		OS_ERR err;
 		OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
 	}
-	
 }
 
 #if COMMUNICATE == 1
@@ -592,6 +591,11 @@ static void weld_real_time_ctrl()
 			;
 		TIM_Cmd(TIM3, DISABLE);				 // 关闭时间统计计数器
 		weld_controller->weld_time_tick = 0; // 焊接周期时间刻度复位
+
+		/*发送焊接计数值*/
+		weld_controller->weld_count++;
+		if (page_param->id == PARAM_PAGE)
+			command_set_comp_val("count", "val", weld_controller->weld_count);
 	}
 	/*焊接实时控制*/
 	else
