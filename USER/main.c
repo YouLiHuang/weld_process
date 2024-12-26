@@ -25,14 +25,12 @@
 #include "touchscreen.h"
 #include "PID.h"
 
-/*调试接口——测试版本*/
-
+/*调试接口*/
 #define TEMP_ADJUST 0	 // 温度校准
 #define REALTIME_TEMP 1	 // 实时温度显示使能
 #define TEMP_CHECK 1	 // 热电偶检测
 #define VOLTAGE_CHECK 1	 // 过欠压报警
 #define POWER_ON_CHECK 1 // 开机自检报警（开机后完成一次热点电偶检测）
-#define RESET_ACTION 1	 // 复位热电偶报警（复位后完成一次热电偶检测）
 
 // 任务优先级
 #define START_TASK_PRIO 3
