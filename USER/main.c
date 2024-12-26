@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-26 09:25:55
+ * @LastEditTime: 2024-12-26 09:27:27
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -1374,74 +1374,7 @@ static void CMD_touchscreen_reset_callback()
 	command_set_comp_val("count", "val", 0);
 }
 
-// static bool wait_data_parse(OS_TICK wait_time)
-// {
-// 	/*补充一个页面切换的处理*/
-// 	uint8_t *msg = NULL;
-// 	OS_ERR err;
-// 	OS_MSG_SIZE msg_size = 0;
-// 	bool ret = false;
-// 	/*订阅队列，并进行消息处理*/
-// 	msg = (uint8_t *)OSQPend(&UART_Msg,			   // 消息队列指针
-// 							 wait_time,			   // 等待时长
-// 							 OS_OPT_PEND_BLOCKING, // 等待模式
-// 							 &msg_size,			   // 获取消息大小
-// 							 NULL,				   // 获取消息的时间戳
-// 							 &err);				   // 返回错误代码
 
-// 	/*满足标准通信格式*/
-// 	if (err == OS_ERR_NONE && msg != NULL && msg_size >= MIN_CMD_LEN && msg[msg_size - 1] == END_FLAG && msg[msg_size - 2] == END_FLAG && msg[msg_size - 3] == END_FLAG)
-// 	{
-
-// 		/*处理消息*/
-// 		switch (msg[0])
-// 		{
-// 		case CMD_FAIL:
-// 			ret = true;
-// 			break;
-// 		case CMD_OK:
-// 			ret = true;
-// 			break;
-// 		case CMD_PAGEID_RETURN:
-// 			ret = true;
-// 			/*更新页面id*/
-// 			if (msg[1] <= UART_PAGE && msg[1] >= PARAM_PAGE)
-// 				page_param->id = (Page_ID)msg[1];
-// 			break;
-// 		case CMD_INT_VAR_RETURN:
-// 			ret = true;
-// 			if (PARAM_PAGE == page_param->id)
-// 				param_page_list->updata->val = msg[1] | msg[2] << 8 | msg[3] << 16 | msg[4] << 24;
-// 			else if (TEMP_PAGE == page_param->id)
-// 				temp_page_list->updata->val = msg[1] | msg[2] << 8 | msg[3] << 16 | msg[4] << 24;
-// 			else if (UART_PAGE == page_param->id)
-// 				setting_page_list->updata->val = msg[1] | msg[2] << 8 | msg[3] << 16 | msg[4] << 24;
-// 			break;
-// 		case CMD_STR_VAR_RETURN:
-// 			ret = true;
-// 			break;
-// 		case CMD_DATA_TRANSFER_READY:
-// 			ret = true;
-// 			break;
-// 		default:
-// 			break;
-// 		}
-
-// 		if (msg[msg_size - 1] == END_FLAG && msg[msg_size - 2] == END_FLAG && msg[msg_size - 3] == END_FLAG && msg_size >= 10 && msg[6] == CMD_SYSTEM_START_OK)
-// 		{
-// 			CMD_touchscreen_reset_callback();
-// 			ret = true;
-// 		}
-// 	}
-
-// 	/*清空缓存*/
-// 	set_receive_number(0);
-// 	for (u16 i = 0; i < USART_REC_LEN; i++)
-// 	{
-// 		USART_RX_BUF[i] = 0;
-// 	}
-// 	return ret;
-// }
 
 static bool data_syn(Page_ID id)
 {
