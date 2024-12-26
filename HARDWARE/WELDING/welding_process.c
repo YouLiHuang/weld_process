@@ -527,11 +527,11 @@ static void Temp_Data_Process()
 {
 	if (page_param->id == WAVE_PAGE)
 	{
-		/*唤醒温度处理线程*/
+		/*计算三段焊接温度*/
 		OS_ERR err;
 		OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
 	}
-	/*计算三段焊接温度*/
+	
 }
 
 #if COMMUNICATE == 1
