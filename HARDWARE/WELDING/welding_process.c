@@ -695,9 +695,6 @@ void welding_process(void)
 			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
 			/*温度显示*/
 			Temp_Data_Process();
-			/*发送焊接计数值*/
-			if (page_param->id == PARAM_PAGE)
-				command_set_comp_val("count", "val", weld_controller->weld_count);
 
 #if COMMUNICATE == 1
 			/*数据传输到上位机*/
@@ -733,9 +730,6 @@ void welding_process(void)
 			weld_real_time_ctrl();
 			/*温度显示*/
 			Temp_Data_Process();
-			/*发送焊接计数值*/
-			if (page_param->id == PARAM_PAGE)
-				command_set_comp_val("count", "val", weld_controller->weld_count);
 
 #if COMMUNICATE == 1
 			/*数据传输到上位机*/

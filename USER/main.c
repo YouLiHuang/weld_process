@@ -1212,6 +1212,8 @@ static void page_process(Page_ID id)
 		// command_get_comp_val(param_page_list, "sensortype", "val");
 		parse_key_action(page_param->id);
 		command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
+		/*显示焊接计数值*/
+		command_set_comp_val("count", "val", weld_controller->weld_count);
 	}
 	break;
 
@@ -1371,8 +1373,6 @@ static void CMD_touchscreen_reset_callback()
 	}
 	command_set_comp_val("count", "val", 0);
 }
-
-
 
 static bool data_syn(Page_ID id)
 {
