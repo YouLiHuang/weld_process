@@ -195,26 +195,40 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 		ctrl->temp_gain1 = 1;
 	if (ctrl->temp_gain2 >= 1)
 		ctrl->temp_gain2 = 1;
-	double start_point;
+
+	/*动态调整曲线*/
+	double set_gain;
 	/*一阶段参数*/
 	/*根据起始温度调节设定值，起始温度越低，设定点就越低，防止过大的超调*/
-	start_point = (double)ctrl->second_step_start_temp / (double)ctrl->weld_temp[0];
-	weld_controller->temp_gain1 = start_point + 0.05;
-	get_comp(temp_page_list, "GAIN1")->val = weld_controller->temp_gain1 * 100; // 参数动态调整后，需要更新到UI界面
+	set_gain = 0.4473 * log((double)ctrl->first_step_start_temp) - 2.0574; // 参见excel表格
+	if (set_gain <= 0)
+		set_gain = 0;
+	if (set_gain >= 1)
+		set_gain = 1;
 
-	ctrl->first_step_turn = ctrl->weld_temp[0];														 // 刹车点
-	ctrl->first_step_set = (0.85 + 0.15 * weld_controller->temp_gain1) * (double)ctrl->weld_temp[0]; // 第1个阶跃目标(0.8-0.95)
+	weld_controller->temp_gain1 = set_gain;
+	get_comp(temp_page_list, "GAIN1")->val = weld_controller->temp_gain1 * 100;
+
+	/* 参数动态调整后，数据保存 */
+	ctrl->first_step_turn = ctrl->weld_temp[0];									  // 刹车点
+	ctrl->first_step_set = (0.85 + 0.15 * set_gain) * (double)ctrl->weld_temp[0]; // 第1个阶跃目标(0.8-1)
 	if (ctrl->first_step_set >= ctrl->first_step_turn)
 		ctrl->first_step_set = ctrl->first_step_turn;
 
 	/*二阶段参数*/
 	/*根据起始温度调节设定值，起始温度越低，设定点就越低，防止过大的超调*/
-	start_point = (double)ctrl->second_step_start_temp / (double)ctrl->weld_temp[1];
-	weld_controller->temp_gain2 = start_point + 0.05;
-	get_comp(temp_page_list, "GAIN2")->val = weld_controller->temp_gain2 * 100; // 参数动态调整后，需要更新到UI界面
+	set_gain = 0.4473 * log((double)ctrl->second_step_start_temp) - 2.0574; // 参见excel表格
+	if (set_gain <= 0)
+		set_gain = 0;
+	if (set_gain >= 1)
+		set_gain = 1;
 
-	ctrl->second_step_turn = ctrl->weld_temp[1];													  // 刹车点
-	ctrl->second_step_set = (0.85 + 0.15 * weld_controller->temp_gain2) * (double)ctrl->weld_temp[1]; // 第2个阶跃目标(0.8-0.95)
+	/* 参数动态调整后，数据保存 */
+	weld_controller->temp_gain2 = set_gain;
+	get_comp(temp_page_list, "GAIN2")->val = weld_controller->temp_gain2 * 100;
+
+	ctrl->second_step_turn = ctrl->weld_temp[1];								   // 刹车点
+	ctrl->second_step_set = (0.85 + 0.15 * set_gain) * (double)ctrl->weld_temp[1]; // 第2个阶跃目标(0.8-1)
 	if (ctrl->second_step_set >= ctrl->second_step_turn)
 		ctrl->second_step_set = ctrl->second_step_turn;
 }
