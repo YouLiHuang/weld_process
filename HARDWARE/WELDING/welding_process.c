@@ -319,8 +319,6 @@ static void Preload()
 	TIM_Cmd(TIM5, DISABLE);
 	weld_controller->state = IDEAL_STATE;
 	weld_controller->step_time_tick = 0;
-	weld_controller->realtime_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2;
-	weld_controller->first_step_start_temp = weld_controller->realtime_temp; // 记录一阶段起始温度
 }
 
 /**
@@ -329,7 +327,8 @@ static void Preload()
  */
 static void First_Step()
 {
-	if ((page_param->key2 == ION) && (weld_controller->weld_time[1] != 0)) // ION_IOF==0开PWM
+	weld_controller->first_step_start_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2; // 记录一阶段起始温度
+	if ((page_param->key2 == ION) && (weld_controller->weld_time[1] != 0))							 // ION_IOF==0开PWM
 	{
 		/*1、一阶段采样开始*/
 		temp_draw_ctrl->first_step_index_start = 0;
@@ -372,14 +371,12 @@ static void First_Step()
 		}
 
 		/*4、第一段结束后，将一些标志位清零*/
-		TIM_Cmd(TIM5, DISABLE);													  // 关闭实时控制器
-		weld_controller->step_time_tick = 0;									  // 实时控制器阶段性时间刻度复位
-		TIM5->CNT = 0;															  // 计数值复位
-		TIM_SetCompare1(TIM1, 0);												  // 关闭pwm 输出
-		TIM_SetCompare1(TIM4, 0);												  // 关闭pwm 输出
-		weld_controller->state = IDEAL_STATE;									  // 焊接状态复位
-		weld_controller->second_step_start_temp = weld_controller->realtime_temp; // 记录二阶段起始温度
-
+		TIM_Cmd(TIM5, DISABLE);				  // 关闭实时控制器
+		weld_controller->step_time_tick = 0;  // 实时控制器阶段性时间刻度复位
+		TIM5->CNT = 0;						  // 计数值复位
+		TIM_SetCompare1(TIM1, 0);			  // 关闭pwm 输出
+		TIM_SetCompare1(TIM4, 0);			  // 关闭pwm 输出
+		weld_controller->state = IDEAL_STATE; // 焊接状态复位
 		/*5、记录一阶段结束坐标*/
 		temp_draw_ctrl->first_step_index_end = temp_draw_ctrl->current_index - 1;
 	}
@@ -392,6 +389,7 @@ static void First_Step()
 static void Second_Step()
 {
 
+	weld_controller->second_step_start_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2;
 	if ((page_param->key2 == ION) && (weld_controller->weld_time[2] != 0))
 	{
 		/*1、进入二阶段采样*/
@@ -447,7 +445,6 @@ static void Second_Step()
 		TIM_SetCompare1(TIM4, 0);													// 关闭pwm 输出
 		weld_controller->third_step_start_duty_cycle = weld_controller->Duty_Cycle; // 三阶段从这个占空比往下下降
 		weld_controller->state = IDEAL_STATE;										// 焊接状态复位
-		weld_controller->third_step_start_temp = weld_controller->realtime_temp;	// 记录三阶段起始温度
 
 		/*4、二阶段结束，记录坐标*/
 		temp_draw_ctrl->second_step_index_end = temp_draw_ctrl->current_index - 1;
@@ -460,6 +457,7 @@ static void Second_Step()
  */
 static void Third_Step()
 {
+	weld_controller->third_step_start_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2; // 记录三阶段起始温度
 	if ((page_param->key2 == ION) && (weld_controller->weld_time[3] != 0))
 	{
 		/*1、三阶段采样开始，坐标记录*/
