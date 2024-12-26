@@ -307,31 +307,28 @@ void Load_param(weld_ctrl *ctrl, int array_of_data)
 	}
 
 	/*数据同步*/
+	char *param_time_name_list[] = {
+		"time1",
+		"time2",
+		"time3",
+		"time4",
+		"time5",
+	};
+	char *param_temp_name_list[] = {
+		"temp1",
+		"temp2",
+		"temp3",
+	};
 	// time1-time5
-	for (u8 i = 0; i < sizeof(welding_time_load) / sizeof(u16); i++)
+	for (u8 i = 0; i < sizeof(param_time_name_list) / sizeof(char *); i++)
 	{
-		char *name = (char *)calloc(10, sizeof(char));
-		if (name)
-		{
-			memset(name, 0, 10);
-			sprintf(name, "time%d", i + 1);
-			if (get_comp(param_page_list, name) != NULL)
-				get_comp(param_page_list, name)->val = welding_time_load[i];
-			free(name);
-		}
+		get_comp(param_page_list, param_time_name_list[i])->val = welding_time_load[i];
 	}
+
 	// temp1-temp3
-	for (u8 i = 0; i < sizeof(welding_Temp_load) / sizeof(u16); i++)
+	for (u8 i = 0; i < sizeof(param_temp_name_list) / sizeof(char *); i++)
 	{
-		char *name = (char *)calloc(10, sizeof(char));
-		if (name)
-		{
-			memset(name, 0, 10);
-			sprintf(name, "temp%d", i + 1);
-			if (get_comp(param_page_list, name) != NULL)
-				get_comp(param_page_list, name)->val = welding_Temp_load[i];
-			free(name);
-		}
+		get_comp(param_page_list, param_temp_name_list[i])->val = welding_Temp_load[i];
 	}
 }
 void Load_param_alarm(weld_ctrl *ctrl, int array_of_data)
@@ -367,15 +364,17 @@ void Load_param_alarm(weld_ctrl *ctrl, int array_of_data)
 	/*参数同步*/
 	get_comp(temp_page_list, "GAIN1")->val = gain1_raw;
 	get_comp(temp_page_list, "GAIN2")->val = gain2_raw;
-	for (u8 i = 0; i <= sizeof(alarm_temperature_load) / sizeof(u16); i++)
+
+	char *temp_name_list[] = {
+		"alarm1",
+		"alarm2",
+		"alarm3",
+		"alarm4",
+		"alarm5",
+		"alarm6",
+	};
+	for (u8 i = 0; i < sizeof(temp_name_list) / sizeof(char *); i++)
 	{
-		char *name = (char *)calloc(10, sizeof(char));
-		if (name)
-		{
-			memset(name, 0, 10);
-			sprintf(name, "temp%d", i + 1);
-			get_comp(temp_page_list, name)->val = alarm_temperature_load[i];
-			free(name);
-		}
+		get_comp(temp_page_list, temp_name_list[i])->val = alarm_temperature_load[i];
 	}
 }

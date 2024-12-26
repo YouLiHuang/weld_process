@@ -273,7 +273,7 @@ void TIM5_IRQHandler(void)
 			}
 			else
 			{
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + STABLE_ERR,
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->first_step_turn + STABLE_ERR,
 															 current_temp_comp,
 															 weld_controller->Duty_Cycle,
 															 weld_controller->pid_ctrl);

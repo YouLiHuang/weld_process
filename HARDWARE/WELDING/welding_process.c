@@ -23,6 +23,7 @@ extern u16 kalman_comp_temp;  // 温度补偿值
 extern weld_ctrl *weld_controller; // 焊接控制器
 extern double fitting_curves[3];   // pid 参数动态拟合曲线x*x+x+1
 /*-----------------------------------------------适配的触摸屏数据接口--------------------------------------------------*/
+extern Component_Queue *temp_page_list;	 // 温度限制界面UI队列
 extern Component_Queue *param_page_list; // 参数设定界面的组件列表
 extern u8 ID_OF_MAS;
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -194,22 +195,28 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 		ctrl->temp_gain1 = 1;
 	if (ctrl->temp_gain2 >= 1)
 		ctrl->temp_gain2 = 1;
-
+	double start_point;
 	/*一阶段参数*/
-	ctrl->first_step_turn = (0.95 + weld_controller->temp_gain1 * 0.05) * (double)ctrl->weld_temp[0]; // 刹车点(0.95-1.0)
-	ctrl->first_step_set = (0.85 + 0.15 * weld_controller->temp_gain1) * (double)ctrl->weld_temp[0];  // 第1个阶跃目标(0.8-0.95)
+	/*根据起始温度调节设定值，起始温度越低，设定点就越低，防止过大的超调*/
+	start_point = (double)ctrl->second_step_start_temp / (double)ctrl->weld_temp[0];
+	weld_controller->temp_gain1 = start_point + 0.05;
+	get_comp(temp_page_list, "GAIN1")->val = weld_controller->temp_gain1 * 100; // 参数动态调整后，需要更新到UI界面
+
+	ctrl->first_step_turn = ctrl->weld_temp[0];														 // 刹车点
+	ctrl->first_step_set = (0.85 + 0.15 * weld_controller->temp_gain1) * (double)ctrl->weld_temp[0]; // 第1个阶跃目标(0.8-0.95)
 	if (ctrl->first_step_set >= ctrl->first_step_turn)
-	{
 		ctrl->first_step_set = ctrl->first_step_turn;
-	}
 
 	/*二阶段参数*/
-	ctrl->second_step_turn = (0.95 + weld_controller->temp_gain2 * 0.05) * (double)ctrl->weld_temp[1]; // 刹车点(0.95-1.0)
-	ctrl->second_step_set = (0.85 + 0.15 * weld_controller->temp_gain2) * (double)ctrl->weld_temp[1];  // 第2个阶跃目标(0.8-0.95)
+	/*根据起始温度调节设定值，起始温度越低，设定点就越低，防止过大的超调*/
+	start_point = (double)ctrl->second_step_start_temp / (double)ctrl->weld_temp[1];
+	weld_controller->temp_gain2 = start_point + 0.05;
+	get_comp(temp_page_list, "GAIN2")->val = weld_controller->temp_gain2 * 100; // 参数动态调整后，需要更新到UI界面
+
+	ctrl->second_step_turn = ctrl->weld_temp[1];													  // 刹车点
+	ctrl->second_step_set = (0.85 + 0.15 * weld_controller->temp_gain2) * (double)ctrl->weld_temp[1]; // 第2个阶跃目标(0.8-0.95)
 	if (ctrl->second_step_set >= ctrl->second_step_turn)
-	{
 		ctrl->second_step_set = ctrl->second_step_turn;
-	}
 }
 
 /**
@@ -606,6 +613,7 @@ static void weld_real_time_ctrl()
 
 		/*一阶段*/
 		reset_forword_ctrl(weld_controller->pid_ctrl);												// pid控制器复位
+		ctrl_param_config(weld_controller);															// 参数配置
 		pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->first_step_set); // kp动态调整
 		weld_controller->pid_ctrl->stable_flag = false;												// 稳态标志复位
 		First_Step();																				// 一阶段
@@ -613,8 +621,8 @@ static void weld_real_time_ctrl()
 			goto STOP_LABEL;
 
 		/*二阶段*/
-		err_cnt_clear(err_ctrl); // 报错统计值复位
-		// reset_forword_ctrl(weld_controller->pid_ctrl);												 // pid控制器复位
+		err_cnt_clear(err_ctrl);																	 // 报错统计值复位
+		ctrl_param_config(weld_controller);															 // 参数配置
 		pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->second_step_set); // kp动态调整
 		weld_controller->pid_ctrl->stable_flag = false;												 // 稳态标志复位
 		Second_Step();																				 // 二阶段
@@ -663,8 +671,6 @@ void welding_process(void)
 	Timer_Pre_Init();
 	/*扫描按键，根据不同按键加载不同参数组别*/
 	Load_Data();
-	/*控制参数配置*/
-	ctrl_param_config(weld_controller);
 	/*----------------------------------------------------------------------------------------------------------------------------------------------*/
 	/*----------------------------------------------------------------焊接实时控制部分---------------------------------------------------------------*/
 	/*----------------------------------------------------------------------------------------------------------------------------------------------*/
