@@ -694,7 +694,8 @@ void welding_process(void)
 			/*温度显示*/
 			Temp_Data_Process();
 			/*发送焊接计数值*/
-			// command_set_comp_val("count", "val", weld_controller->weld_count);
+			if (page_param->id == PARAM_PAGE)
+				command_set_comp_val("count", "val", weld_controller->weld_count);
 
 #if COMMUNICATE == 1
 			/*数据传输到上位机*/
@@ -731,8 +732,8 @@ void welding_process(void)
 			/*温度显示*/
 			Temp_Data_Process();
 			/*发送焊接计数值*/
-
-			// command_set_comp_val("count", "val", weld_controller->weld_count);
+			if (page_param->id == PARAM_PAGE)
+				command_set_comp_val("count", "val", weld_controller->weld_count);
 
 #if COMMUNICATE == 1
 			/*数据传输到上位机*/
