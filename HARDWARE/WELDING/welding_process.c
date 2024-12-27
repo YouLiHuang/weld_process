@@ -214,8 +214,8 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 			/*二阶段参数*/
 			if (ctrl->second_step_start_temp < 100) // 起始温度较小，防止超调
 			{
-				ctrl->second_step_turn = ctrl->weld_temp[1];			  // 刹车点
-				ctrl->second_step_set = 0.8 * (double)ctrl->weld_temp[1]; // 第2个阶跃目标(0.85-1)
+				ctrl->second_step_turn = ctrl->weld_temp[1];			   // 刹车点
+				ctrl->second_step_set = 0.85 * (double)ctrl->weld_temp[1]; // 第2个阶跃目标(0.85-1)
 			}
 			else
 			{
@@ -241,6 +241,9 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 			{
 				ctrl->first_step_turn = ctrl->weld_temp[0]; // 刹车点
 				ctrl->first_step_set = ctrl->weld_temp[0];
+				/* 参数动态调整后，数据保存 */
+				weld_controller->temp_gain1 = 0.85;
+				get_comp(temp_page_list, "GAIN1")->val = 0.85 * 100;
 			}
 			else
 			{
@@ -268,6 +271,9 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 			{
 				ctrl->second_step_turn = ctrl->weld_temp[1];			  // 刹车点
 				ctrl->second_step_set = 0.8 * (double)ctrl->weld_temp[1]; // 第2个阶跃目标(0.85-1)
+				/* 参数动态调整后，数据保存 */
+				weld_controller->temp_gain2 = 0.85;
+				get_comp(temp_page_list, "GAIN2")->val = 0.85 * 100;
 			}
 			else
 			{

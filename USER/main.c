@@ -1783,21 +1783,19 @@ void draw_task(void *p_arg)
 	u16 total_time;
 	while (1)
 	{
-
-		// 焊接总时长
-		total_time = 0;
-		for (u8 i = 0; i < 5; i++)
-			total_time += weld_controller->weld_time[i];
-
-		weld_win_width = total_time / (temp_draw_ctrl->delta_tick - 1); // 转换计算(参见读写线程的坐标绘制)：焊接周期绘图区域大小
-		win_width = WIN_WIDTH - weld_win_width;							// 温降曲线绘图区域大小
-
 		OSSemPend(&TEMP_DOWN_LINE_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
 			index = 0;
 			u16 temp = 0;
 			u8 temp_display = 0;
+			// 焊接总时长
+			total_time = 0;
+			for (u8 i = 0; i < 5; i++)
+				total_time += weld_controller->weld_time[i];
+
+			weld_win_width = total_time / (temp_draw_ctrl->delta_tick - 1); // 转换计算(参见读写线程的坐标绘制)：焊接周期绘图区域大小
+			win_width = WIN_WIDTH - weld_win_width - 30;					// 温降曲线绘图区域大小（留一个余量）
 			while (index < win_width)
 			{
 				if (get_weld_flag() == BUSY_MODE) // 非焊接状态才进行绘制

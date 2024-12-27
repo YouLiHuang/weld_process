@@ -214,6 +214,7 @@ void spi_data_init(void)
 		if (comp != NULL)
 			command_set_comp_val_raw(temp_name_list[i], "val", comp->val);
 	}
+	command_set_comp_val_raw("switch", "val", 1); // 默认自动模式
 	/*参数页面UI初始化*/
 	command_send("page 1");
 	command_set_comp_val_raw("RDY_SCH", "pic", RDY);

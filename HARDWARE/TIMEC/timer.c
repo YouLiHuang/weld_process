@@ -288,7 +288,7 @@ void TIM5_IRQHandler(void)
 
 			/*3：错误检测*/
 			/*注意：阶段之间需要将错误计数值清空(此处为了报警的实时性，暂时不使用阈值模式)*/
-			if (current_temp_comp < 30 && weld_controller->step_time_tick > weld_controller->weld_time[1] / 2)
+			if (current_temp_comp < 30 && weld_controller->step_time_tick > weld_controller->weld_time[1] * 0.9)
 			{
 #if PROTECT_ON == 1
 				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
