@@ -40,6 +40,12 @@ typedef enum WELD_STATE
     THIRD_STATE = 4
 } WELD_STATE;
 
+typedef enum WELD_MODE
+{
+    BUSY_MODE = 0,
+    IDEAL_MODE
+} WELD_MODE;
+
 typedef struct temp_setting_point
 {
     u16 time;
@@ -82,5 +88,7 @@ typedef struct weld_realtime_controller
 } weld_ctrl;
 
 weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl);
+
+u8 get_weld_flag(void);
 
 #endif

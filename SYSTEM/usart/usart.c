@@ -75,8 +75,6 @@ extern u8 ID_OF_MAS;
 extern u32 BOUND_SET;
 extern u32 last_bound_set;
 extern u8 last_id_of_mas;
-extern u8 welding_flag;
-
 /*消息队列*/
 extern OS_Q UART_Msg;
 extern Error_ctrl *err_ctrl;
@@ -401,7 +399,7 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 	{
 		int crc16_get = 0;
 		int temp;
-		if (receive_number3 >= 2 && (RDY_SCH == 0) && (ID_OF_MAS == USART_RX_BUF3[0]) && (false == err_occur(err_ctrl)) && (welding_flag == 1)) /* 需要保证此时不在焊接过程才能进行数据通讯 */
+		if (receive_number3 >= 2 && (RDY_SCH == 0) && (ID_OF_MAS == USART_RX_BUF3[0]) && (false == err_occur(err_ctrl)) && (get_weld_flag() == IDEAL_MODE)) /* 需要保证此时不在焊接过程才能进行数据通讯 */
 		{
 			crc16_get = CRC16(USART_RX_BUF3, receive_number3 - 2); // 检测数据是否正确
 			temp2.crc16_high = crc16_get >> 8;

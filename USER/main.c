@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-26 09:49:47
+ * @LastEditTime: 2024-12-27 10:02:30
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -117,8 +117,9 @@ OS_SEM ALARM_RESET_SEM;	 // 报警复位信号
 OS_SEM RESET_FINISH;		  // 复位完成信号
 OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
 /*主线程使用*/
-OS_SEM ERROR_HANDLE_SEM; // 错误信号
-OS_SEM TEMP_DRAW_SEM;	 // 绘图信号
+OS_SEM ERROR_HANDLE_SEM;   // 错误信号
+OS_SEM TEMP_DRAW_SEM;	   // 绘图信号
+OS_SEM TEMP_DOWN_LINE_SEM; // 降温曲线绘制信号
 ////////////////////////新界面组件列表///////////////////////////////////////////
 Page_Param *page_param = NULL;			   // 记录当前所在界面id及RDY三个按钮的状态
 Component_Queue *param_page_list = NULL;   // 参数设定界面的组件列表
@@ -433,6 +434,14 @@ void start_task(void *p_arg)
 
 	// 创建绘图信号
 	OSSemCreate(&TEMP_DRAW_SEM, "temp draw sem", 0, &err);
+	if (err != OS_ERR_NONE)
+	{
+		;
+		// 创建失败
+	}
+
+	// 降温曲线采集信号
+	OSSemCreate(&TEMP_DOWN_LINE_SEM, "temp down sample sem", 0, &err);
 	if (err != OS_ERR_NONE)
 	{
 		;
@@ -786,14 +795,15 @@ static void Power_on_check(void)
 
 static void Temp_updata_realtime()
 {
-#if TEMP_ADJUST == 1
-	u16 voltage = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10; //*3300/4096
-#endif
-	weld_controller->realtime_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2;
+
 	//	float temp2=0.1618 * adcx7 + 11.048;
+	u16 voltage = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10; //*3300/4096
+	weld_controller->realtime_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2;
 
 #if TEMP_ADJUST == 1
 	command_set_comp_val("temp22", "val", voltage);
+	command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
+
 #endif
 }
 
@@ -882,7 +892,6 @@ void main_task(void *p_arg)
 static void key_action_callback_param(Component_Queue *page_list);
 static void key_action_callback_temp(Component_Queue *page_list);
 static void parse_key_action(Page_ID id);
-
 
 static void key_action_callback_param(Component_Queue *page_list)
 {
@@ -1200,22 +1209,23 @@ static void page_process(Page_ID id)
 	{
 	case PARAM_PAGE:
 	{
+		OS_ERR err;
+		u16 temp_display[3] = {0};
+		char *temp_display_name[] = {"step1", "step2", "step3"};
+
 		/*1、读取界面上的参数*/
 		for (u8 i = 0; i < sizeof(key_name_list) / sizeof(char *); i++)
 		{
 			command_get_comp_val(param_page_list, key_name_list[i], "pic");
 		}
 		command_get_comp_val(param_page_list, "GP", "val");
-		// command_get_comp_val(param_page_list, "sensortype", "val");
-		parse_key_action(page_param->id);
-		command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
-		/*显示焊接计数值*/
-		command_set_comp_val("count", "val", weld_controller->weld_count);
+		parse_key_action(page_param->id); // 解析按键动作
 
-		/*焊接结束后显示三段温度*/
-		OS_ERR err;
-		u16 temp_display[3] = {0};
-		char *temp_display_name[] = {"step1", "step2", "step3"};
+		/*2、显示实时温度*/
+		command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
+		/*3、显示焊接计数值*/
+		command_set_comp_val("count", "val", weld_controller->weld_count);
+		/*4、焊接结束后显示三段温度*/
 		OSSemPend(&TEMP_DRAW_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
@@ -1248,6 +1258,7 @@ static void page_process(Page_ID id)
 			command_get_comp_val(temp_page_list, key_name_list[i], "pic");
 		}
 		command_get_comp_val(temp_page_list, "GP", "val");
+		// 读取auto模式...
 		parse_key_action(page_param->id);
 	}
 	break;
@@ -1266,10 +1277,6 @@ static void page_process(Page_ID id)
 
 #endif
 
-		// if (weld_controller->realtime_temp < weld_controller->second_step_start_temp)
-		// {
-		// 	draw_point(weld_controller->realtime_temp * 5 / 16);
-		// }
 		/*实时温度显示*/
 		command_set_comp_val("step3", "val", weld_controller->realtime_temp);
 
@@ -1293,14 +1300,12 @@ static void page_process(Page_ID id)
 		else
 			delta_tick = 2000;
 		/*绘图间隔*/
-		total_tick_len = 5 * delta_tick;
-		win_width = WIN_WIDTH * total_time / total_tick_len;
-		temp_draw_ctrl->delta_tick = total_time / win_width + 1;
+		total_tick_len = 5 * delta_tick;						 // 横坐标总长度
+		win_width = WIN_WIDTH * total_time / total_tick_len;	 // 焊接周期绘图区域
+		temp_draw_ctrl->delta_tick = total_time / win_width + 1; // 绘点时间间隔
 		/*坐标发送到触摸屏*/
 		for (u8 i = 0; i < sizeof(tick_name) / sizeof(char *); i++)
-		{
 			command_set_comp_val(tick_name[i], "val", (1 + i) * delta_tick);
-		}
 
 		/*焊接结束后继续采集温度*/
 		OS_ERR err;
@@ -1324,9 +1329,10 @@ static void page_process(Page_ID id)
 
 			/*绘图控制器复位*/
 			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
-
 			/*绘图结束清空缓存*/
 			memset(temp_draw_ctrl->temp_buf, 0, sizeof(temp_draw_ctrl->temp_buf) / sizeof(u16));
+			/*绘制降温曲线*/
+			OSSemPost(&TEMP_DOWN_LINE_SEM, OS_OPT_POST_ALL, &err);
 		}
 	}
 	break;
@@ -1344,6 +1350,8 @@ static void page_process(Page_ID id)
 
 	case UART_PAGE:
 	{
+
+		// command_get_comp_val(param_page_list, "sensortype", "val");
 		/*...机地址以及波特率修改，同步到上位机...*/
 		/*1、读取界面设定的地址*/
 		command_get_comp_val(setting_page_list, "adress", "val");
@@ -1766,8 +1774,41 @@ void computer_read_task(void *p_arg)
 void draw_task(void *p_arg)
 {
 	OS_ERR err;
+	u16 index;
+	u16 weld_win_width;
+	u16 win_width;
+	u16 total_time;
 	while (1)
 	{
-		OSTimeDlyHMSM(0, 0, 0, 1000, OS_OPT_TIME_PERIODIC, &err); // 休眠
+
+		// 焊接总时长
+		total_time = 0;
+		for (u8 i = 0; i < 5; i++)
+			total_time += weld_controller->weld_time[i];
+
+		weld_win_width = total_time / (temp_draw_ctrl->delta_tick - 1); // 转换计算(参见读写线程的坐标绘制)：焊接周期绘图区域大小
+		win_width = WIN_WIDTH - weld_win_width;							// 温降曲线绘图区域大小
+
+		OSSemPend(&TEMP_DOWN_LINE_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+		if (err == OS_ERR_NONE)
+		{
+			index = 0;
+			u16 temp = 0;
+			u8 temp_display = 0;
+			while (index < win_width)
+			{
+				if (get_weld_flag() == BUSY_MODE) // 非焊接状态才进行绘制
+					break;
+				temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2; // 温度采样
+				if (temp > MAX_TEMP_DISPLAY)								   // 限幅
+					temp = MAX_TEMP_DISPLAY;
+				temp_display = temp * 5 / 16;				//*250/800
+				draw_point(temp_display);					// 绘图
+				user_tim_delay(temp_draw_ctrl->delta_tick); // 采样间隔
+				index++;
+			}
+		}
+
+		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
 }

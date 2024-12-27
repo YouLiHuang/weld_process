@@ -14,8 +14,8 @@
 #include "touchscreen.h"
 
 /*--------------------------------------------------旧版本接口---------------------------------------------------------*/
-volatile u8 welding_flag = 1; // 焊接的标志，1不焊接，0在焊接
-extern u16 kalman_comp_temp;  // 温度补偿值
+volatile WELD_MODE welding_flag = IDEAL_MODE; // 焊接的标志
+extern u16 kalman_comp_temp;				  // 温度补偿值
 
 /*-------------------------------------------------------新接口--------------------------------------------------------*/
 
@@ -47,6 +47,11 @@ extern u16 realtime_temp_buf[TEMP_BUF_MAX_LEN]; // 温度保存缓冲区
 /*--------------------------------------------------------------------------------------------------------------------*/
 /*													 数据对象API                                                       */
 /*--------------------------------------------------------------------------------------------------------------------*/
+
+WELD_MODE get_weld_flag()
+{
+	return welding_flag;
+}
 
 weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl)
 {
@@ -259,7 +264,7 @@ static void Weld_Preparation()
 {
 
 	/*表示进入焊接过程*/
-	welding_flag = 0;
+	welding_flag = BUSY_MODE;
 	/*时间刻度复位*/
 	weld_controller->step_time_tick = 0; // 焊接周期计数值
 	weld_controller->weld_time_tick = 0; // 单段焊接时间计数
@@ -554,7 +559,7 @@ static void End_of_Weld()
 	weld_controller->step_time_tick = 0;
 	/*焊接结束*/
 	weld_controller->weld_count++;
-	welding_flag = 1;
+	welding_flag = IDEAL_MODE;
 	weld_controller->Duty_Cycle = 0;
 	weld_controller->state = IDEAL_STATE;
 
