@@ -10,6 +10,7 @@
 
 #define FAST_MODE 0
 #include "touchscreen.h"
+#include "welding_process.h"
 #include "usart.h"
 
 const u32 baud_list[] = {2400, 4800, 9600, 19200, 31200, 38400, 57600, 115200, 230400, 250000, 256000, 512000, 921600};
