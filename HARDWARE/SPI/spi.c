@@ -191,15 +191,15 @@ void spi_data_init(void)
 		"temp3",
 	};
 	char *temp_name_list[] = {
-		"alarm1",
-		"alarm2",
-		"alarm3",
-		"alarm4",
-		"alarm5",
-		"alarm6",
-		"GAIN1",
-		"GAIN2",
-		"GAIN3",
+		"temp_page.alarm1",
+		"temp_page.alarm2",
+		"temp_page.alarm3",
+		"temp_page.alarm4",
+		"temp_page.alarm5",
+		"temp_page.alarm6",
+		"temp_page.GAIN1",
+		"temp_page.GAIN2",
+		"temp_page.GAIN3",
 	};
 
 	command_set_comp_val_raw("wave_page.kpf", "val", 0);
@@ -207,7 +207,6 @@ void spi_data_init(void)
 	command_set_comp_val_raw("wave_page.ki", "val", 0);
 	command_set_comp_val_raw("wave_page.kd", "val", 0);
 	/*温度限制界面UI初始化*/
-	command_send("page 4");
 	for (u8 i = 0; i < sizeof(temp_name_list) / sizeof(char *); i++)
 	{
 		Component *comp = get_comp(temp_page_list, temp_name_list[i]);
@@ -215,6 +214,7 @@ void spi_data_init(void)
 			command_set_comp_val_raw(temp_name_list[i], "val", comp->val);
 	}
 	command_set_comp_val_raw("switch", "val", 1); // 默认自动模式
+	
 	/*参数页面UI初始化*/
 	command_send("page 1");
 	command_set_comp_val_raw("RDY_SCH", "pic", RDY);

@@ -103,6 +103,12 @@ typedef enum SGW_CTW_STATE
     CTW = 26
 } SGW_CTW_STATE;
 
+typedef enum UP_DOWN
+{
+    UP_CNT = 0,
+    DOWN_CNT
+} UP_DOWN;
+
 typedef enum SENSOR_TYPE
 {
     E_TYPE = 1,

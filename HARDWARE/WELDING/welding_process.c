@@ -604,10 +604,14 @@ static void End_of_Weld()
 	weld_controller->weld_time_tick = 0;
 	weld_controller->step_time_tick = 0;
 	/*焊接结束*/
-	weld_controller->weld_count++;
 	welding_flag = IDEAL_MODE;
 	weld_controller->Duty_Cycle = 0;
 	weld_controller->state = IDEAL_STATE;
+	/*根据计数模式更新焊接计数值*/
+	if (get_comp(param_page_list, "UP_DOWN")->val == (int)UP_CNT)
+		weld_controller->weld_count++;
+	else
+		weld_controller->weld_count--;
 
 	RLY10 = 0; // 气阀1关闭
 	RLY11 = 0; // 气阀2关闭
@@ -659,11 +663,11 @@ static void simulate_weld()
 {
 
 	/*IO控制*/
-	OVER = 0;  // 1为焊接结束信号
 	RLY10 = 1; // 气阀1启动
 	RLY11 = 1; // 气阀2启动
 	RLY12 = 1; // 气阀3启动
 	CUNT = 0;  // 1为计数，0清除计数信号
+	OVER = 0;  // 1为焊接结束信号
 
 	weld_controller->step_time_tick = 0; // 实时控制器阶段性时间刻度复位
 	weld_controller->weld_time_tick = 0; // 焊接周期时间刻度复位
@@ -673,8 +677,17 @@ static void simulate_weld()
 	TIM_Cmd(TIM3, DISABLE);				 // 关闭时间统计计数器
 	weld_controller->weld_time_tick = 0; // 焊接周期时间刻度复位
 
-	/*发送焊接计数值*/
-	weld_controller->weld_count++;
+	RLY10 = 0; // 气阀1关闭
+	RLY11 = 0; // 气阀2关闭
+	RLY12 = 0; // 气阀3关闭
+	CUNT = 1;  // 1为计数，0清除计数信号
+	OVER = 1;  // 1为焊接结束信号
+
+	/*+++根据计数模式更新计数值+++*/
+	if (get_comp(param_page_list, "UP_DOWN")->val == UP_CNT)
+		weld_controller->weld_count++;
+	else
+		weld_controller->weld_count--;
 }
 
 /**
@@ -765,7 +778,11 @@ void welding_process(void)
 		{
 			/*焊前擦除上次温度显示*/
 			if (page_param->id == WAVE_PAGE)
+			{
 				command_send("cle wave_line.id,0");
+				command_send("cle wave_line.id,0");
+				command_send("cle wave_line.id,0");
+			}
 			/*进入焊接的条件*/
 			if (page_param->key1 != RDY || weld_controller->realtime_temp > weld_controller->weld_temp[2])
 				return;
@@ -804,6 +821,8 @@ void welding_process(void)
 			simulate_weld();
 			/*设置连续焊接间隔——同时也腾出时间片*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
+			/*三段温度显示*/
+			OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
 
 			key = new_key_scan();
 			if (!(key == KEY_PC1_PRES || key == KEY_PC0_PRES))
@@ -823,7 +842,12 @@ void welding_process(void)
 		{
 			/*焊前擦除上次温度显示*/
 			if (page_param->id == WAVE_PAGE)
+			{
 				command_send("cle wave_line.id,0");
+				command_send("cle wave_line.id,0");
+				command_send("cle wave_line.id,0");
+			}
+
 			/*进入焊接的条件*/
 			if (page_param->key1 != RDY || weld_controller->realtime_temp > weld_controller->weld_temp[2])
 				return;
@@ -854,6 +878,8 @@ void welding_process(void)
 			simulate_weld();
 			/*设置连续焊接间隔——同时也腾出时间片*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
+			/*三段温度显示*/
+			OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
 			OVER = 0;
 			/*设置焊接间隔*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
