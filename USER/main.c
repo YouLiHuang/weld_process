@@ -1302,8 +1302,15 @@ static void page_process(Page_ID id)
 			delta_tick = 500;
 		else if (total_time > 2500 && total_time <= 5000)
 			delta_tick = 1000;
-		else
+		else if (total_time > 5000 && total_time <= 10000)
 			delta_tick = 2000;
+		else if (total_time > 10000 && total_time <= 15000)
+			delta_tick = 3000;
+		else if (total_time > 15000 && total_time <= 20000)
+			delta_tick = 4000;
+		else
+			delta_tick = 5000;
+
 		/*绘图间隔*/
 		total_tick_len = 5 * delta_tick;						 // 横坐标总长度
 		win_width = WIN_WIDTH * total_time / total_tick_len;	 // 焊接周期绘图区域
