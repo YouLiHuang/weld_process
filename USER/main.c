@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-27 10:02:30
+ * @LastEditTime: 2024-12-27 10:16:22
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -87,7 +87,7 @@ CPU_STK COMPUTER_TASK_STK[COMPUTER_STK_SIZE];
 void computer_read_task(void *p_arg);
 
 // 任务优先级
-#define DRAW_TASK_PRIO 8
+#define DRAW_TASK_PRIO 7
 // 任务堆栈大小
 #define DRAW_STK_SIZE 256
 // 任务控制块
@@ -114,7 +114,6 @@ OS_SEM COMP_VAL_GET_SEM; // 组件属性值成功获取信号
 OS_SEM COMP_STR_GET_SEM; // 组件属性值(字符串型)成功获取信号
 OS_SEM ALARM_RESET_SEM;	 // 报警复位信号
 
-OS_SEM RESET_FINISH;		  // 复位完成信号
 OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
 /*主线程使用*/
 OS_SEM ERROR_HANDLE_SEM;   // 错误信号
@@ -214,7 +213,7 @@ static char *param_page_name_list[] = {
 static char *setting_page_name_list[] = {
 	"adress",
 	"baudrate",
-};
+	"sensortype"};
 
 /*--------------------------------------------------------全局变量------------------------------------------------------------------*/
 /*上位机485参数*/
@@ -416,14 +415,6 @@ void start_task(void *p_arg)
 		// 创建失败
 	}
 
-	// 创建复位完成信号
-	OSSemCreate(&RESET_FINISH, "reset finish", 0, &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
-
 	// 创建上位机数据同步信号
 	OSSemCreate(&COMPUTER_DATA_SYN_SEM, "data sync", 0, &err);
 	if (err != OS_ERR_NONE)
@@ -475,7 +466,7 @@ void start_task(void *p_arg)
 
 	// 创建主任务
 	// 优先级：5
-	// 50ms调度——100ms时间片
+	// 30ms调度
 	OSTaskCreate((OS_TCB *)&Main_TaskTCB,
 				 (CPU_CHAR *)"Main task",
 				 (OS_TASK_PTR)main_task,
@@ -491,8 +482,8 @@ void start_task(void *p_arg)
 				 (OS_ERR *)&err);
 
 	// 创建触摸屏通讯任务
-	// 30ms调度
-	// 优先级：7
+	// 20ms调度
+	// 优先级：6
 	OSTaskCreate((OS_TCB *)&READ_TaskTCB,
 				 (CPU_CHAR *)"Read task",
 				 (OS_TASK_PTR)read_task,
@@ -508,7 +499,7 @@ void start_task(void *p_arg)
 				 (OS_ERR *)&err);
 
 	// 创建上位机通讯任务
-	// 优先级：8
+	// 优先级：7
 	OSTaskCreate((OS_TCB *)&COMPUTER_TaskTCB,
 				 (CPU_CHAR *)"computer read task",
 				 (OS_TASK_PTR)computer_read_task,
@@ -524,7 +515,7 @@ void start_task(void *p_arg)
 				 (OS_ERR *)&err);
 
 	// 绘图任务
-	// 优先级：8
+	// 优先级：7
 	OSTaskCreate((OS_TCB *)&DRAW_TaskTCB,
 				 (CPU_CHAR *)"draw task",
 				 (OS_TASK_PTR)draw_task,
@@ -534,7 +525,7 @@ void start_task(void *p_arg)
 				 (CPU_STK_SIZE)DRAW_STK_SIZE / 10,
 				 (CPU_STK_SIZE)DRAW_STK_SIZE,
 				 (OS_MSG_QTY)0,
-				 (OS_TICK)10,
+				 (OS_TICK)20,
 				 (void *)0,
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
@@ -739,6 +730,7 @@ void error_task(void *p_arg)
 					err_ctrl->err_list[i]->error_callback(i);
 			}
 		}
+
 		/*等待用户复位操作*/
 		OSSemPend(&ALARM_RESET_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
@@ -752,24 +744,28 @@ void error_task(void *p_arg)
 			uart_init(115200);
 			/*串口屏复位*/
 			touchscreen_init();
-			/*该接口已适配*/
+			/*加载数据*/
 			spi_data_init();
-			/*该接口已适配*/
-			welding_data_and_mode_reproduce();
 
-			/*复位完成*/
-			OSSemPost(&RESET_FINISH, OS_OPT_POST_ALL, &err);
-			err_clear(err_ctrl); // 清除出错标志
-			ERROR1 = 0;			 // 报警信号（模拟量）清除
-
-			// /*检查是否还有其他错误*/
-			// if (err_occur(err_ctrl) == false)
-			// {
-			// 	err_clear(err_ctrl); // 清除出错标志
-			// 	ERROR1 = 0;			 // 报警信号（模拟量）清除
-			// 	alram_clear(page_param);
-			// 	Page_to(page_param, PARAM_PAGE);
-			// }
+			/*检查是否还有其他错误*/
+			if (err_occur(err_ctrl) == false)
+			{
+				err_clear(err_ctrl); // 清除出错标志
+				ERROR1 = 0;			 // 报警信号（模拟量）清除
+				alram_clear(page_param);
+				Page_to(page_param, PARAM_PAGE);
+			}
+			else
+			{
+				/*仍有错误则继续报警*/
+				Page_to(page_param, ALARM_PAGE);
+				page_param->id = ALARM_PAGE;
+				for (u8 i = 0; i < err_ctrl->error_cnt; i++)
+				{
+					if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
+						err_ctrl->err_list[i]->error_callback(i);
+				}
+			}
 		}
 
 		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err); // 休眠
@@ -803,7 +799,6 @@ static void Temp_updata_realtime()
 #if TEMP_ADJUST == 1
 	command_set_comp_val("temp22", "val", voltage);
 	command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
-
 #endif
 }
 
@@ -881,7 +876,7 @@ void main_task(void *p_arg)
 		/*part5：空闲温度采集*/
 		Temp_updata_realtime();
 
-		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err); // 休眠50ms
+		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
 }
 
@@ -1266,6 +1261,10 @@ static void page_process(Page_ID id)
 	case WAVE_PAGE:
 	{
 #if PID_DEBUG == 1
+		command_set_comp_val("wave_page.kpf", "aph", 127);
+		command_set_comp_val("wave_page.kp", "aph", 127);
+		command_set_comp_val("wave_page.ki", "aph", 127);
+		command_set_comp_val("wave_page.kd", "aph", 127);
 		u16 pid_param[4] = {0};
 		if (pid_param_get(pid_param) == true)
 		{
@@ -1275,17 +1274,16 @@ static void page_process(Page_ID id)
 			weld_controller->pid_ctrl->kd = pid_param[3] / 100.0;
 		}
 
-#endif
-
-		/*实时温度显示*/
-		command_set_comp_val("step3", "val", weld_controller->realtime_temp);
-
-		/*更新坐标*/
+#else
 		u16 total_time = 0;		// 总焊接时长
 		u16 delta_tick = 0;		// 坐标间隔
 		u16 total_tick_len = 0; // 横坐标总长度
 		u16 win_width = 0;		// 绘图区域占据的实际窗口大小
 
+		/*实时温度显示*/
+		command_set_comp_val("step3", "val", weld_controller->realtime_temp);
+
+		/*更新坐标*/
 		for (u8 i = 0; i < 5; i++)
 			total_time += weld_controller->weld_time[i];
 		/*坐标划分*/
@@ -1334,6 +1332,7 @@ static void page_process(Page_ID id)
 			/*绘制降温曲线*/
 			OSSemPost(&TEMP_DOWN_LINE_SEM, OS_OPT_POST_ALL, &err);
 		}
+#endif
 	}
 	break;
 
@@ -1351,7 +1350,7 @@ static void page_process(Page_ID id)
 	case UART_PAGE:
 	{
 
-		// command_get_comp_val(param_page_list, "sensortype", "val");
+		// command_get_comp_val(setting_page_list, "sensortype", "val");
 		/*...机地址以及波特率修改，同步到上位机...*/
 		/*1、读取界面设定的地址*/
 		command_get_comp_val(setting_page_list, "adress", "val");
