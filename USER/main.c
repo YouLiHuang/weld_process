@@ -197,7 +197,8 @@ static char *temp_page_name_list[] = {
 	"ION_OFF",
 	"SGW_CTW",
 	"UP_DOWN",
-	"switch"}; // 加一个上下计数
+	"switch",
+	"count"};
 
 static char *param_page_name_list[] = {
 	"temp1",
@@ -211,7 +212,8 @@ static char *param_page_name_list[] = {
 	"RDY_SCH",
 	"ION_OFF",
 	"SGW_CTW",
-	"UP_DOWN"}; // 加一个上下计数
+	"UP_DOWN",
+	"count"};
 
 static char *setting_page_name_list[] = {
 	"adress",
@@ -1213,7 +1215,8 @@ static void page_process(Page_ID id)
 		{
 			command_get_comp_val(param_page_list, key_name_list[i], "pic");
 		}
-		command_get_comp_val(param_page_list, "GP", "val");
+		command_get_comp_val(param_page_list, "GP", "val");	   // 读取gp值
+		command_get_comp_val(param_page_list, "count", "val"); // 读取计数值（用户可能修改）
 		/*2、解析按键动作*/
 		parse_key_action(page_param->id);
 		/*3、显示实时温度*/
@@ -1253,6 +1256,7 @@ static void page_process(Page_ID id)
 			command_get_comp_val(temp_page_list, key_name_list[i], "pic");
 		}
 		command_get_comp_val(temp_page_list, "GP", "val");
+		command_get_comp_val(temp_page_list, "count", "val");
 		/*2、读取auto/user模式*/
 		command_get_comp_val(temp_page_list, "switch", "val");
 		/*3、解析按键动作*/

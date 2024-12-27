@@ -105,7 +105,7 @@ typedef enum SGW_CTW_STATE
 
 typedef enum UP_DOWN
 {
-    UP_CNT = 0,
+    UP_CNT = 35,
     DOWN_CNT
 } UP_DOWN;
 

@@ -608,9 +608,9 @@ static void End_of_Weld()
 	weld_controller->Duty_Cycle = 0;
 	weld_controller->state = IDEAL_STATE;
 	/*根据计数模式更新焊接计数值*/
-	if (get_comp(param_page_list, "UP_DOWN")->val == (int)UP_CNT)
+	if (get_comp(param_page_list, "UP_DOWN")->val == UP_CNT)
 		weld_controller->weld_count++;
-	else
+	else if (get_comp(param_page_list, "UP_DOWN")->val == DOWN_CNT)
 		weld_controller->weld_count--;
 
 	RLY10 = 0; // 气阀1关闭
@@ -686,7 +686,7 @@ static void simulate_weld()
 	/*+++根据计数模式更新计数值+++*/
 	if (get_comp(param_page_list, "UP_DOWN")->val == UP_CNT)
 		weld_controller->weld_count++;
-	else
+	else if (get_comp(param_page_list, "UP_DOWN")->val == DOWN_CNT)
 		weld_controller->weld_count--;
 }
 
@@ -762,6 +762,10 @@ void welding_process(void)
 	/*扫描按键，根据不同按键加载不同参数组别*/
 	Load_Data();
 
+	/*向下计数模式到底，停止焊接*/
+	if (get_comp(param_page_list, "count")->val == 0 && get_comp(param_page_list, "UP_DOWN")->val == DOWN_CNT)
+		return;
+
 	/*----------------------------------------------------------------------------------------------------------------------------------------------*/
 	/*----------------------------------------------------------------焊接实时控制部分---------------------------------------------------------------*/
 	/*----------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -793,7 +797,7 @@ void welding_process(void)
 				break;
 			/*每一轮焊接都清空绘图缓存*/
 			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
-			/*三段温度显示*/
+			/*三段温度显示&计数值更新*/
 			OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
 
 #if COMMUNICATE == 1
@@ -821,7 +825,7 @@ void welding_process(void)
 			simulate_weld();
 			/*设置连续焊接间隔——同时也腾出时间片*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
-			/*三段温度显示*/
+			/*三段温度显示&计数值更新*/
 			OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
 
 			key = new_key_scan();
@@ -854,7 +858,7 @@ void welding_process(void)
 
 			/*实时焊接控制*/
 			weld_real_time_ctrl();
-			/*三段温度显示*/
+			/*三段温度显示&计数值更新*/
 			OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
 
 #if COMMUNICATE == 1
@@ -878,7 +882,7 @@ void welding_process(void)
 			simulate_weld();
 			/*设置连续焊接间隔——同时也腾出时间片*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
-			/*三段温度显示*/
+			/*三段温度显示&计数值更新*/
 			OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
 			OVER = 0;
 			/*设置焊接间隔*/
