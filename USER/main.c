@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-27 10:19:41
+ * @LastEditTime: 2024-12-27 11:14:17
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -195,7 +195,8 @@ static char *temp_page_name_list[] = {
 	"GAIN3",
 	"RDY_SCH",
 	"ION_OFF",
-	"SGW_CTW"};
+	"SGW_CTW",
+	"switch"};
 
 static char *param_page_name_list[] = {
 	"temp1",
@@ -1253,7 +1254,9 @@ static void page_process(Page_ID id)
 			command_get_comp_val(temp_page_list, key_name_list[i], "pic");
 		}
 		command_get_comp_val(temp_page_list, "GP", "val");
-		// 读取auto模式...
+		// 读取auto/user模式
+		command_get_comp_val(temp_page_list, "switch", "val");
+
 		parse_key_action(page_param->id);
 	}
 	break;
@@ -1329,7 +1332,7 @@ static void page_process(Page_ID id)
 			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
 			/*绘图结束清空缓存*/
 			memset(temp_draw_ctrl->temp_buf, 0, sizeof(temp_draw_ctrl->temp_buf) / sizeof(u16));
-			
+
 			/*绘制降温曲线*/
 			OSSemPost(&TEMP_DOWN_LINE_SEM, OS_OPT_POST_ALL, &err);
 		}

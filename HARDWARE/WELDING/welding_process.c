@@ -189,70 +189,110 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 	double set_gain;
 	double percent;
 
-	switch (ctrl->state)
+	/*-------------------------------------------------------用户自定义模式-------------------------------------------------------*/
+	if (get_comp(temp_page_list, "switch")->val == 0)
 	{
-	case FIRST_STATE:
-		/*一阶段参数*/
-		if (ctrl->weld_temp[0] < 300) // 设定目标较小，快速升温
+		switch (ctrl->state)
 		{
-			ctrl->first_step_turn = ctrl->weld_temp[0]; // 刹车点
-			ctrl->first_step_set = ctrl->weld_temp[0];
+		case FIRST_STATE:
+			/*一阶段参数*/
+			if (ctrl->weld_temp[0] < 300) // 设定目标较小，快速升温
+			{
+				ctrl->first_step_turn = ctrl->weld_temp[0]; // 刹车点
+				ctrl->first_step_set = ctrl->weld_temp[0];
+			}
+			else
+			{
+				ctrl->first_step_turn = ctrl->weld_temp[0];													   // 刹车点
+				ctrl->first_step_set = (0.9 + 0.1 * weld_controller->temp_gain1) * (double)ctrl->weld_temp[0]; // 第1个阶跃目标(0.85-1)
+				if (ctrl->first_step_set >= ctrl->first_step_turn)
+					ctrl->first_step_set = ctrl->first_step_turn;
+			}
+			break;
+
+		case SECOND_STATE:
+			/*二阶段参数*/
+			if (ctrl->second_step_start_temp < 100) // 起始温度较小，防止超调
+			{
+				ctrl->second_step_turn = ctrl->weld_temp[1];			  // 刹车点
+				ctrl->second_step_set = 0.8 * (double)ctrl->weld_temp[1]; // 第2个阶跃目标(0.85-1)
+			}
+			else
+			{
+				ctrl->second_step_turn = ctrl->weld_temp[1];													  // 刹车点
+				ctrl->second_step_set = (0.85 + 0.15 * weld_controller->temp_gain2) * (double)ctrl->weld_temp[1]; // 第2个阶跃目标(0.85-1)
+				if (ctrl->second_step_set >= ctrl->second_step_turn)
+					ctrl->second_step_set = ctrl->second_step_turn;
+			}
+			break;
+
+		case THIRD_STATE:
+			break;
 		}
-		else
+	}
+	/*----------------------------------------------------------自动模式----------------------------------------------------------*/
+	else
+	{
+		switch (ctrl->state)
 		{
-			/*根据起始温度调节设定值，起始温度越低，设定点就越低，防止过大的超调*/
-			percent = (double)ctrl->first_step_start_temp / (double)ctrl->weld_temp[0]; // 起始温度对最终温度占比
-			set_gain = 0.3969 * log(percent) + 1.0021;									// 参见excel表格
-			if (set_gain <= 0)
-				set_gain = 0;
-			if (set_gain >= 1)
-				set_gain = 1;
+		case FIRST_STATE:
+			/*一阶段参数*/
+			if (ctrl->weld_temp[0] < 300) // 设定目标较小，快速升温
+			{
+				ctrl->first_step_turn = ctrl->weld_temp[0]; // 刹车点
+				ctrl->first_step_set = ctrl->weld_temp[0];
+			}
+			else
+			{
+				/*根据起始温度调节设定值，起始温度越低，设定点就越低，防止过大的超调*/
+				percent = (double)ctrl->first_step_start_temp / (double)ctrl->weld_temp[0]; // 起始温度对最终温度占比
+				set_gain = 0.3969 * log(percent) + 1.0021;									// 参见excel表格
+				if (set_gain <= 0)
+					set_gain = 0;
+				if (set_gain >= 1)
+					set_gain = 1;
 
-			/* 参数动态调整后，数据保存 */
-			weld_controller->temp_gain1 = set_gain;
-			get_comp(temp_page_list, "GAIN1")->val = set_gain * 100;
+				/* 参数动态调整后，数据保存 */
+				weld_controller->temp_gain1 = set_gain;
+				get_comp(temp_page_list, "GAIN1")->val = set_gain * 100;
 
-			ctrl->first_step_turn = ctrl->weld_temp[0];									// 刹车点
-			ctrl->first_step_set = (0.9 + 0.1 * set_gain) * (double)ctrl->weld_temp[0]; // 第1个阶跃目标(0.85-1)
-			if (ctrl->first_step_set >= ctrl->first_step_turn)
-				ctrl->first_step_set = ctrl->first_step_turn;
+				ctrl->first_step_turn = ctrl->weld_temp[0];									// 刹车点
+				ctrl->first_step_set = (0.9 + 0.1 * set_gain) * (double)ctrl->weld_temp[0]; // 第1个阶跃目标(0.85-1)
+				if (ctrl->first_step_set >= ctrl->first_step_turn)
+					ctrl->first_step_set = ctrl->first_step_turn;
+			}
+			break;
+		case SECOND_STATE:
+			/*二阶段参数*/
+			if (ctrl->second_step_start_temp < 100) // 起始温度较小，防止超调
+			{
+				ctrl->second_step_turn = ctrl->weld_temp[1];			  // 刹车点
+				ctrl->second_step_set = 0.8 * (double)ctrl->weld_temp[1]; // 第2个阶跃目标(0.85-1)
+			}
+			else
+			{
+				/*根据起始温度调节设定值，起始温度越低，设定点就越低，防止过大的超调*/
+				percent = (double)ctrl->second_step_start_temp / (double)ctrl->weld_temp[1]; // 起始温度对最终温度占比
+				set_gain = 0.3969 * log(percent) + 1.0021;									 // 参见excel表格
+				if (set_gain <= 0)
+					set_gain = 0;
+				if (set_gain >= 1)
+					set_gain = 1;
+
+				/* 参数动态调整后，数据保存 */
+				weld_controller->temp_gain2 = set_gain;
+				get_comp(temp_page_list, "GAIN2")->val = set_gain * 100;
+
+				ctrl->second_step_turn = ctrl->weld_temp[1];								   // 刹车点
+				ctrl->second_step_set = (0.85 + 0.15 * set_gain) * (double)ctrl->weld_temp[1]; // 第2个阶跃目标(0.85-1)
+				if (ctrl->second_step_set >= ctrl->second_step_turn)
+					ctrl->second_step_set = ctrl->second_step_turn;
+			}
+			break;
+
+		case THIRD_STATE:
+			break;
 		}
-		break;
-	case SECOND_STATE:
-		/*二阶段参数*/
-		if (ctrl->second_step_start_temp < 100) // 起始温度较小，防止超调
-		{
-			ctrl->second_step_turn = ctrl->weld_temp[1];			  // 刹车点
-			ctrl->second_step_set = 0.8 * (double)ctrl->weld_temp[1]; // 第2个阶跃目标(0.85-1)
-		}
-		else
-		{
-			/*根据起始温度调节设定值，起始温度越低，设定点就越低，防止过大的超调*/
-			percent = (double)ctrl->second_step_start_temp / (double)ctrl->weld_temp[1]; // 起始温度对最终温度占比
-			set_gain = 0.3969 * log(percent) + 1.0021;									 // 参见excel表格
-			if (set_gain <= 0)
-				set_gain = 0;
-			if (set_gain >= 1)
-				set_gain = 1;
-
-			/* 参数动态调整后，数据保存 */
-			weld_controller->temp_gain2 = set_gain;
-			get_comp(temp_page_list, "GAIN2")->val = set_gain * 100;
-
-			ctrl->second_step_turn = ctrl->weld_temp[1];								   // 刹车点
-			ctrl->second_step_set = (0.85 + 0.15 * set_gain) * (double)ctrl->weld_temp[1]; // 第2个阶跃目标(0.85-1)
-			if (ctrl->second_step_set >= ctrl->second_step_turn)
-				ctrl->second_step_set = ctrl->second_step_turn;
-		}
-
-		break;
-
-	case THIRD_STATE:
-
-		break;
-
-	default:
-		break;
 	}
 }
 
