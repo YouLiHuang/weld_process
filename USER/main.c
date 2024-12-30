@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-30 21:00:17
+ * @LastEditTime: 2024-12-30 21:11:12
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -1384,7 +1384,7 @@ static void page_process(Page_ID id)
 		if (get_comp(setting_page_list, "baudrate") != NULL)
 		{
 			uint8_t index = get_comp(setting_page_list, "baudrate")->val;
-			usart3_set_bound(baud_list[index]);
+			usart3_set_bound(baud_list[index - 1]);
 		}
 		/*3、读取热电偶类型*/
 		command_get_comp_val(setting_page_list, "sensortype", "val");
