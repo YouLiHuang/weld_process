@@ -94,6 +94,10 @@ void ADC_DMA_INIT(void)
 	ADC_SoftwareStartConv(ADC1);
 }
 
+
+
+
+
 /**
  * @description: 
  * @param {uint16_t} channel
@@ -176,6 +180,25 @@ void Adc_Init(void)
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_7, 1, ADC_SampleTime_84Cycles);	// ADC1通道7配置
 	ADC_Cmd(ADC1, ENABLE);														// 开启ADC1转换器
 }
+
+
+Thermocouple *newThermocouple(SENSOR_TYPE type, float slope, float intercept)
+{
+    Thermocouple *thermocouple = (Thermocouple *)malloc(sizeof(Thermocouple));
+    if (thermocouple != NULL)
+    {
+        thermocouple->type = type;
+        thermocouple->slope = slope;
+        thermocouple->intercept = intercept;
+
+        return thermocouple;
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
 
 /**
  * @description: 

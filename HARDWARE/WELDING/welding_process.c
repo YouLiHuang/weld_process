@@ -44,6 +44,9 @@ extern Temp_draw_ctrl *temp_draw_ctrl;			// 绘图控制器
 extern Page_Param *page_param;					// 实时页面参数
 extern u16 realtime_temp_buf[TEMP_BUF_MAX_LEN]; // 温度保存缓冲区
 
+/*热电偶*/
+extern Thermocouple *current_Thermocouple;
+
 /*--------------------------------------------------------------------------------------------------------------------*/
 /*													 数据对象API                                                       */
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -442,7 +445,7 @@ static void First_Step()
 		while (weld_controller->step_time_tick < weld_controller->weld_time[1])
 		{
 
-			weld_controller->realtime_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2;
+			current_Thermocouple->slope *ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
 			if (weld_controller->realtime_temp >= weld_controller->first_step_turn && weld_controller->pid_ctrl->stable_flag == false)
 				weld_controller->pid_ctrl->stable_flag = true;
 			// 过温保护
@@ -494,7 +497,7 @@ static void Second_Step()
 		TIM_Cmd(TIM5, ENABLE);				 // 开启实时控制器
 		while (weld_controller->step_time_tick < weld_controller->weld_time[2])
 		{
-			weld_controller->realtime_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2;
+			current_Thermocouple->slope *ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
 			/*到达刹车点，转阶段*/
 			if (weld_controller->realtime_temp >= weld_controller->second_step_turn && weld_controller->pid_ctrl->stable_flag == false)
 				weld_controller->pid_ctrl->stable_flag = true;
@@ -555,7 +558,7 @@ static void Third_Step()
 		TIM_Cmd(TIM5, ENABLE);				 // 开启实时控制器
 		while (weld_controller->step_time_tick < weld_controller->weld_time[3])
 		{
-			weld_controller->realtime_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2;
+			current_Thermocouple->slope *ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
 			if (weld_controller->realtime_temp > weld_controller->alarm_temp[4])
 			{
 				stop_weld();
@@ -775,7 +778,7 @@ void welding_process(void)
 		OS_ERR err;
 		u8 key = 0;
 		/*获取当前实时温度*/
-		weld_controller->realtime_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2;
+		current_Thermocouple->slope *ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
 		key = new_key_scan();
 		// 不松开脚踏就进入持续焊接模式
 		while (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
@@ -840,7 +843,7 @@ void welding_process(void)
 		OS_ERR err;
 		u8 key = 0;
 		/*获取当前实时温度*/
-		weld_controller->realtime_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2;
+		current_Thermocouple->slope *ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
 		key = new_key_scan();
 		if (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
 		{

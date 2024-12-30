@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-27 11:14:17
+ * @LastEditTime: 2024-12-30 21:00:17
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -128,6 +128,7 @@ Error_ctrl *err_ctrl = NULL;			   // 错误注册表
 Temp_draw_ctrl *temp_draw_ctrl = NULL;	   // 绘图控制器
 weld_ctrl *weld_controller = NULL;		   // 焊接实时控制器
 pid_feedforword_ctrl *pid_ctrl = NULL;
+Thermocouple *current_Thermocouple = NULL;
 /*用户可自行根据需要添加需要的组件列表*/
 /*......*/
 /////////////////////////////////////////////////////////////////////////////////
@@ -143,6 +144,12 @@ static bool Thermocouple_reset_callback(u8 index);
 static bool Current_out_of_ctrl_reset_callback(u8 index);
 static bool Temp_up_reset_callback(u8 index);
 static bool Temp_down_reset_callback(u8 index);
+
+static Thermocouple coefficient_list[] = {
+	{E_TYPE, 0.17, 0},
+	{K_TYPE, 0.1, 0},
+	{J_TYPE, 0.1, 0},
+};
 
 const error_match_list match_list[] = {
 	{CURRENT_OUT_OT_CTRL, "p4", Current_out_of_ctrl_callback, Current_out_of_ctrl_reset_callback},
@@ -283,6 +290,10 @@ int main(void)
 	}
 
 	temp_draw_ctrl = new_temp_draw_ctrl(realtime_temp_buf, 500, 2000, 500);
+
+	/*默认e型热电偶*/
+	current_Thermocouple = &coefficient_list[0];
+
 	/*外设初始化*/
 	delay_init(168);								// 时钟初始化
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); // 中断分组配置
@@ -550,7 +561,8 @@ static bool Temp_up_check(void)
 
 #if TEMP_CHECK
 
-	Init_Temperature = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2;
+	Init_Temperature = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
+	;
 	TIM1_PWM_Init();
 	TIM4_PWM_Init();
 	TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
@@ -590,7 +602,8 @@ static bool Temp_up_check(void)
 
 	// 延时检测温度
 	user_tim_delay(100);
-	New_Temperature = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2;
+	New_Temperature = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
+	;
 
 #endif
 
@@ -799,7 +812,8 @@ static void Temp_updata_realtime()
 
 	//	float temp2=0.1618 * adcx7 + 11.048;
 	u16 voltage = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10; //*3300/4096
-	weld_controller->realtime_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2;
+	weld_controller->realtime_temp = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
+	;
 
 #if TEMP_ADJUST == 1
 	command_set_comp_val("temp22", "val", voltage);
@@ -1361,7 +1375,6 @@ static void page_process(Page_ID id)
 	case UART_PAGE:
 	{
 
-		// command_get_comp_val(setting_page_list, "sensortype", "val");
 		/*...机地址以及波特率修改，同步到上位机...*/
 		/*1、读取界面设定的地址*/
 		command_get_comp_val(setting_page_list, "adress", "val");
@@ -1372,6 +1385,13 @@ static void page_process(Page_ID id)
 		{
 			uint8_t index = get_comp(setting_page_list, "baudrate")->val;
 			usart3_set_bound(baud_list[index]);
+		}
+		/*3、读取热电偶类型*/
+		command_get_comp_val(setting_page_list, "sensortype", "val");
+		for (u8 i = 0; i < sizeof(coefficient_list) / sizeof(coefficient_list[0]); i++)
+		{
+			if (get_comp(setting_page_list, "sensortype")->val == coefficient_list[i].type)
+				current_Thermocouple = &coefficient_list[i]; // 更新当前热电偶类型
 		}
 	}
 	break;
@@ -1813,8 +1833,9 @@ void draw_task(void *p_arg)
 			{
 				if (get_weld_flag() == BUSY_MODE) // 非焊接状态才进行绘制
 					break;
-				temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2; // 温度采样
-				if (temp > MAX_TEMP_DISPLAY)								   // 限幅
+				temp = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
+				;							 // 温度采样
+				if (temp > MAX_TEMP_DISPLAY) // 限幅
 					temp = MAX_TEMP_DISPLAY;
 				temp_display = temp * 5 / 16;				//*250/800
 				draw_point(temp_display);					// 绘图

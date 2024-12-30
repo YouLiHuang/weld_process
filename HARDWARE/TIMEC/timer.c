@@ -31,6 +31,9 @@ extern OS_SEM ERROR_HANDLE_SEM; // 错误信号
 extern Temp_draw_ctrl *temp_draw_ctrl;
 u16 realtime_temp_buf[TEMP_BUF_MAX_LEN] = {0}; // 温度保存缓冲区
 
+/*热电偶*/
+extern Thermocouple *current_Thermocouple;
+
 /**
  * @description: create an new controller
  * @param {u16} *buf
@@ -240,13 +243,13 @@ void TIM5_IRQHandler(void)
 	{
 		/*Ⅰ、反馈*/
 #if COMPENSATION == 1
-		weld_controller->realtime_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2; // 原始温度数据实时温度
+		weld_controller->realtime_temp = current_Thermocouple->slope *ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;; // 原始温度数据实时温度
 		u16 kalman_filter_temp = KalmanFilter(&kfp, weld_controller->realtime_temp);			 // 卡尔曼滤波
 		slid_windows(&lasttemp, kalman_filter_temp);											 // 滑动窗口
 		kalman_comp_temp = dynamic_temp_comp(lasttemp, dynam_comp);								 // 动态补偿
 		current_temp_comp = kalman_comp_temp;													 // 获取当前温度估计值
 #else
-		weld_controller->realtime_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2;
+		weld_controller->realtime_temp = current_Thermocouple->slope *ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;;
 		kalman_comp_temp = weld_controller->realtime_temp;
 		current_temp_comp = weld_controller->realtime_temp;
 #endif
