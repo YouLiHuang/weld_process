@@ -1836,7 +1836,7 @@ void draw_task(void *p_arg)
 				temp = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept; // 温度采样
 				if (temp > MAX_TEMP_DISPLAY)																		 // 限幅
 					temp = MAX_TEMP_DISPLAY;
-				temp_display = temp * 7 / 25;				//*210/750=7/25
+				temp_display = temp * 7 / 24;				//*210/720=21/72=7/24
 				draw_point(temp_display);					// 绘图
 				user_tim_delay(temp_draw_ctrl->delta_tick); // 采样间隔
 				index++;

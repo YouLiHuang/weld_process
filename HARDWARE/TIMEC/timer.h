@@ -6,7 +6,7 @@
 #define COMPENSATION 0
 
 #define WIN_WIDTH 550        // 显示区域宽度
-#define MAX_TEMP_DISPLAY 750 // 最大能显示的温度
+#define MAX_TEMP_DISPLAY 720 // 最大能显示的温度
 
 void TIM3_Int_Init(void);
 void TIM5_Int_Init(void);
