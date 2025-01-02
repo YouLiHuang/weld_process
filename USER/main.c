@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-30 21:11:12
+ * @LastEditTime: 2025-01-02 15:17:32
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -1826,21 +1826,19 @@ void draw_task(void *p_arg)
 				total_time += weld_controller->weld_time[i];
 
 			weld_win_width = total_time / (temp_draw_ctrl->delta_tick - 1); // 转换计算(参见读写线程的坐标绘制)：焊接周期绘图区域大小
-			win_width = WIN_WIDTH - weld_win_width - 30;					// 温降曲线绘图区域大小（留一个余量）
+			win_width = WIN_WIDTH - weld_win_width - 10;					// 温降曲线绘图区域大小（留一个余量）
 			if (win_width >= WIN_WIDTH / 2)
 				win_width = WIN_WIDTH / 2;
 			while (index < win_width)
 			{
 				if (get_weld_flag() == BUSY_MODE) // 非焊接状态才进行绘制
 					break;
-				temp = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
-				;							 // 温度采样
-				if (temp > MAX_TEMP_DISPLAY) // 限幅
+				temp = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept; // 温度采样
+				if (temp > MAX_TEMP_DISPLAY)																		 // 限幅
 					temp = MAX_TEMP_DISPLAY;
-				temp_display = temp * 5 / 16;				//*250/800
+				temp_display = temp * 7 / 25;				//*210/750=7/25
 				draw_point(temp_display);					// 绘图
 				user_tim_delay(temp_draw_ctrl->delta_tick); // 采样间隔
-				// OSTimeDlyHMSM(0, 0, 0, temp_draw_ctrl->delta_tick, OS_OPT_TIME_PERIODIC, &err); // 休眠
 				index++;
 			}
 		}
