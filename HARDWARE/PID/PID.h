@@ -1,3 +1,12 @@
+/*** 
+ * @Author: huangyouli.scut@gmail.com
+ * @Date: 2025-01-02 15:16:32
+ * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
+ * @LastEditTime: 2025-01-02 20:04:59
+ * @Description: pid control algorithm
+ * @
+ * @Copyright (c) 2025 by huangyouli, All Rights Reserved. 
+ */
 #ifndef __PID_H
 #define __PID_H
 #include "sys.h"
@@ -35,13 +44,7 @@ typedef struct PID_Feedforword_ctrl
 } pid_feedforword_ctrl;
 
 pid_feedforword_ctrl *new_pid_forword_ctrl(float kp_f, float kp, float ki, float kd);
-int PI_ff_ctrl_output(int target, int feedback, int current_output, pid_feedforword_ctrl *ctrl);
-int PI_ff_ctrl_output_stable(int target, int feedback, int current_output, pid_feedforword_ctrl *ctrl);
-int PI_ff_ctrl_output_fast(int target, int feedback, int current_output, pid_feedforword_ctrl *ctrl);
-int PI_ff_ctrl_output_slow(int target, int feedback, int current_output, pid_feedforword_ctrl *ctrl);
-
-int PI_ctrl_output(int target, int feedback, int current_output, pid_feedforword_ctrl *ctrl);
-
 void reset_forword_ctrl(pid_feedforword_ctrl *ctrl);
+int PI_ctrl_output(int target, int feedback, int current_output, pid_feedforword_ctrl *ctrl);
 
 #endif

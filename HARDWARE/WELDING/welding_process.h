@@ -23,10 +23,12 @@ void welding_process(void);
 #define REALTIME_TEMP_DISPLAY 1 // 实时温度绘制开关
 
 /*温升控制*/
-#define STABLE_ERR 25           // 稳态误差补偿
+#define STABLE_ERR 45           // 稳态误差补偿
 #define USER_SET_MAX_TEMP 650.0 // 允许用户设定的最大温度
 #define USER_SET_MIN_TEMP 200.0 // 允许用户设定的最小温度
 #define MAX_WELD_TIME 9999      // 最长焊接用时
+#define DELTA_COMPENSATE_MAX 250
+#define DETTA_COMPENSATE_MIN 100
 
 /*
  *焊接状态

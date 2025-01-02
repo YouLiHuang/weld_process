@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-26 09:06:19
+ * @LastEditTime: 2025-01-02 20:28:40
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -295,10 +295,8 @@ bool page_list_init(Component_Queue *page_list, char *name_list[], u8 list_len)
 {
 
   component_insert(page_list, newComponet("GP", 0)); // GP
-
-  for (uint8_t i = 0; i < list_len; i++) // temp1~temp3
+  for (uint8_t i = 0; i < list_len; i++)             // 插入新组件
   {
-    /*插入新组件*/
     if (component_insert(page_list, newComponet(name_list[i], 0)) != true)
       return false;
   }

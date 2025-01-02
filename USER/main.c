@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-02 15:17:32
+ * @LastEditTime: 2025-01-02 19:59:15
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -204,7 +204,6 @@ static char *temp_page_name_list[] = {
 	"ION_OFF",
 	"SGW_CTW",
 	"UP_DOWN",
-	"switch",
 	"count"};
 
 static char *param_page_name_list[] = {
@@ -270,6 +269,7 @@ int main(void)
 	page_list_init(temp_page_list,
 				   temp_page_name_list,
 				   sizeof(temp_page_name_list) / sizeof(char *));
+	component_insert(temp_page_list, newComponet("switch", 1)); // switch
 	/*设置页面*/
 	setting_page_list = newList(UART_PAGE);
 	page_list_init(setting_page_list,
@@ -1308,9 +1308,9 @@ static void page_process(Page_ID id)
 		for (u8 i = 0; i < 5; i++)
 			total_time += weld_controller->weld_time[i];
 		/*坐标划分*/
-		if (total_time < 500)
+		if (total_time <= 500)
 			delta_tick = 100;
-		else if (total_time < 1000 && total_time > 500)
+		else if (total_time > 500 && total_time <= 1000)
 			delta_tick = 200;
 		else if (total_time > 1000 && total_time <= 2500)
 			delta_tick = 500;

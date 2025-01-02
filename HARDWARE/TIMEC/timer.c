@@ -243,13 +243,15 @@ void TIM5_IRQHandler(void)
 	{
 		/*Ⅰ、反馈*/
 #if COMPENSATION == 1
-		weld_controller->realtime_temp = current_Thermocouple->slope *ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;; // 原始温度数据实时温度
-		u16 kalman_filter_temp = KalmanFilter(&kfp, weld_controller->realtime_temp);			 // 卡尔曼滤波
-		slid_windows(&lasttemp, kalman_filter_temp);											 // 滑动窗口
-		kalman_comp_temp = dynamic_temp_comp(lasttemp, dynam_comp);								 // 动态补偿
-		current_temp_comp = kalman_comp_temp;													 // 获取当前温度估计值
+		weld_controller->realtime_temp = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
+		;																			 // 原始温度数据实时温度
+		u16 kalman_filter_temp = KalmanFilter(&kfp, weld_controller->realtime_temp); // 卡尔曼滤波
+		slid_windows(&lasttemp, kalman_filter_temp);								 // 滑动窗口
+		kalman_comp_temp = dynamic_temp_comp(lasttemp, dynam_comp);					 // 动态补偿
+		current_temp_comp = kalman_comp_temp;										 // 获取当前温度估计值
 #else
-		weld_controller->realtime_temp = current_Thermocouple->slope *ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;;
+		weld_controller->realtime_temp = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
+		;
 		kalman_comp_temp = weld_controller->realtime_temp;
 		current_temp_comp = weld_controller->realtime_temp;
 #endif
@@ -272,6 +274,7 @@ void TIM5_IRQHandler(void)
 
 			if (weld_controller->pid_ctrl->stable_flag == false)
 			{
+				// 第一个设定点
 				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->first_step_set + STABLE_ERR,
 															 current_temp_comp,
 															 weld_controller->Duty_Cycle,
@@ -279,7 +282,8 @@ void TIM5_IRQHandler(void)
 			}
 			else
 			{
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->first_step_turn + STABLE_ERR,
+				// 第二个设定点
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + STABLE_ERR,
 															 current_temp_comp,
 															 weld_controller->Duty_Cycle,
 															 weld_controller->pid_ctrl);
@@ -291,7 +295,7 @@ void TIM5_IRQHandler(void)
 
 			/*3：错误检测*/
 			/*注意：阶段之间需要将错误计数值清空(此处为了报警的实时性，暂时不使用阈值模式)*/
-			if (current_temp_comp < 30 && weld_controller->step_time_tick > weld_controller->weld_time[1] * 0.9)
+			if (current_temp_comp < weld_controller->first_step_start_temp && weld_controller->step_time_tick > weld_controller->weld_time[1] * 0.1)
 			{
 #if PROTECT_ON == 1
 				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
@@ -323,6 +327,7 @@ void TIM5_IRQHandler(void)
 
 			if (weld_controller->pid_ctrl->stable_flag == false)
 			{
+				// 第一个设定点
 				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->second_step_set + STABLE_ERR,
 															 current_temp_comp,
 															 weld_controller->Duty_Cycle,
@@ -330,7 +335,8 @@ void TIM5_IRQHandler(void)
 			}
 			else
 			{
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->second_step_turn + STABLE_ERR,
+				// 第二个设定点
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
 															 current_temp_comp,
 															 weld_controller->Duty_Cycle,
 															 weld_controller->pid_ctrl);
@@ -341,7 +347,7 @@ void TIM5_IRQHandler(void)
 			TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
 
 			/*3、错误检测*/
-			if (current_temp_comp < 30 && weld_controller->step_time_tick > weld_controller->weld_time[2] / 2)
+			if (current_temp_comp < weld_controller->second_step_start_temp && weld_controller->step_time_tick > weld_controller->weld_time[2] * 0.1)
 			{
 #if PROTECT_ON == 1
 				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
