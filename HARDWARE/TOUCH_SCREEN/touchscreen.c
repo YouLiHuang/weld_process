@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-02 20:28:40
+ * @LastEditTime: 2025-01-03 19:23:40
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -704,7 +704,7 @@ void draw_point(u16 val)
  * @description: init the touch screen
  * @return {*}
  */
-void touchscreen_init(void)
+void Touchscreen_init(void)
 {
   // 串口屏幕复位
   command_send_raw(CMD_RESET);

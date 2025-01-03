@@ -25,7 +25,7 @@ extern u8 USART_RX_BUF[USART_REC_LEN]; // 接收缓冲,最大USART_REC_LEN个字
 
 void uart_init(u32 bound);
 void usart3_init(u32 bound);
-void RS485_Send_Data(u8 *buf, u8 len);
+
 void RS485_Receive_Data(u8 *buf, u8 *len);
 void usart3_set_bound(u32 bound);
 void usart3_niming_report(u8 fun, u8 *data, u8 len);

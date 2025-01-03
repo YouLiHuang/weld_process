@@ -166,7 +166,7 @@ bool command_set_comp_val(const char *name, const char *compatible, const int va
 bool command_set_comp_str(const char *name, const char *compatible, const char *str);
 bool command_get_comp_val(Component_Queue *list, const char *name, const char *compatible);
 /*常用接口*/
-void touchscreen_init(void);
+void Touchscreen_init(void);
 bool Page_to(const Page_Param *page_param, const Page_ID id);
 void draw_point(u16 val);
 bool alram_clear(Page_Param *page_param);

@@ -33,7 +33,7 @@ void output_data_plus_alarm(int alarm_data);                                    
 void output_data_plus(unsigned char anumber, unsigned char aaddress_high, unsigned char aaddress_low, unsigned char count_high, unsigned char count_low);         // 读写寄存器
 void output_data_plus_60ms(unsigned char anumber, unsigned char aaddress_high, unsigned char aaddress_low, unsigned char count_high, unsigned char count_low);    // 读写寄存器60ms间隔，用于兼容新屏幕
 void output_data_plus_nodelay(unsigned char anumber, unsigned char aaddress_high, unsigned char aaddress_low, unsigned char count_high, unsigned char count_low); // 读写寄存器无延时
-void welding_data_and_mode_reproduce(void);                                                                                                                       // 开机参数重现
+
 void linear_interpolation(u16 *input, u16 nums_of_input, u16 *output, u16 nums_of_output);                                                                        // 线性插值
 void draw_point_function(int point_number, int data_store[5]);
 

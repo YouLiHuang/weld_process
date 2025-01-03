@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-13 19:22:56
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-26 09:28:36
+ * @LastEditTime: 2025-01-03 19:21:01
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -10,9 +10,8 @@
 #include "spi.h"
 #include "delay.h"
 #include "key.h"
-#include "welding_process.h"
-#include "crc16.h"
 #include "touchscreen.h"
+#include "usart.h"
 
 /*--------------------------------------------------------------新触摸屏相关组件列表--------------------------------------------------------------*/
 extern Page_Param *page_param;
@@ -21,8 +20,14 @@ extern Component_Queue *temp_page_list;
 extern weld_ctrl *weld_controller;
 /*-----------------------------------------------------------------------------------------------------------------------------------------------*/
 
+/*--------------------------------------------------------------上位机通信相关数据----------------------------------------------------------------*/
+extern u8 ID_OF_MAS;	  // 焊机485通讯机号，默认是零
+extern u32 BOUND_SET;	  // 焊机波特率设定，默认是115200
+extern u8 last_id_of_mas; // 机号存储
+/*-----------------------------------------------------------------------------------------------------------------------------------------------*/
+
 extern int remember_array;
-int text_1 = 0;
+
 void SPI1_Init(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -132,7 +137,7 @@ void WREN(void)
 	CSN = 1;
 }
 
-void spi_data_init(void)
+void Load_data_from_mem(void)
 {
 #if RESET_SPI_DATA == 1
 	/*数据初始化*/
@@ -169,15 +174,15 @@ void spi_data_init(void)
 	TRAN1 = 1;
 	delay_ms(1000);
 	TRAN1 = 0;
-	int remember_array_init = 0;
-	remember_array_init = SPI_Load_Word(0); // 从内存加载首个GP值
-	if (remember_array_init >= 20)
-		remember_array_init = 0;
-	remember_array = remember_array_init;
+
+	remember_array = 0;
+	remember_array = SPI_Load_Word(0); // 从内存加载首个GP值
+	if (remember_array >= 20)
+		remember_array = 0;
 
 	/*首次从内存读取数据*/
-	Load_param(weld_controller, remember_array_init);
-	Load_param_alarm(weld_controller, remember_array_init);
+	Load_param(weld_controller, remember_array);
+	Load_param_alarm(weld_controller, remember_array);
 
 	/*首次加载参数后需要发送到触摸屏*/
 	char *param_name_list[] = {
@@ -214,7 +219,7 @@ void spi_data_init(void)
 			command_set_comp_val_raw(temp_name_list[i], "val", comp->val);
 	}
 	command_set_comp_val_raw("switch", "val", 1); // 默认自动模式
-	
+
 	/*参数页面UI初始化*/
 	command_send("page 1");
 	command_set_comp_val_raw("RDY_SCH", "pic", RDY);
@@ -345,8 +350,8 @@ void Load_param_alarm(weld_ctrl *ctrl, int array_of_data)
 	/*参数校验*/
 	for (u8 i = 0; i < sizeof(alarm_temperature_load) / sizeof(u16); i++)
 	{
-		if (alarm_temperature_load[i] > MAX_TEMP)
-			alarm_temperature_load[i] = MAX_TEMP;
+		if (alarm_temperature_load[i] > ALARM_MAX_TEMP)
+			alarm_temperature_load[i] = ALARM_MAX_TEMP;
 	}
 
 	for (u8 i = 0; i < sizeof(alarm_temperature_load) / sizeof(u16); i++)
@@ -379,3 +384,53 @@ void Load_param_alarm(weld_ctrl *ctrl, int array_of_data)
 		get_comp(temp_page_list, temp_name_list[i])->val = alarm_temperature_load[i];
 	}
 }
+
+/**
+ * @description: 焊机号以及上位机通信初始化
+ * @return {*}
+ */
+void Host_computer_reset(void)
+{
+	/*获取用户设定机号*/
+	last_id_of_mas = SPI_Load_Word(0x06);
+	if (last_id_of_mas > 15)
+		last_id_of_mas = 0;
+	/*焊机485通讯机号，默认是零*/
+	ID_OF_MAS = last_id_of_mas;
+
+	u32 last_bound_set = 0; // 上次波特率存储值
+	/*获取用户设定波特率*/
+	last_bound_set = SPI_Load_Word(0x08);
+	last_bound_set = (last_bound_set) | ((u32)(SPI_Load_Word(0x0a) << 16));
+	/*添加一个波特率范围检测...*/
+	if (last_bound_set == 0)
+		last_bound_set = 115200;
+
+	BOUND_SET = last_bound_set;
+	/*重新设定上位机波特率*/
+	usart3_set_bound(BOUND_SET);
+
+	/*和上位机通信*/
+	uint8_t Mas_ID_stauts[5] = {0};
+	Mas_ID_stauts[0] = 0x01;
+	Mas_ID_stauts[1] = 0x01;		 // 指令码
+	Mas_ID_stauts[2] = ID_OF_MAS;	 // 机号地址
+	Mas_ID_stauts[3] = 0x00;		 // GP
+	Mas_ID_stauts[4] = 0x01;		 // 表示焊机工作
+	BIT_ADDR(GPIOB_ODR_Addr, 9) = 1; // 设置为发送模式
+	for (int t1 = 0; t1 < 5; t1++)
+	{
+		USART3->SR;
+		USART_SendData(USART3, Mas_ID_stauts[t1]);
+		while (USART_GetFlagStatus(USART3, USART_FLAG_TC) != SET)
+			; // 把请求类型发送过去
+	}
+	BIT_ADDR(GPIOB_ODR_Addr, 9) = 0; // 设置为接收模式
+
+	/*添加触摸屏更新接口...*/
+	/*...*/
+
+	/*翻到参数设置页面*/
+	command_send_raw("page param_page");
+}
+

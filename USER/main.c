@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-03 15:00:19
+ * @LastEditTime: 2025-01-03 19:46:07
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -133,13 +133,13 @@ Thermocouple *current_Thermocouple = NULL;
 /*......*/
 /////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////错误处理回调/////////////////////////////////////////
+////////////////////////////////////////错误处理回调//////////////////////////////
 static bool Thermocouple_recheck_callback(u8 index);
 static bool Current_out_of_ctrl_callback(u8 index);
 static bool Temp_up_err_callback(u8 index);
 static bool Temp_down_err_callback(u8 index);
 
-/////////////////////////////////////错误复位回调////////////////////////////////////////////
+/////////////////////////////////////错误复位回调/////////////////////////////////
 static bool Thermocouple_reset_callback(u8 index);
 static bool Current_out_of_ctrl_reset_callback(u8 index);
 static bool Temp_up_reset_callback(u8 index);
@@ -231,28 +231,27 @@ static char *setting_page_name_list[] = {
 uint8_t ID_OF_MAS = 0;		// 焊机485通讯机号，默认是零,最大可设置15
 uint8_t last_id_of_mas = 0; // 机号存储
 u32 BOUND_SET = 0;			// 从机波特率设定
-u32 last_bound_set = 0;		// 波特率存储
-/*温度存储数据*/
 /*上位机通信参数*/
-extern int statee3;
-extern int remember_array_1;
+extern int Host_action;
+extern int Host_GP;
 extern uint16_t ModBus_time[6];		  // 焊接时间6段
 extern uint16_t ModBus_temp[3];		  // 焊接温度3段
 extern uint16_t ModBus_alarm_temp[6]; // 限制温度6段
 
-extern float temp_temperature_coefficient;
-extern float temp_temperature_coefficient_1;
-extern int temp_remember_coefficient;
-extern int temp_remember_coefficient_1;
+extern float Host_gain1;
+extern float Host_gain2;
+extern int Host_gain1_raw;
+extern int Host_gain2_raw;
 /*触摸屏通信参数*/
 extern uint16_t remember_array;
 extern int ION_IOF;
 extern int SGW_CTW;
 extern int RDY_SCH;
-u8 KEY;
+
 int main(void)
 {
 
+	/*------------------------------------------------------用户层数据对象-----------------------------------------------------------*/
 	/*pid控制器*/
 	pid_ctrl = new_pid_forword_ctrl(0, 12, 0.1, 6);
 	/*焊接控制器*/
@@ -269,7 +268,8 @@ int main(void)
 	page_list_init(temp_page_list,
 				   temp_page_name_list,
 				   sizeof(temp_page_name_list) / sizeof(char *));
-	component_insert(temp_page_list, newComponet("switch", 1)); // switch
+	component_insert(temp_page_list, newComponet("switch", 1)); // 添加开关组件
+
 	/*设置页面*/
 	setting_page_list = newList(UART_PAGE);
 	page_list_init(setting_page_list,
@@ -289,11 +289,13 @@ int main(void)
 		register_error(err_ctrl, handle);
 	}
 
+	/*绘图控制器初始化*/
 	temp_draw_ctrl = new_temp_draw_ctrl(realtime_temp_buf, 500, 2000, 500);
 
 	/*默认e型热电偶*/
 	current_Thermocouple = &coefficient_list[0];
 
+	/*------------------------------------------------------硬件层数据对象-----------------------------------------------------------*/
 	/*外设初始化*/
 	delay_init(168);								// 时钟初始化
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); // 中断分组配置
@@ -305,39 +307,26 @@ int main(void)
 	SPI1_Init();
 	ADC_DMA_INIT();
 
-	/*硬件测试代码段*/
-
-	/*已定义定时器：TIM7-TIM3(time)-TIM5(pid)-TIM1(pwm1)-TIM4(pwm2)*/
+	/*TIM7-TIM3(time)-TIM5(pid)-TIM1(pwm1)-TIM4(pwm2)*/
 	TIM3_Int_Init();
 	TIM5_Int_Init();
 	TIM2_Int_Init();
 
+	/*硬件保护初始化*/
 	TestCurrent_GPIO_Config();
 	PROTECT_Init();
-	/*1、串口屏复位*/
-	touchscreen_init();
-	/*2、该接口已适配*/
-	spi_data_init();
-	/*3、该接口已适配*/
-	welding_data_and_mode_reproduce();
 
-	/*和上位机通信*/
-	uint8_t Mas_ID_stauts[5] = {0};
-	Mas_ID_stauts[0] = 0x01;
-	Mas_ID_stauts[1] = 0x02;		   // 指令码
-	Mas_ID_stauts[2] = ID_OF_MAS;	   // 机号地址
-	Mas_ID_stauts[3] = remember_array; // 表示焊机工作
-	Mas_ID_stauts[4] = 0x03;		   // 表示焊机工作
-	BIT_ADDR(GPIOB_ODR_Addr, 9) = 1;   // 设置为发送模式
-	for (int t1 = 0; t1 < 5; t1++)
-	{
-		USART3->SR;
-		USART_SendData(USART3, Mas_ID_stauts[t1]);
-		while (USART_GetFlagStatus(USART3, USART_FLAG_TC) != SET)
-			; // 把请求类型发送过去
-	}
-	BIT_ADDR(GPIOB_ODR_Addr, 9) = 0; // 设置为接收模式
+	/*串口屏复位*/
+	Touchscreen_init();
+	/*数据加载*/
+	Load_data_from_mem();
+	/*上位机复位*/
+	Host_computer_reset();
 
+	/*硬件测试代码段*/
+	/*...*/
+
+	/*------------------------------------------------------系统层数据对象-----------------------------------------------------------*/
 	/*初始化UCOSIII*/
 	OS_ERR err;
 	CPU_SR_ALLOC();
@@ -562,7 +551,6 @@ static bool Temp_up_check(void)
 #if TEMP_CHECK
 
 	Init_Temperature = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
-	;
 	TIM1_PWM_Init();
 	TIM4_PWM_Init();
 	TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
@@ -603,7 +591,6 @@ static bool Temp_up_check(void)
 	// 延时检测温度
 	user_tim_delay(100);
 	New_Temperature = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
-	;
 
 #endif
 
@@ -761,9 +748,11 @@ void error_task(void *p_arg)
 			/*重新配置*/
 			uart_init(115200);
 			/*串口屏复位*/
-			touchscreen_init();
+			Touchscreen_init();
 			/*加载数据*/
-			spi_data_init();
+			Load_data_from_mem();
+			/*上位机复位*/
+			Host_computer_reset();
 
 			/*检查是否还有其他错误*/
 			if (err_occur(err_ctrl) == false)
@@ -1580,7 +1569,7 @@ void computer_read_task(void *p_arg)
 {
 	/*
 	上位机维护的数据：
-	ModBus_time ModBus_temp ModBus_alarm_temp remember_array_1 temp_remember_coefficient temp_temperature_coefficient temp_remember_coefficient_1 temp_temperature_coefficient_1
+	ModBus_time ModBus_temp ModBus_alarm_temp Host_GP Host_gain1_raw Host_gain1 Host_gain2_raw Host_gain2
 	用户维护的数据：
 	weld_controller->weld_time 	weld_controller->weld_temp weld_controller->alarm_temp
 	上位机修改数据后
@@ -1591,32 +1580,17 @@ void computer_read_task(void *p_arg)
 	usart3_init(115200);
 	while (1)
 	{
-		// uint8_t Mas_ID_stauts[5] = {0};
-		// Mas_ID_stauts[0] = 0x01;
-		// Mas_ID_stauts[1] = 0x02;		   // 指令码
-		// Mas_ID_stauts[2] = ID_OF_MAS;	   // 机号地址
-		// Mas_ID_stauts[3] = remember_array; // 表示焊机工作
-		// Mas_ID_stauts[4] = 0x03;		   // 表示焊机工作
-		// BIT_ADDR(GPIOB_ODR_Addr, 9) = 1;   // 设置为发送模式
-		// for (int t1 = 0; t1 < 5; t1++)
-		// {
-		// 	USART3->SR;
-		// 	USART_SendData(USART3, Mas_ID_stauts[t1]);
-		// 	while (USART_GetFlagStatus(USART3, USART_FLAG_TC) != SET)
-		// 		; // 把请求类型发送过去
-		// }
-		// BIT_ADDR(GPIOB_ODR_Addr, 9) = 0; // 设置为接收模式
 
 		/*订阅上位机的数据更新信号*/
-		OSSemPend(&COMPUTER_DATA_SYN_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+		OSSemPend(&COMPUTER_DATA_SYN_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
 		if (OS_ERR_NONE == err)
 		{
 
-			/*1、statee3不为0时为处理上位机数据，并将数据刷新到触摸屏*/
-			if (statee3 == 1)
+			/*1、Host_action不为0时为处理上位机数据，并将数据刷新到触摸屏*/
+			if (Host_action == 1)
 			{
 				/*1、数据更新*/
-				remember_array = remember_array_1; // ：上位机维护的数据 remember_array：全局维护的GP值
+				remember_array = Host_GP; // ：上位机维护的数据 remember_array：全局维护的GP值
 				/*2、屏幕刷新*/
 				for (int i = 0; i < 2; i++)
 				{
@@ -1625,12 +1599,12 @@ void computer_read_task(void *p_arg)
 					Load_param_alarm(weld_controller, remember_array);
 				}
 				SPI_Save_Word(0, 40 * (remember_array + 1) + 4);
-				statee3 = 0;
+				Host_action = 0;
 			}
-			else if ((statee3 >= 2) && (statee3 <= 17)) // statee3 为2 - 17 ，表示上位机修改单个数据，同步修改控制板参数数组和触摸屏数据
+			else if ((Host_action >= 2) && (Host_action <= 17)) // Host_action 为2 - 17 ，表示上位机修改单个数据，同步修改控制板参数数组和触摸屏数据
 			{
 				/*1、数据更新*/
-				switch (statee3)
+				switch (Host_action)
 				{
 
 				/*6个焊接时间（实际上只用五个）ModBus_time[2]弃用*/
@@ -1687,9 +1661,9 @@ void computer_read_task(void *p_arg)
 					break;
 				/*两个增益系数*/
 				case 16:
-					weld_controller->temp_gain1 = temp_temperature_coefficient;
+					weld_controller->temp_gain1 = Host_gain1;
 				case 17:
-					weld_controller->temp_gain2 = temp_temperature_coefficient_1;
+					weld_controller->temp_gain2 = Host_gain2;
 					/*保存增益*/
 					SPI_Save_Word(weld_controller->temp_gain1 * 100, 40 * (remember_array + 1) + 30);
 					SPI_Save_Word(weld_controller->temp_gain2 * 100, 40 * (remember_array + 1) + 32);
@@ -1713,12 +1687,12 @@ void computer_read_task(void *p_arg)
 				command_set_comp_val("temp_page.GAIN1", "val", weld_controller->temp_gain1 * 100);
 				command_set_comp_val("temp_page.GAIN2", "val", weld_controller->temp_gain2 * 100);
 
-				statee3 = 0;
+				Host_action = 0;
 			}
-			else if (statee3 == 20) // statee3= 20 表示改变整一页数据，将修改数据同步到参数数组和触摸屏，
+			else if (Host_action == 20) // Host_action= 20 表示改变整一页数据，将修改数据同步到参数数组和触摸屏，
 			{
 				/*1、数据更新*/
-				remember_array = remember_array_1;
+				remember_array = Host_GP;
 
 				weld_controller->weld_time[0] = ModBus_time[0];
 				weld_controller->weld_time[1] = ModBus_time[1];
@@ -1736,48 +1710,6 @@ void computer_read_task(void *p_arg)
 				weld_controller->alarm_temp[3] = ModBus_alarm_temp[3];
 				weld_controller->alarm_temp[4] = ModBus_alarm_temp[4];
 				weld_controller->alarm_temp[5] = ModBus_alarm_temp[5];
-
-				/*2、屏幕刷新*/
-				/*GP值刷新*/
-				command_set_comp_val("GP", "val", remember_array);
-				/*时间刷新*/
-				char *time_name_list[] = {
-					"param_page.time1",
-					"param_page.time2",
-					"param_page.time3",
-					"param_page.time4",
-					"param_page.time5",
-				};
-				for (u8 i = 0; i < sizeof(time_name_list) / sizeof(time_name_list[0]); i++)
-				{
-					command_set_comp_val(time_name_list[i], "val", weld_controller->weld_time[i - 1]);
-				}
-				/*温度刷新*/
-				char *temp_name_list[] = {
-					"param_page.temp1",
-					"param_page.temp2",
-					"param_page.temp3",
-				};
-				for (u8 i = 0; i < sizeof(temp_name_list) / sizeof(temp_name_list[0]); i++)
-				{
-					command_set_comp_val(temp_name_list[i], "val", weld_controller->weld_temp[i - 1]);
-				}
-
-				/*温度刷新*/
-				char *alarm_name_list[] = {
-					"temp_page.alarm1",
-					"temp_page.alarm2",
-					"temp_page.alarm3",
-					"temp_page.alarm4",
-					"temp_page.alarm5",
-				};
-				for (u8 i = 0; i < sizeof(alarm_name_list) / sizeof(alarm_name_list[0]); i++)
-				{
-					command_set_comp_val(alarm_name_list[i], "val", weld_controller->alarm_temp[i - 1]);
-				}
-				/*增益刷新*/
-				command_set_comp_val("temp_page.GAIN1", "val", weld_controller->temp_gain1 * 100);
-				command_set_comp_val("temp_page.GAIN2", "val", weld_controller->temp_gain2 * 100);
 
 				/*3、将用户数据更新至外部flash*/
 				/*保存焊接时间*/
@@ -1801,7 +1733,7 @@ void computer_read_task(void *p_arg)
 				/*保存增益*/
 				SPI_Save_Word(weld_controller->temp_gain1 * 100, 40 * (remember_array + 1) + 30);
 				SPI_Save_Word(weld_controller->temp_gain2 * 100, 40 * (remember_array + 1) + 32);
-				statee3 = 0;
+				Host_action = 0;
 			}
 
 			data_sync_from_computer();

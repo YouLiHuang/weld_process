@@ -20,7 +20,6 @@ u8 read_group_nums = 0;					 // 用于多次验证读数，防止读取数据出
 u8 last_read_group_num = 0;				 // 用于多次验证读数，防止读取数据出错，第一读取的组号
 struct crc16_struct temp = {0x00, 0x00}; // 实例化一个crc16对象
 int remember_array = -1;				 // 焊接参数组号存储
-int remember_page = -1;					 // 触摸屏当前所处页面记录
 int ION_IOF = 0;						 // 电流开关
 int RDY_SCH = 0;						 // 参数修改标志
 int SGW_CTW = 0;						 // 单点连续标志
@@ -41,10 +40,7 @@ extern weld_ctrl *weld_controller;
 
 /*------------------------------------------------------------------------------------*/
 extern int require_state;
-extern u8 ID_OF_MAS;	   // 焊机485通讯机号，默认是零
-extern u32 BOUND_SET;	   // 焊机波特率设定，默认是115200
-extern u32 last_bound_set; // 波特率存储
-extern u8 last_id_of_mas;  // 机号存储
+
 int temp_data;
 int counting_tt;
 
@@ -367,55 +363,8 @@ int bound_trail(u32 bound)
 		return 0;
 }
 
-/*
-  开机初始化时，恢复用户数据
-*/
-void welding_data_and_mode_reproduce(void)
-{
-	/*获取用户设定机号*/
-	last_id_of_mas = SPI_Load_Word(0x06);
-	if (last_id_of_mas > 15)
-	{
-		last_id_of_mas = 0;
-	}
-	/*数字转字符串*/
-	char *id = (char *)calloc(10, sizeof(char));
-	if (id != NULL)
-	{
-		sprintf(id, "%d", last_id_of_mas);
-		free(id);
-	}
-	/*更新触摸屏通讯机号*/
-	command_set_comp_str_raw("uart_page.cb0", "txt", id);
 
-	ID_OF_MAS = last_id_of_mas; /*焊机485通讯机号，默认是零*/
 
-	/*获取用户设定波特率*/
-	last_bound_set = SPI_Load_Word(0x08);
-	last_bound_set = (last_bound_set) | ((u32)(SPI_Load_Word(0x0a) << 16));
-	if (bound_trail(last_bound_set)) // 判断是不是规定内波特率
-	{
-		if (last_bound_set == 0)
-			last_bound_set = 115200;
-	}
-	else // 不是规定波特率值
-	{
-		last_bound_set = 115200;
-	}
-	BOUND_SET = last_bound_set;
-	// 重新设定上位机波特率
-	usart3_set_bound(BOUND_SET);
-	/*数字转字符串*/
-	char *bauds = (char *)calloc(10, sizeof(char));
-	if (bauds != NULL)
-	{
-		sprintf(bauds, "%d", BOUND_SET);
-		free(bauds);
-	}
-	command_set_comp_str_raw("uart_page.cb1", "txt", bauds); // 更新触摸屏
-	command_send_raw("page param_page");					 // 翻到参数设置页面
-	delay_ms(500);
-}
 /**
  * @description: 线性插值函数
  * @param {int} *input              输入数组

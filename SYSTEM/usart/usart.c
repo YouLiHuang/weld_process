@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-02 15:16:32
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-03 15:00:07
+ * @LastEditTime: 2025-01-03 19:37:50
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -64,30 +64,25 @@ uint16_t ModBus_time[6];	   // 焊接时间6段
 uint16_t ModBus_temp[3];	   // 焊接温度3段
 uint16_t ModBus_alarm_temp[6]; // 限制温度6段
 
-int receive_number3 = 0;
-int statee3 = 0;
+int receive_number_computer = 0;
+int Host_action = 0;
 
-int remember_array_1 = 0; // GP
-int temp_remember_coefficient;
-
-int dispose_flag = 0;
-int temp_remember_coefficient_1; // 上位机增益参数暂存
+int Host_GP = 0; // GP
+int Host_gain1_raw;		  // 整数
+int Host_gain2_raw;		  // 整数
+float Host_gain2;		  // 上位机增益1参数暂存（浮点数）
+float Host_gain1;		  // 上位机增益2参数暂存（浮点数）
 
 struct crc16_struct1 temp1 = {0x00, 0x00}; // 触摸屏crc16 校验
 struct crc16_struct3 temp2 = {0x00, 0x00}; // 上位机crc16 校验
-float temp_temperature_coefficient_1;	   // 上位机增益1参数暂存
-float temp_temperature_coefficient;		   // 上位机增益2参数暂存
 
-extern int RDY_SCH;
-int require_state;
-extern u8 ID_OF_MAS;
-extern u32 BOUND_SET;
-extern u32 last_bound_set;
-extern u8 last_id_of_mas;
-/*消息队列*/
-extern OS_Q UART_Msg;
-extern Error_ctrl *err_ctrl;
-extern Page_Param *page_param;
+extern u8 ID_OF_MAS; // 焊机485通讯机号，默认是零
+extern int RDY_SCH;	 // 参数设置按键
+
+extern OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
+extern OS_Q UART_Msg;				 // 消息队列
+extern Error_ctrl *err_ctrl;		 // 错误控制器
+extern Page_Param *page_param;		 // 页面信息
 extern OS_SEM ALARM_RESET_SEM;
 extern OS_SEM PAGE_UPDATE_SEM;
 extern OS_SEM COMP_VAL_GET_SEM;
@@ -240,27 +235,6 @@ void UART4_IRQHandler(void) // 串口4中断服务程序
 }
 
 /**
- * @description:  使用串口4发送数据，暂未使用
- * @param {u8} *buf 数组
- * @param {u8} len 长度
- * @return {*}
- */
-void RS485_Send_Data(u8 *buf, u8 len)
-{
-	u8 t;
-	RS485_TX_EN = 1;		  // 设置为发送模式
-	for (t = 0; t < len; t++) // 循环发送数据
-	{
-		while (USART_GetFlagStatus(UART4, USART_FLAG_TC) == RESET)
-			;						   // 等待发送结束
-		USART_SendData(UART4, buf[t]); // 发送数据
-	}
-	while (USART_GetFlagStatus(UART4, USART_FLAG_TC) == RESET)
-		;			 // 等待发送结束
-	RS485_TX_EN = 0; // 设置为接收模式
-}
-
-/**
  * @description: 串口3初始化，用于触摸屏通讯处理
  * 				用到GPIOB10  GPIOB11 以及 PG9做使能
  * @param {u32} bound 波特率设置
@@ -377,10 +351,8 @@ void usart3_ack_to_host(u8 IDNUM, u8 flag, u8 comd)
 	BIT_ADDR(GPIOB_ODR_Addr, 9) = 0; // 设置为接收模式
 }
 
-extern OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
 /**
- * @description:  串口3中断
- * 			1、实现对上位机数据的接收和处理
+ * @description: 串口3中断，实现对上位机数据的接收和处理
  * @return {*}
  */
 void USART3_IRQHandler(void) // 串口3中断服务程序
@@ -391,20 +363,23 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 
 	if (USART_GetITStatus(USART3, USART_IT_RXNE) != RESET) // 接收中断
 	{
-		USART_RX_BUF3[receive_number3++] = USART_ReceiveData(USART3);
+		USART_RX_BUF3[receive_number_computer++] = USART_ReceiveData(USART3);
 		USART_ClearITPendingBit(USART3, USART_IT_RXNE);
 	}
 
 	if (USART_GetITStatus(USART3, USART_IT_IDLE) == SET) // 空闲中断
 	{
+		OS_ERR err;
 		int crc16_get = 0;
-		if (receive_number3 >= 2 && (RDY_SCH == 0) && (ID_OF_MAS == USART_RX_BUF3[0]) && (false == err_occur(err_ctrl)) && (get_weld_flag() == IDEAL_MODE)) /* 需要保证此时不在焊接过程才能进行数据通讯 */
+		int temp;
+		/* 需要保证此时不在焊接过程才能进行数据通讯 */
+		if (receive_number_computer >= 2 && (RDY_SCH == 0) && (ID_OF_MAS == USART_RX_BUF3[0]) && (false == err_occur(err_ctrl)) && (get_weld_flag() == IDEAL_MODE))
 		{
-			crc16_get = CRC16(USART_RX_BUF3, receive_number3 - 2); // 检测数据是否正确
+			crc16_get = CRC16(USART_RX_BUF3, receive_number_computer - 2); // 检测数据是否正确
 			temp2.crc16_high = crc16_get >> 8;
 			temp2.crc16_low = crc16_get;
 			/*crc16校验*/
-			if (USART_RX_BUF3[receive_number3 - 2] == temp2.crc16_high && USART_RX_BUF3[receive_number3 - 1] == temp2.crc16_low)
+			if (USART_RX_BUF3[receive_number_computer - 2] == temp2.crc16_high && USART_RX_BUF3[receive_number_computer - 1] == temp2.crc16_low)
 			{
 				/*单个数据写入处理*/
 				if (USART_RX_BUF3[1] == 0x06)
@@ -416,129 +391,129 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 					case 0:
 						if (VALUE_DATA <= 20)
 						{
-							remember_array_1 = VALUE_DATA; // 参数组号
-							statee3 = 1;
+							Host_GP = VALUE_DATA; // 参数组号
+							Host_action = 1;
 						}
 						break;
 					case 1:
 						if (VALUE_DATA <= 999)
 						{
 							ModBus_time[0] = VALUE_DATA; // 焊接时间0
-							statee3 = 2;
+							Host_action = 2;
 						}
 						break;
 					case 2:
 						if (VALUE_DATA <= 999)
 						{
 							ModBus_time[1] = VALUE_DATA; // 焊接时间1
-							statee3 = 3;
+							Host_action = 3;
 						}
 						break;
 					case 3:
 						if (VALUE_DATA <= 999)
 						{
 							ModBus_time[3] = VALUE_DATA; // 焊接时间3
-							statee3 = 4;
+							Host_action = 4;
 						}
 						break;
 					case 4:
 						if (VALUE_DATA <= 999)
 						{
 							ModBus_time[4] = VALUE_DATA; // 焊接时间4
-							statee3 = 5;
+							Host_action = 5;
 						}
 						break;
 					case 5:
 						if (VALUE_DATA <= 999)
 						{
 							ModBus_time[5] = VALUE_DATA; // 焊接时间5
-							statee3 = 6;
+							Host_action = 6;
 						}
 						break;
 					case 6:
 						if (VALUE_DATA <= 650)
 						{
 							ModBus_temp[0] = VALUE_DATA; // 焊接温度0
-							statee3 = 7;
+							Host_action = 7;
 						}
 						break;
 					case 7:
 						if (VALUE_DATA <= 650)
 						{
 							ModBus_temp[1] = VALUE_DATA; // 焊接温度1
-							statee3 = 8;
+							Host_action = 8;
 						}
 						break;
 					case 8:
 						if (VALUE_DATA <= 650)
 						{
 							ModBus_temp[2] = VALUE_DATA; // 焊接温度2
-							statee3 = 9;
+							Host_action = 9;
 						}
 						break;
 					case 9:
 						if (VALUE_DATA <= 650)
 						{
 							ModBus_alarm_temp[0] = VALUE_DATA; // 报警温度0 up
-							statee3 = 0;
+							Host_action = 0;
 						}
 						break;
 					case 10:
 						if (VALUE_DATA <= 650)
 						{
 							ModBus_alarm_temp[1] = VALUE_DATA; // 报警温度0 down
-							statee3 = 11;
+							Host_action = 11;
 						}
 						break;
 					case 11:
 						if (VALUE_DATA <= 650)
 						{
 							ModBus_alarm_temp[2] = VALUE_DATA; // 报警温度1 up
-							statee3 = 12;
+							Host_action = 12;
 						}
 						break;
 					case 12:
 						if (VALUE_DATA <= 650)
 						{
 							ModBus_alarm_temp[3] = VALUE_DATA; // 报警温度1 down
-							statee3 = 13;
+							Host_action = 13;
 						}
 						break;
 					case 13:
 						if (VALUE_DATA <= 650)
 						{
 							ModBus_alarm_temp[4] = VALUE_DATA; // 报警温度2 up
-							statee3 = 14;
+							Host_action = 14;
 						}
 						break;
 					case 14:
 						if (VALUE_DATA <= 650)
 						{
 							ModBus_alarm_temp[5] = VALUE_DATA; // 报警温度2 down
-							statee3 = 15;
+							Host_action = 15;
 						}
 						break;
 					case 15:
 						if (VALUE_DATA <= 999)
 						{
-							temp_temperature_coefficient = VALUE_DATA * 0.01; // 温度增益1
-							temp_remember_coefficient = VALUE_DATA;
-							statee3 = 16;
+							Host_gain1 = VALUE_DATA * 0.01; // 温度增益1
+							Host_gain1_raw = VALUE_DATA;
+							Host_action = 16;
 						}
 						break;
 					case 16:
 						if (VALUE_DATA <= 999)
 						{
 
-							temp_temperature_coefficient_1 = VALUE_DATA * 0.01; // 温度增益2
-							temp_remember_coefficient_1 = VALUE_DATA;
-							statee3 = 17;
+							Host_gain2 = VALUE_DATA * 0.01; // 温度增益2
+							Host_gain2_raw = VALUE_DATA;
+							Host_action = 17;
 						}
 						break;
 					}
 				}
 				/*写入多个数值，就是整一页修改*/
-				if (USART_RX_BUF3[1] == 0x10 && receive_number3 >= 20)
+				if (USART_RX_BUF3[1] == 0x10 && receive_number_computer >= 20)
 				{
 					int VALUE_DATA2[18] = {0}; // 定义一个存放16个数的数组
 					VALUE_DATA2[0] = USART_RX_BUF3[4] * 256 + USART_RX_BUF3[5];
@@ -561,7 +536,7 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 
 					// GP值
 					if (VALUE_DATA2[0] < 20)
-						remember_array_1 = VALUE_DATA2[0];
+						Host_GP = VALUE_DATA2[0];
 					// 焊接各段时间,ModBus_time[2]弃用
 					if (VALUE_DATA2[1] <= 999)
 						ModBus_time[0] = VALUE_DATA2[1];
@@ -596,38 +571,37 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 					// gain
 					if (VALUE_DATA2[15] <= 999)
 					{
-						temp_temperature_coefficient = VALUE_DATA2[15] * 0.01;
-						temp_remember_coefficient = VALUE_DATA2[15];
+						Host_gain1 = VALUE_DATA2[15] * 0.01;
+						Host_gain1_raw = VALUE_DATA2[15];
 					}
 					if (VALUE_DATA2[16] <= 999)
 					{
-						temp_temperature_coefficient_1 = VALUE_DATA2[16] * 0.01;
-						temp_remember_coefficient_1 = VALUE_DATA2[16];
+						Host_gain2 = VALUE_DATA2[16] * 0.01;
+						Host_gain2_raw = VALUE_DATA2[16];
 					}
-					statee3 = 20;
+					Host_action = 20;
 				}
 			}
 		}
-		if ((statee3 >= 1 && statee3 <= 17) || USART_RX_BUF3[1] == 0x06) // 单个数据修改，对上位机进行应答
+
+		/*单个数据修改，对上位机进行应答*/
+		if ((Host_action >= 1 && Host_action <= 17) || USART_RX_BUF3[1] == 0x06)
 			usart3_ack_to_host(ID_OF_MAS, 1, 0x06);
 
-		if (statee3 == 20 || USART_RX_BUF3[1] == 0x10) // 多个数据修改，对上位机进行应答
+		/*多个数据修改，对上位机进行应答*/
+		if (Host_action == 20 || USART_RX_BUF3[1] == 0x10)
 			usart3_ack_to_host(ID_OF_MAS, 1, 0x10);
 
 		/*清除标志*/
-		int temp;
 		temp = UART4->SR;
 		temp = UART4->DR;
 		temp = temp;
 
 		USART_ClearITPendingBit(USART3, USART_IT_IDLE);							  // 清除空闲中断
 		for (u8 i = 0; i < sizeof(USART_RX_BUF3) / sizeof(USART_RX_BUF3[0]); i++) // 接收数组复位
-		{
 			USART_RX_BUF3[i] = 0;
-		}
 
-		receive_number3 = 0; // 接收长度复位
-		OS_ERR err;
+		receive_number_computer = 0;							  // 接收长度复位
 		OSSemPost(&COMPUTER_DATA_SYN_SEM, OS_OPT_POST_ALL, &err); // 通知线程进行数据同步
 	}
 
@@ -642,7 +616,6 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 #endif
 }
 
-// 电脑串口通信
 void usart3_send_char(u8 c)
 {
 	BIT_ADDR(GPIOB_ODR_Addr, 9) = 1;
@@ -650,6 +623,7 @@ void usart3_send_char(u8 c)
 		; // 等待上一次发送完毕
 	USART3->DR = c;
 }
+
 /*		传送数据给匿名四轴上位机软件(V2.6版本)
 			fun:功能字. 0XA0~0XAF
 			data:数据缓存区,最多28字节!!
