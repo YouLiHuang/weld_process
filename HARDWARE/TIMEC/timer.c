@@ -336,7 +336,7 @@ void TIM5_IRQHandler(void)
 			else
 			{
 				// 第二个设定点
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR * 1.1, // 动态补偿（后续线性补偿）
 															 current_temp_comp,
 															 weld_controller->Duty_Cycle,
 															 weld_controller->pid_ctrl);
