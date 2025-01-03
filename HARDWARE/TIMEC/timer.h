@@ -1,3 +1,12 @@
+/***
+ * @Author: huangyouli.scut@gmail.com
+ * @Date: 2025-01-03 18:51:41
+ * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
+ * @LastEditTime: 2025-01-03 19:51:43
+ * @Description:
+ * @
+ * @Copyright (c) 2025 by huangyouli, All Rights Reserved.
+ */
 #ifndef _TIMER_H
 #define _TIMER_H
 #include "sys.h"
@@ -6,6 +15,7 @@
 #define COMPENSATION 0
 
 #define WIN_WIDTH 550        // 显示区域宽度
+#define DRAW_RESERVE 10      // 绘图余量
 #define MAX_TEMP_DISPLAY 720 // 最大能显示的温度
 
 void TIM3_Int_Init(void);

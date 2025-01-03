@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-03 19:46:07
+ * @LastEditTime: 2025-01-03 19:52:39
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -1771,7 +1771,7 @@ void draw_task(void *p_arg)
 				total_time += weld_controller->weld_time[i];
 
 			weld_win_width = total_time / (temp_draw_ctrl->delta_tick - 1); // 转换计算(参见读写线程的坐标绘制)：焊接周期绘图区域大小
-			win_width = WIN_WIDTH - weld_win_width - 10;					// 温降曲线绘图区域大小（留一个余量）
+			win_width = WIN_WIDTH - weld_win_width - DRAW_RESERVE;			// 温降曲线绘图区域大小（留一个余量）
 			if (win_width >= WIN_WIDTH / 2)
 				win_width = WIN_WIDTH / 2;
 			while (index < win_width)
