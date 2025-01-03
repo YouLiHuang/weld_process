@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-03 19:52:39
+ * @LastEditTime: 2025-01-03 19:54:59
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -802,7 +802,7 @@ static void Temp_updata_realtime()
 	//	float temp2=0.1618 * adcx7 + 11.048;
 	u16 voltage = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10; //*3300/4096
 	weld_controller->realtime_temp = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
-	;
+	
 
 #if TEMP_ADJUST == 1
 	command_set_comp_val("temp22", "val", voltage);
