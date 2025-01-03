@@ -324,10 +324,10 @@ int main(void)
 	/*和上位机通信*/
 	uint8_t Mas_ID_stauts[5] = {0};
 	Mas_ID_stauts[0] = 0x01;
-	Mas_ID_stauts[1] = 0x01;		   // 指令码
+	Mas_ID_stauts[1] = 0x02;		   // 指令码
 	Mas_ID_stauts[2] = ID_OF_MAS;	   // 机号地址
 	Mas_ID_stauts[3] = remember_array; // 表示焊机工作
-	Mas_ID_stauts[4] = 0x01;		   // 表示焊机工作
+	Mas_ID_stauts[4] = 0x03;		   // 表示焊机工作
 	BIT_ADDR(GPIOB_ODR_Addr, 9) = 1;   // 设置为发送模式
 	for (int t1 = 0; t1 < 5; t1++)
 	{
@@ -1588,11 +1588,27 @@ void computer_read_task(void *p_arg)
 	（2）完成数据同步
 	*/
 	OS_ERR err;
+	usart3_init(115200);
 	while (1)
 	{
+		// uint8_t Mas_ID_stauts[5] = {0};
+		// Mas_ID_stauts[0] = 0x01;
+		// Mas_ID_stauts[1] = 0x02;		   // 指令码
+		// Mas_ID_stauts[2] = ID_OF_MAS;	   // 机号地址
+		// Mas_ID_stauts[3] = remember_array; // 表示焊机工作
+		// Mas_ID_stauts[4] = 0x03;		   // 表示焊机工作
+		// BIT_ADDR(GPIOB_ODR_Addr, 9) = 1;   // 设置为发送模式
+		// for (int t1 = 0; t1 < 5; t1++)
+		// {
+		// 	USART3->SR;
+		// 	USART_SendData(USART3, Mas_ID_stauts[t1]);
+		// 	while (USART_GetFlagStatus(USART3, USART_FLAG_TC) != SET)
+		// 		; // 把请求类型发送过去
+		// }
+		// BIT_ADDR(GPIOB_ODR_Addr, 9) = 0; // 设置为接收模式
 
 		/*订阅上位机的数据更新信号*/
-		OSSemPend(&COMPUTER_DATA_SYN_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+		OSSemPend(&COMPUTER_DATA_SYN_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (OS_ERR_NONE == err)
 		{
 

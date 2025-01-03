@@ -144,7 +144,7 @@ void uart_init(u32 bound)
 	USART_ClearFlag(UART4, USART_FLAG_TC);
 
 #if EN_USART4_RX
-	USART_ITConfig(UART4, USART_IT_RXNE, ENABLE); // 开启接受中?
+	USART_ITConfig(UART4, USART_IT_RXNE, ENABLE); // 开启接收中断
 	USART_ITConfig(UART4, USART_IT_IDLE, ENABLE);
 	// Usart2 NVIC 配置
 	NVIC_InitStructure.NVIC_IRQChannel = UART4_IRQn;
@@ -308,23 +308,23 @@ void usart3_init(u32 bound)
 	USART_InitStructure.USART_Parity = USART_Parity_No;								// 无奇偶校验位
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None; // 无硬件数据流控制
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;					// 收发模式
-	USART_Init(USART3, &USART_InitStructure);										// 初始化串口2
+	USART_Init(USART3, &USART_InitStructure);										// 初始化串口3
 
 	USART_Cmd(USART3, ENABLE); // 使能串口 2
 
 	USART_ClearFlag(USART3, USART_FLAG_TC);
 
 #if EN_USART3_RX
-	USART_ITConfig(USART3, USART_IT_RXNE, ENABLE); // 开启接受中?
+	USART_ITConfig(USART3, USART_IT_RXNE, ENABLE); // 开启接收中断
 	USART_ITConfig(USART3, USART_IT_IDLE, ENABLE);
 	// Usart2 NVIC 配置
 	NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3; // 抢占优先级3
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;		  // 子优先级3
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 4;		  // 子优先级3
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			  // IRQ通道使能
 	NVIC_Init(&NVIC_InitStructure);							  // 根据指定的参数初始化VIC寄存器、
 #endif
-	BIT_ADDR(GPIOB_ODR_Addr, 9) = 1; // 默认为接收模式
+	BIT_ADDR(GPIOB_ODR_Addr, 9) = 0; // 默认为接收模式
 }
 
 /**
@@ -385,26 +385,17 @@ extern OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
  */
 void USART3_IRQHandler(void) // 串口3中断服务程序
 {
-	u8 Res_3;
 #if SYSTEM_SUPPORT_OS // 使用UCOS操作系统
 	OSIntEnter();
 #endif
 
-	if (USART_GetITStatus(USART3, USART_IT_TC) == SET)
+	if (USART_GetITStatus(USART3, USART_IT_RXNE) != RESET) // 接收中断
 	{
-		USART_ITConfig(USART3, USART_IT_TC, DISABLE);
-		USART_ClearITPendingBit(USART3, USART_IT_TC);
-	}
-	if (USART_GetITStatus(USART3, USART_IT_RXNE) != RESET) // 接收中断(接收到的数据必须是0x0d 0x0a结尾)
-	{
-
-		Res_3 = USART_ReceiveData(USART3); //(USART1->DR);	//读取接收到的数据
-		USART_RX_BUF3[receive_number3] = Res_3;
-		receive_number3++;
+		USART_RX_BUF3[receive_number3++] = USART_ReceiveData(USART3);
 		USART_ClearITPendingBit(USART3, USART_IT_RXNE);
 	}
 
-	if (USART_GetFlagStatus(USART3, USART_FLAG_IDLE) != RESET)
+	if (USART_GetITStatus(USART3, USART_IT_IDLE) == SET) // 空闲中断
 	{
 		int crc16_get = 0;
 		if (receive_number3 >= 2 && (RDY_SCH == 0) && (ID_OF_MAS == USART_RX_BUF3[0]) && (false == err_occur(err_ctrl)) && (get_weld_flag() == IDEAL_MODE)) /* 需要保证此时不在焊接过程才能进行数据通讯 */
@@ -623,11 +614,6 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 		if (statee3 == 20 || USART_RX_BUF3[1] == 0x10) // 多个数据修改，对上位机进行应答
 			usart3_ack_to_host(ID_OF_MAS, 1, 0x10);
 
-		// else if (USART_RX_BUF3[1] == 0x06)
-		// 	usart3_ack_to_host(ID_OF_MAS, 0, 0x06);
-		// else if (USART_RX_BUF3[1] == 0x10)
-		// 	usart3_ack_to_host(ID_OF_MAS, 0, 0x10);
-
 		/*清除标志*/
 		int temp;
 		temp = UART4->SR;
@@ -644,6 +630,13 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 		OS_ERR err;
 		OSSemPost(&COMPUTER_DATA_SYN_SEM, OS_OPT_POST_ALL, &err); // 通知线程进行数据同步
 	}
+
+	if (USART_GetITStatus(USART3, USART_IT_TC) == SET)
+	{
+		USART_ITConfig(USART3, USART_IT_TC, DISABLE);
+		USART_ClearITPendingBit(USART3, USART_IT_TC);
+	}
+
 #if SYSTEM_SUPPORT_OS
 	OSIntExit(); // 退出中断
 #endif

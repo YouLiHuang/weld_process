@@ -261,8 +261,8 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 			delta_temp = ctrl->weld_temp[1] - ctrl->second_step_start_temp;
 			if (delta_temp < DELTA_COMPENSATE_MAX && delta_temp > DETTA_COMPENSATE_MIN)
 			{
-				ctrl->second_step_turn = 0.9 * ctrl->weld_temp[1];									// 刹车点
-				ctrl->second_step_set = ctrl->second_step_start_temp + DELTA_COMPENSATE_MAX * 0.75; // 第1个阶跃目标（设大，为了快速性）
+				ctrl->second_step_turn = 0.9 * ctrl->weld_temp[1];								   // 刹车点
+				ctrl->second_step_set = ctrl->second_step_start_temp + DELTA_COMPENSATE_MAX * 0.8; // 第1个阶跃目标（设大，为了快速性）
 			}
 			/*离设定点较远或较近，无需改进*/
 			else
