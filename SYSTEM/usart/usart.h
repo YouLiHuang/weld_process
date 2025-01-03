@@ -17,7 +17,7 @@
 #include "stdbool.h"
 
 #define USART_REC_LEN 30               // 定义最大接收字节数 30
-#define USART3_REC_LEN3 200            // 定义最大接收字节数 200
+#define USART3_REC_LEN3 100            // 定义最大接收字节数 100
 #define EN_USART4_RX 1                 // 使能（1）/禁止（0）串口1接收
 #define EN_USART3_RX 1                 // 使能（1）/禁止（0）串口1接收
 #define RS485_TX_EN PAout(2)           // 485模式控制.0,接收;1,发送.

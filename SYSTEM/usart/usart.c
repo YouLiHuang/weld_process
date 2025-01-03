@@ -1,3 +1,12 @@
+/*
+ * @Author: huangyouli.scut@gmail.com
+ * @Date: 2025-01-02 15:16:32
+ * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
+ * @LastEditTime: 2025-01-03 15:00:07
+ * @Description:
+ *
+ * Copyright (c) 2025 by huangyouli, All Rights Reserved.
+ */
 #include "sys.h"
 #include "usart.h"
 #include "crc16.h"
@@ -398,15 +407,16 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 	if (USART_GetFlagStatus(USART3, USART_FLAG_IDLE) != RESET)
 	{
 		int crc16_get = 0;
-		int temp;
 		if (receive_number3 >= 2 && (RDY_SCH == 0) && (ID_OF_MAS == USART_RX_BUF3[0]) && (false == err_occur(err_ctrl)) && (get_weld_flag() == IDEAL_MODE)) /* 需要保证此时不在焊接过程才能进行数据通讯 */
 		{
 			crc16_get = CRC16(USART_RX_BUF3, receive_number3 - 2); // 检测数据是否正确
 			temp2.crc16_high = crc16_get >> 8;
 			temp2.crc16_low = crc16_get;
+			/*crc16校验*/
 			if (USART_RX_BUF3[receive_number3 - 2] == temp2.crc16_high && USART_RX_BUF3[receive_number3 - 1] == temp2.crc16_low)
 			{
-				if (USART_RX_BUF3[1] == 0x06) // 单个数据写入处理
+				/*单个数据写入处理*/
+				if (USART_RX_BUF3[1] == 0x06)
 				{
 					int VALUE_DATA = 0;										// 被写入的单个数值大小
 					VALUE_DATA = USART_RX_BUF3[4] * 256 + USART_RX_BUF3[5]; // 即16位，前面8位和后面8位
@@ -536,7 +546,8 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 						break;
 					}
 				}
-				if (USART_RX_BUF3[1] == 0x10 && receive_number3 == 40) // 写入多个数值，就是整一页修改
+				/*写入多个数值，就是整一页修改*/
+				if (USART_RX_BUF3[1] == 0x10 && receive_number3 >= 20)
 				{
 					int VALUE_DATA2[18] = {0}; // 定义一个存放16个数的数组
 					VALUE_DATA2[0] = USART_RX_BUF3[4] * 256 + USART_RX_BUF3[5];
@@ -556,12 +567,11 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 					VALUE_DATA2[14] = USART_RX_BUF3[32] * 256 + USART_RX_BUF3[33];
 					VALUE_DATA2[15] = USART_RX_BUF3[34] * 256 + USART_RX_BUF3[35];
 					VALUE_DATA2[16] = USART_RX_BUF3[36] * 256 + USART_RX_BUF3[37];
-					// VALUE_DATA2[17] = USART_RX_BUF3[38] * 256 + USART_RX_BUF3[39];
 
 					// GP值
 					if (VALUE_DATA2[0] < 20)
 						remember_array_1 = VALUE_DATA2[0];
-					// 焊接各段时间
+					// 焊接各段时间,ModBus_time[2]弃用
 					if (VALUE_DATA2[1] <= 999)
 						ModBus_time[0] = VALUE_DATA2[1];
 					if (VALUE_DATA2[2] <= 999)
@@ -572,8 +582,6 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 						ModBus_time[4] = VALUE_DATA2[4];
 					if (VALUE_DATA2[5] <= 999)
 						ModBus_time[5] = VALUE_DATA2[5];
-					// if (VALUE_DATA2[6] <= 999)
-					// ModBus_time[5] = VALUE_DATA2[6];
 					//  三段焊接温度
 					if (VALUE_DATA2[6] <= 650)
 						ModBus_temp[0] = VALUE_DATA2[6];
@@ -609,42 +617,32 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 				}
 			}
 		}
-		if (statee3 >= 1 && statee3 <= 18) // 按照不同的标志位，对上位机进行应答
-		{
+		if ((statee3 >= 1 && statee3 <= 17) || USART_RX_BUF3[1] == 0x06) // 单个数据修改，对上位机进行应答
 			usart3_ack_to_host(ID_OF_MAS, 1, 0x06);
-		}
-		else if (USART_RX_BUF3[1] == 0x06)
-		{
-			usart3_ack_to_host(ID_OF_MAS, 0, 0x06);
-		}
-		if (statee3 == 20)
-		{
+
+		if (statee3 == 20 || USART_RX_BUF3[1] == 0x10) // 多个数据修改，对上位机进行应答
 			usart3_ack_to_host(ID_OF_MAS, 1, 0x10);
-		}
-		else if (USART_RX_BUF3[1] == 0x10)
+
+		// else if (USART_RX_BUF3[1] == 0x06)
+		// 	usart3_ack_to_host(ID_OF_MAS, 0, 0x06);
+		// else if (USART_RX_BUF3[1] == 0x10)
+		// 	usart3_ack_to_host(ID_OF_MAS, 0, 0x10);
+
+		/*清除标志*/
+		int temp;
+		temp = UART4->SR;
+		temp = UART4->DR;
+		temp = temp;
+
+		USART_ClearITPendingBit(USART3, USART_IT_IDLE);							  // 清除空闲中断
+		for (u8 i = 0; i < sizeof(USART_RX_BUF3) / sizeof(USART_RX_BUF3[0]); i++) // 接收数组复位
 		{
-			usart3_ack_to_host(ID_OF_MAS, 0, 0x10);
+			USART_RX_BUF3[i] = 0;
 		}
 
-		temp = USART3->SR;
-		temp = USART3->DR;
-		if (temp == 0)
-		{
-		}
-		USART_ClearITPendingBit(USART3, USART_IT_IDLE); // 清除空闲中断
-		USART_RX_BUF3[0] = 0;							// 接收数组复位
-		USART_RX_BUF3[1] = 0;
-		USART_RX_BUF3[2] = 0;
-		USART_RX_BUF3[3] = 0;
-		USART_RX_BUF3[4] = 0;
-		USART_RX_BUF3[5] = 0;
-		USART_RX_BUF3[6] = 0;
-		USART_RX_BUF3[7] = 0;
 		receive_number3 = 0; // 接收长度复位
-
-		/*通知线程进行数据同步*/
 		OS_ERR err;
-		OSSemPost(&COMPUTER_DATA_SYN_SEM, OS_OPT_POST_ALL, &err);
+		OSSemPost(&COMPUTER_DATA_SYN_SEM, OS_OPT_POST_ALL, &err); // 通知线程进行数据同步
 	}
 #if SYSTEM_SUPPORT_OS
 	OSIntExit(); // 退出中断

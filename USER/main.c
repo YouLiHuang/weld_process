@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-02 19:59:15
+ * @LastEditTime: 2025-01-03 15:00:19
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -1494,11 +1494,6 @@ static bool data_syn(Page_ID id)
 			float gain = get_comp(temp_page_list, "GAIN2")->val / 100.0;
 			weld_controller->temp_gain2 = gain;
 		}
-		if (get_comp(temp_page_list, "GAIN3") != NULL)
-		{
-			float gain = get_comp(temp_page_list, "GAIN3")->val / 100.0;
-			weld_controller->temp_gain3 = gain;
-		}
 		break;
 	}
 
@@ -1535,6 +1530,47 @@ void read_task(void *p_arg)
 /*-------------------------------------------------------------------------------------------------------------------------*/
 /*----------------------------------------------------上位机通信线程--------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
+
+static void data_sync_from_computer()
+{
+	/*数据同步：上位机——>新数据接口*/
+	char *time_name[] = {
+		"time1",
+		"time2",
+		"time3",
+		"time4",
+		"time5",
+	};
+	for (u8 i = 0; i < sizeof(time_name) / sizeof(time_name[0]); i++)
+	{
+		get_comp(param_page_list, time_name[i])->val = weld_controller->weld_time[i];
+	}
+	char *temp_name[] = {
+		"temp1",
+		"temp2",
+		"temp3",
+	};
+	for (u8 i = 0; i < sizeof(temp_name) / sizeof(temp_name[0]); i++)
+	{
+		get_comp(param_page_list, temp_name[i])->val = weld_controller->weld_temp[i];
+	}
+
+	char *alarm_name[] = {
+		"alarm1",
+		"alarm2",
+		"alarm3",
+		"alarm4",
+		"alarm5",
+		"alarm6",
+	};
+	for (u8 i = 0; i < sizeof(alarm_name) / sizeof(alarm_name[0]); i++)
+	{
+		get_comp(param_page_list, alarm_name[i])->val = weld_controller->alarm_temp[i];
+	}
+	get_comp(temp_page_list, "GAIN1")->val = weld_controller->temp_gain1;
+	get_comp(temp_page_list, "GAIN2")->val = weld_controller->temp_gain2;
+}
+
 /*
 	通讯任务
 	功能描述：
@@ -1575,108 +1611,91 @@ void computer_read_task(void *p_arg)
 				SPI_Save_Word(0, 40 * (remember_array + 1) + 4);
 				statee3 = 0;
 			}
-			else if ((statee3 >= 2) && (statee3 <= 18)) // statee3 为2 - 18 ，表示上位机修改单个数据，同步修改控制板参数数组和触摸屏数据
+			else if ((statee3 >= 2) && (statee3 <= 17)) // statee3 为2 - 17 ，表示上位机修改单个数据，同步修改控制板参数数组和触摸屏数据
 			{
 				/*1、数据更新*/
 				switch (statee3)
 				{
 
+				/*6个焊接时间（实际上只用五个）ModBus_time[2]弃用*/
 				case 2:
 					weld_controller->weld_time[0] = ModBus_time[0];
-					break;
 				case 3:
 					weld_controller->weld_time[1] = ModBus_time[1];
-					break;
 				case 4:
 					weld_controller->weld_time[2] = ModBus_time[3];
-					break;
 				case 5:
 					weld_controller->weld_time[3] = ModBus_time[4];
-					break;
 				case 6:
 					weld_controller->weld_time[4] = ModBus_time[5];
+					/*保存焊接时间*/
+					SPI_Save_Word(weld_controller->weld_time[0], 40 * (remember_array + 1));
+					SPI_Save_Word(weld_controller->weld_time[1], 40 * (remember_array + 1) + 2);
+					SPI_Save_Word(weld_controller->weld_time[2], 40 * (remember_array + 1) + 4);
+					SPI_Save_Word(weld_controller->weld_time[3], 40 * (remember_array + 1) + 6);
+					SPI_Save_Word(weld_controller->weld_time[4], 40 * (remember_array + 1) + 8);
+					SPI_Save_Word(0, 40 * (remember_array + 1) + 10);
 					break;
+				/*三段焊接温度*/
 				case 7:
 					weld_controller->weld_temp[0] = ModBus_temp[0];
-					break;
 				case 8:
 					weld_controller->weld_temp[1] = ModBus_temp[1];
-					break;
 				case 9:
 					weld_controller->weld_temp[2] = ModBus_temp[2];
+					/*保存温度*/
+					SPI_Save_Word(weld_controller->weld_temp[0], 40 * (remember_array + 1) + 12);
+					SPI_Save_Word(weld_controller->weld_temp[1], 40 * (remember_array + 1) + 14);
+					SPI_Save_Word(weld_controller->weld_temp[2], 40 * (remember_array + 1) + 16);
 					break;
+				/*6段警报温度*/
 				case 10:
 					weld_controller->alarm_temp[0] = ModBus_alarm_temp[0];
-					break;
 				case 11:
 					weld_controller->alarm_temp[1] = ModBus_alarm_temp[1];
-					break;
 				case 12:
 					weld_controller->alarm_temp[2] = ModBus_alarm_temp[2];
-					break;
 				case 13:
 					weld_controller->alarm_temp[3] = ModBus_alarm_temp[3];
-					break;
 				case 14:
 					weld_controller->alarm_temp[4] = ModBus_alarm_temp[4];
-					break;
 				case 15:
 					weld_controller->alarm_temp[5] = ModBus_alarm_temp[5];
+					/*保存限制温度*/
+					SPI_Save_Word(weld_controller->alarm_temp[0], 40 * (remember_array + 1) + 18);
+					SPI_Save_Word(weld_controller->alarm_temp[1], 40 * (remember_array + 1) + 20);
+					SPI_Save_Word(weld_controller->alarm_temp[2], 40 * (remember_array + 1) + 22);
+					SPI_Save_Word(weld_controller->alarm_temp[3], 40 * (remember_array + 1) + 24);
+					SPI_Save_Word(weld_controller->alarm_temp[4], 40 * (remember_array + 1) + 26);
+					SPI_Save_Word(weld_controller->alarm_temp[5], 40 * (remember_array + 1) + 28);
 					break;
+				/*两个增益系数*/
 				case 16:
 					weld_controller->temp_gain1 = temp_temperature_coefficient;
-					break;
 				case 17:
 					weld_controller->temp_gain2 = temp_temperature_coefficient_1;
+					/*保存增益*/
+					SPI_Save_Word(weld_controller->temp_gain1 * 100, 40 * (remember_array + 1) + 30);
+					SPI_Save_Word(weld_controller->temp_gain2 * 100, 40 * (remember_array + 1) + 32);
 					break;
 				}
+
 				/*2、屏幕刷新*/
-				char *name = (char *)calloc(10, sizeof(char));
-				if (name)
+				/*时间刷新*/
+				char *time_name_list[] = {"param_page.time1", "param_page.time2", "param_page.time3", "param_page.time4", "param_page.time5"};
+				for (u8 i = 0; i < sizeof(time_name_list) / sizeof(time_name_list[0]); i++)
 				{
-
-					for (uint8_t i = 1; i <= sizeof(weld_controller->weld_temp) / sizeof(uint16_t); i++)
-					{
-						memset(name, 0, 10);
-						sprintf(name, "param_page.temp%d", i);
-						command_set_comp_val(name, "val", weld_controller->weld_temp[i - 1]);
-					}
-					for (uint8_t i = 1; i <= sizeof(weld_controller->weld_time) / sizeof(uint16_t); i++)
-					{
-						memset(name, 0, 10);
-						sprintf(name, "param_page.time%d", i);
-						command_set_comp_val(name, "val", weld_controller->weld_time[i - 1]);
-					}
-					for (uint8_t i = 1; i <= sizeof(weld_controller->alarm_temp) / sizeof(uint16_t); i++)
-					{
-						memset(name, 0, 10);
-						sprintf(name, "temp_page.temp%d", i);
-						command_set_comp_val(name, "val", weld_controller->weld_time[i - 1]);
-					}
-					command_set_comp_val("temp_page.GAIN1", "val", weld_controller->temp_gain1 * 100);
-					command_set_comp_val("temp_page.GAIN2", "val", weld_controller->temp_gain2 * 100);
-
-					free(name);
+					command_set_comp_val(time_name_list[i], "val", weld_controller->weld_time[i - 1]);
 				}
-				/*3、将用户数据更新至外部flash*/
-				SPI_Save_Word(weld_controller->weld_time[0], 40 * (remember_array + 1)); // 保存更新数据在EEPROM
-				SPI_Save_Word(weld_controller->weld_time[1], 40 * (remember_array + 1) + 2);
-				SPI_Save_Word(0, 40 * (remember_array + 1) + 4);
-				SPI_Save_Word(weld_controller->weld_time[2], 40 * (remember_array + 1) + 6);
-				SPI_Save_Word(weld_controller->weld_time[3], 40 * (remember_array + 1) + 8);
-				SPI_Save_Word(weld_controller->weld_time[4], 40 * (remember_array + 1) + 10);
-
-				SPI_Save_Word(weld_controller->weld_temp[0], 40 * (remember_array + 1) + 12);
-				SPI_Save_Word(weld_controller->weld_temp[1], 40 * (remember_array + 1) + 14);
-				SPI_Save_Word(weld_controller->weld_temp[2], 40 * (remember_array + 1) + 16);
-				SPI_Save_Word(weld_controller->alarm_temp[0], 40 * (remember_array + 1) + 18);
-				SPI_Save_Word(weld_controller->alarm_temp[1], 40 * (remember_array + 1) + 20);
-				SPI_Save_Word(weld_controller->alarm_temp[2], 40 * (remember_array + 1) + 22);
-				SPI_Save_Word(weld_controller->alarm_temp[3], 40 * (remember_array + 1) + 24);
-				SPI_Save_Word(weld_controller->alarm_temp[4], 40 * (remember_array + 1) + 26);
-				SPI_Save_Word(weld_controller->alarm_temp[5], 40 * (remember_array + 1) + 28);
-				SPI_Save_Word(weld_controller->temp_gain1 * 100, 40 * (remember_array + 1) + 30);
-				SPI_Save_Word(weld_controller->temp_gain2 * 100, 40 * (remember_array + 1) + 32);
+				/*温度刷新*/
+				char *temp_name_list[] = {"param_page.temp1", "param_page.temp2", "param_page.temp3"};
+				for (u8 i = 0; i < sizeof(temp_name_list) / sizeof(temp_name_list[0]); i++)
+				{
+					command_set_comp_val(temp_name_list[i], "val", weld_controller->weld_temp[i - 1]);
+				}
+				/*增益刷新*/
+				command_set_comp_val("temp_page.GAIN1", "val", weld_controller->temp_gain1 * 100);
+				command_set_comp_val("temp_page.GAIN2", "val", weld_controller->temp_gain2 * 100);
 
 				statee3 = 0;
 			}
@@ -1703,95 +1722,73 @@ void computer_read_task(void *p_arg)
 				weld_controller->alarm_temp[5] = ModBus_alarm_temp[5];
 
 				/*2、屏幕刷新*/
-				command_set_comp_val("GP", "val", remember_array); // 将GP值发给从机
-				char *name = (char *)calloc(10, sizeof(char));
-				if (name)
+				/*GP值刷新*/
+				command_set_comp_val("GP", "val", remember_array);
+				/*时间刷新*/
+				char *time_name_list[] = {
+					"param_page.time1",
+					"param_page.time2",
+					"param_page.time3",
+					"param_page.time4",
+					"param_page.time5",
+				};
+				for (u8 i = 0; i < sizeof(time_name_list) / sizeof(time_name_list[0]); i++)
 				{
-
-					for (uint8_t i = 1; i <= sizeof(weld_controller->weld_temp) / sizeof(uint16_t); i++)
-					{
-						memset(name, 0, 10);
-						sprintf(name, "param_page.temp%d", i);
-						command_set_comp_val(name, "val", weld_controller->weld_temp[i - 1]);
-					}
-					for (uint8_t i = 1; i <= sizeof(weld_controller->weld_time) / sizeof(uint16_t); i++)
-					{
-						memset(name, 0, 10);
-						sprintf(name, "param_page.time%d", i);
-						command_set_comp_val(name, "val", weld_controller->weld_time[i - 1]);
-					}
-					for (uint8_t i = 1; i <= sizeof(weld_controller->alarm_temp) / sizeof(uint16_t); i++)
-					{
-						memset(name, 0, 10);
-						sprintf(name, "temp_page.temp%d", i);
-						command_set_comp_val(name, "val", weld_controller->alarm_temp[i - 1]);
-					}
-					command_set_comp_val("temp_page.GAIN1", "val", weld_controller->temp_gain1 * 100);
-					command_set_comp_val("temp_page.GAIN2", "val", weld_controller->temp_gain2 * 100);
-
-					free(name);
+					command_set_comp_val(time_name_list[i], "val", weld_controller->weld_time[i - 1]);
+				}
+				/*温度刷新*/
+				char *temp_name_list[] = {
+					"param_page.temp1",
+					"param_page.temp2",
+					"param_page.temp3",
+				};
+				for (u8 i = 0; i < sizeof(temp_name_list) / sizeof(temp_name_list[0]); i++)
+				{
+					command_set_comp_val(temp_name_list[i], "val", weld_controller->weld_temp[i - 1]);
 				}
 
+				/*温度刷新*/
+				char *alarm_name_list[] = {
+					"temp_page.alarm1",
+					"temp_page.alarm2",
+					"temp_page.alarm3",
+					"temp_page.alarm4",
+					"temp_page.alarm5",
+				};
+				for (u8 i = 0; i < sizeof(alarm_name_list) / sizeof(alarm_name_list[0]); i++)
+				{
+					command_set_comp_val(alarm_name_list[i], "val", weld_controller->alarm_temp[i - 1]);
+				}
+				/*增益刷新*/
+				command_set_comp_val("temp_page.GAIN1", "val", weld_controller->temp_gain1 * 100);
+				command_set_comp_val("temp_page.GAIN2", "val", weld_controller->temp_gain2 * 100);
+
 				/*3、将用户数据更新至外部flash*/
+				/*保存焊接时间*/
 				SPI_Save_Word(weld_controller->weld_time[0], 40 * (remember_array + 1));
 				SPI_Save_Word(weld_controller->weld_time[1], 40 * (remember_array + 1) + 2);
 				SPI_Save_Word(weld_controller->weld_time[2], 40 * (remember_array + 1) + 4);
 				SPI_Save_Word(weld_controller->weld_time[3], 40 * (remember_array + 1) + 6);
 				SPI_Save_Word(weld_controller->weld_time[4], 40 * (remember_array + 1) + 8);
-
+				SPI_Save_Word(0, 40 * (remember_array + 1) + 10);
+				/*保存温度*/
 				SPI_Save_Word(weld_controller->weld_temp[0], 40 * (remember_array + 1) + 12);
 				SPI_Save_Word(weld_controller->weld_temp[1], 40 * (remember_array + 1) + 14);
 				SPI_Save_Word(weld_controller->weld_temp[2], 40 * (remember_array + 1) + 16);
+				/*保存限制温度*/
 				SPI_Save_Word(weld_controller->alarm_temp[0], 40 * (remember_array + 1) + 18);
 				SPI_Save_Word(weld_controller->alarm_temp[1], 40 * (remember_array + 1) + 20);
 				SPI_Save_Word(weld_controller->alarm_temp[2], 40 * (remember_array + 1) + 22);
 				SPI_Save_Word(weld_controller->alarm_temp[3], 40 * (remember_array + 1) + 24);
 				SPI_Save_Word(weld_controller->alarm_temp[4], 40 * (remember_array + 1) + 26);
 				SPI_Save_Word(weld_controller->alarm_temp[5], 40 * (remember_array + 1) + 28);
+				/*保存增益*/
 				SPI_Save_Word(weld_controller->temp_gain1 * 100, 40 * (remember_array + 1) + 30);
 				SPI_Save_Word(weld_controller->temp_gain2 * 100, 40 * (remember_array + 1) + 32);
 				statee3 = 0;
 			}
 
-			statee3 = 0;
-
-			/*2、数据同步：上位机——>旧数据接口——>新数据接口*/
-			char *name = (char *)calloc(10, sizeof(char));
-			if (name != NULL)
-			{
-				/*参数界面组件*/
-				/*1、同步GP*/
-				get_comp(param_page_list, "GP")->val = remember_array;
-				get_comp(temp_page_list, "GP")->val = remember_array;
-				/*2、同步6个焊接时间*/
-				for (uint8_t i = 1; i <= sizeof(weld_controller->weld_time) / sizeof(uint16_t); i++)
-				{
-					memset(name, 0, 10);
-					sprintf(name, "time%d", i);
-					get_comp(param_page_list, name)->val = weld_controller->weld_time[i - 1];
-				}
-				/*3、同步3个焊接温度*/
-				for (uint8_t i = 1; i <= sizeof(weld_controller->weld_temp) / sizeof(uint16_t); i++)
-				{
-					memset(name, 0, 10);
-					sprintf(name, "temp%d", i);
-					get_comp(param_page_list, name)->val = weld_controller->weld_temp[i - 1];
-				}
-
-				/*温度界面组件*/
-				/*4、同步6个限制温度*/
-				for (uint8_t i = 1; i <= sizeof(weld_controller->alarm_temp) / sizeof(uint16_t); i++)
-				{
-					memset(name, 0, 10);
-					sprintf(name, "temp%d", i);
-					get_comp(temp_page_list, name)->val = weld_controller->alarm_temp[i - 1];
-				}
-				/*5、同步温度系数*/
-				get_comp(temp_page_list, "GAIN1")->val = weld_controller->temp_gain1;
-				get_comp(temp_page_list, "GAIN2")->val = weld_controller->temp_gain2;
-
-				free(name);
-			}
+			data_sync_from_computer();
 		}
 
 		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err); // 休眠
