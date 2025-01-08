@@ -784,8 +784,9 @@ void welding_process(void)
 			if (page_param->id == WAVE_PAGE)
 			{
 				command_send("cle wave_line.id,0");
+				OSTimeDly(2, OS_OPT_TIME_DLY, &err);
 				command_send("cle wave_line.id,0");
-				command_send("cle wave_line.id,0");
+				OSTimeDly(2, OS_OPT_TIME_DLY, &err);
 			}
 			/*进入焊接的条件*/
 			if (page_param->key1 != RDY || weld_controller->realtime_temp > weld_controller->weld_temp[2])
@@ -848,8 +849,9 @@ void welding_process(void)
 			if (page_param->id == WAVE_PAGE)
 			{
 				command_send("cle wave_line.id,0");
+				OSTimeDly(2, OS_OPT_TIME_DLY, &err);
 				command_send("cle wave_line.id,0");
-				command_send("cle wave_line.id,0");
+				OSTimeDly(2, OS_OPT_TIME_DLY, &err);
 			}
 
 			/*进入焊接的条件*/

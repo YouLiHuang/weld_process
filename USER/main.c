@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-08 09:37:58
+ * @LastEditTime: 2025-01-08 10:03:47
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -145,6 +145,7 @@ static bool Current_out_of_ctrl_reset_callback(u8 index);
 static bool Temp_up_reset_callback(u8 index);
 static bool Temp_down_reset_callback(u8 index);
 
+/*采用硬件校准模式，不同的热电偶的板级放大系数不同，需要单独进行校准，但是软件层是一致的*/
 static Thermocouple coefficient_list[] = {
 	{E_TYPE, 0.17, 0},
 	{K_TYPE, 0.17, 0},

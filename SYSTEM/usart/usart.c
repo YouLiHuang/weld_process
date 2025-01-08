@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-02 15:16:32
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-03 20:41:01
+ * @LastEditTime: 2025-01-08 09:58:06
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -67,11 +67,11 @@ uint16_t ModBus_alarm_temp[6]; // 限制温度6段
 int receive_number_computer = 0;
 int Host_action = 0;
 
-int Host_GP = 0; // GP
-int Host_gain1_raw;		  // 整数
-int Host_gain2_raw;		  // 整数
-float Host_gain2;		  // 上位机增益1参数暂存（浮点数）
-float Host_gain1;		  // 上位机增益2参数暂存（浮点数）
+int Host_GP = 0;	// GP
+int Host_gain1_raw; // 整数
+int Host_gain2_raw; // 整数
+float Host_gain2;	// 上位机增益1参数暂存（浮点数）
+float Host_gain1;	// 上位机增益2参数暂存（浮点数）
 
 struct crc16_struct1 temp1 = {0x00, 0x00}; // 触摸屏crc16 校验
 struct crc16_struct3 temp2 = {0x00, 0x00}; // 上位机crc16 校验
@@ -87,6 +87,10 @@ extern OS_SEM ALARM_RESET_SEM;
 extern OS_SEM PAGE_UPDATE_SEM;
 extern OS_SEM COMP_VAL_GET_SEM;
 extern OS_SEM COMP_STR_GET_SEM;
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------------触摸屏---------------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 /**
  * @description: 串口初始化，用于触摸屏通讯处理
@@ -163,28 +167,26 @@ void set_receive_number(u16 val)
 }
 
 /**
- * @description: 定时器4中断函数
- * 				实现功能，使用空闲中断接收触摸屏回传数据，并对数据进行crc16校验，同时调用disposeof_information()分析数据
+ * @description: 读写线程的串口中断服务函数，进行初步数据解析，发送不同的信号
  * @return {*}
  */
-void UART4_IRQHandler(void) // 串口4中断服务程序
+void UART4_IRQHandler(void)
 {
 
-#if SYSTEM_SUPPORT_OS // 使用UCOS操作系统
+#if SYSTEM_SUPPORT_OS
 	OSIntEnter();
 #endif
-	if (USART_GetITStatus(UART4, USART_IT_RXNE) != RESET) // 接收中断
+	if (USART_GetITStatus(UART4, USART_IT_RXNE) != RESET) // clear receive flag
 	{
 		USART_RX_BUF[receive_number++] = USART_ReceiveData(UART4);
 		USART_ClearITPendingBit(UART4, USART_IT_RXNE);
 	}
 
-	if (USART_GetITStatus(UART4, USART_IT_IDLE) == SET) // 空闲中断
+	if (USART_GetITStatus(UART4, USART_IT_IDLE) == SET) // ideal flag clear
 	{
 		OS_ERR err;
 		if (receive_number >= MIN_CMD_LEN)
 		{
-			/*实在没办法，页面刷新需要特别及时，因此在中断当中刷新*/
 			switch (USART_RX_BUF[0])
 			{
 			case CMD_OK:
@@ -214,7 +216,7 @@ void UART4_IRQHandler(void) // 串口4中断服务程序
 
 			receive_number = 0;
 		}
-		// 清除空闲中断标志位
+		// clear flag
 		receive_number = 0;
 		int temp;
 		temp = UART4->SR;
@@ -230,9 +232,13 @@ void UART4_IRQHandler(void) // 串口4中断服务程序
 	}
 
 #if SYSTEM_SUPPORT_OS
-	OSIntExit(); // 退出中断
+	OSIntExit();
 #endif
 }
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------------上位机通信---------------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 /**
  * @description: 串口3初始化，用于触摸屏通讯处理
@@ -369,8 +375,8 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 
 	if (USART_GetITStatus(USART3, USART_IT_IDLE) == SET) // 空闲中断
 	{
-		
-		USART_ClearITPendingBit(USART3, USART_IT_IDLE);							  // 清除空闲中断
+
+		USART_ClearITPendingBit(USART3, USART_IT_IDLE); // 清除空闲中断
 		OS_ERR err;
 		int crc16_get = 0;
 		int temp;
@@ -599,7 +605,6 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 		temp = USART3->DR;
 		temp = temp;
 
-		
 		for (u8 i = 0; i < sizeof(USART_RX_BUF3) / sizeof(USART_RX_BUF3[0]); i++) // 接收数组复位
 			USART_RX_BUF3[i] = 0;
 
