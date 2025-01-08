@@ -369,6 +369,8 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 
 	if (USART_GetITStatus(USART3, USART_IT_IDLE) == SET) // 空闲中断
 	{
+		
+		USART_ClearITPendingBit(USART3, USART_IT_IDLE);							  // 清除空闲中断
 		OS_ERR err;
 		int crc16_get = 0;
 		int temp;
@@ -593,11 +595,11 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 			usart3_ack_to_host(ID_OF_MAS, 1, 0x10);
 
 		/*清除标志*/
-		temp = UART4->SR;
-		temp = UART4->DR;
+		temp = USART3->SR;
+		temp = USART3->DR;
 		temp = temp;
 
-		USART_ClearITPendingBit(USART3, USART_IT_IDLE);							  // 清除空闲中断
+		
 		for (u8 i = 0; i < sizeof(USART_RX_BUF3) / sizeof(USART_RX_BUF3[0]); i++) // 接收数组复位
 			USART_RX_BUF3[i] = 0;
 
