@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-02 15:16:32
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-03 19:37:50
+ * @LastEditTime: 2025-01-03 20:41:01
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -373,7 +373,7 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 		int crc16_get = 0;
 		int temp;
 		/* 需要保证此时不在焊接过程才能进行数据通讯 */
-		if (receive_number_computer >= 2 && (RDY_SCH == 0) && (ID_OF_MAS == USART_RX_BUF3[0]) && (false == err_occur(err_ctrl)) && (get_weld_flag() == IDEAL_MODE))
+		if (receive_number_computer > 2 && (RDY_SCH == 0) && (ID_OF_MAS == USART_RX_BUF3[0]) && (false == err_occur(err_ctrl)) && (get_weld_flag() == IDEAL_MODE))
 		{
 			crc16_get = CRC16(USART_RX_BUF3, receive_number_computer - 2); // 检测数据是否正确
 			temp2.crc16_high = crc16_get >> 8;

@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-03 19:54:59
+ * @LastEditTime: 2025-01-08 09:37:58
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -147,8 +147,8 @@ static bool Temp_down_reset_callback(u8 index);
 
 static Thermocouple coefficient_list[] = {
 	{E_TYPE, 0.17, 0},
-	{K_TYPE, 0.1, 0},
-	{J_TYPE, 0.1, 0},
+	{K_TYPE, 0.17, 0},
+	{J_TYPE, 0.17, 0},
 };
 
 const error_match_list match_list[] = {
@@ -802,7 +802,6 @@ static void Temp_updata_realtime()
 	//	float temp2=0.1618 * adcx7 + 11.048;
 	u16 voltage = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10; //*3300/4096
 	weld_controller->realtime_temp = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
-	
 
 #if TEMP_ADJUST == 1
 	command_set_comp_val("temp22", "val", voltage);
@@ -1245,7 +1244,7 @@ static void page_process(Page_ID id)
 			/*绘图结束清空缓存*/
 			memset(temp_draw_ctrl->temp_buf, 0, sizeof(temp_draw_ctrl->temp_buf) / sizeof(u16));
 
-			/*显示焊接计数值*/
+			/*更新焊接计数值*/
 			command_set_comp_val("count", "val", weld_controller->weld_count);
 		}
 	}
@@ -1369,19 +1368,9 @@ static void page_process(Page_ID id)
 		command_get_comp_val(setting_page_list, "adress", "val");
 		/*2、读取页面设定的波特率*/
 		command_get_comp_val(setting_page_list, "baudrate", "val");
-		/*更新波特率*/
-		if (get_comp(setting_page_list, "baudrate") != NULL)
-		{
-			uint8_t index = get_comp(setting_page_list, "baudrate")->val;
-			usart3_set_bound(baud_list[index - 1]);
-		}
+
 		/*3、读取热电偶类型*/
 		command_get_comp_val(setting_page_list, "sensortype", "val");
-		for (u8 i = 0; i < sizeof(coefficient_list) / sizeof(coefficient_list[0]); i++)
-		{
-			if (get_comp(setting_page_list, "sensortype")->val == coefficient_list[i].type)
-				current_Thermocouple = &coefficient_list[i]; // 更新当前热电偶类型
-		}
 	}
 	break;
 
@@ -1447,28 +1436,33 @@ static bool data_syn(Page_ID id)
 	case PARAM_PAGE:
 	{
 
+		Component *comp = NULL;
 		for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
 		{
-			Component *comp = get_comp(param_page_list, weld_time_name_list[i]);
+			comp = get_comp(param_page_list, weld_time_name_list[i]);
 			if (comp != NULL)
 				weld_controller->weld_time[i] = comp->val;
 		}
 		for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
 		{
-			Component *comp = get_comp(param_page_list, weld_temp_name_list[i]);
+			comp = get_comp(param_page_list, weld_temp_name_list[i]);
 			if (comp != NULL)
 				weld_controller->weld_temp[i] = comp->val;
 		}
+		/*同步计数值（用户可能修改）*/
+		comp = get_comp(param_page_list, "count");
+		if (comp != NULL)
+			weld_controller->weld_count = comp->val;
 
 		break;
 	}
 
 	case TEMP_PAGE:
 	{
-
+		Component *comp = NULL;
 		for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
 		{
-			Component *comp = get_comp(temp_page_list, alarm_temp_name_list[i]);
+			comp = get_comp(temp_page_list, alarm_temp_name_list[i]);
 			if (comp != NULL)
 				weld_controller->alarm_temp[i] = comp->val;
 		}
@@ -1483,7 +1477,36 @@ static bool data_syn(Page_ID id)
 			float gain = get_comp(temp_page_list, "GAIN2")->val / 100.0;
 			weld_controller->temp_gain2 = gain;
 		}
+		/*同步计数值（用户可能修改）*/
+		comp = get_comp(param_page_list, "count");
+		if (comp != NULL)
+			weld_controller->weld_count = comp->val;
+
 		break;
+	}
+
+	case UART_PAGE:
+	{
+		Component *comp = NULL;
+		/*更新机号*/
+		comp = get_comp(setting_page_list, "adress");
+		if (comp != NULL)
+			ID_OF_MAS = comp->val;
+
+		/*更新波特率*/
+		comp = get_comp(setting_page_list, "baudrate");
+		if (comp != NULL)
+		{
+			uint8_t index = get_comp(setting_page_list, "baudrate")->val;
+			usart3_set_bound(baud_list[index - 1]);
+		}
+
+		/*更新热电偶类型*/
+		for (u8 i = 0; i < sizeof(coefficient_list) / sizeof(coefficient_list[0]); i++)
+		{
+			if (get_comp(setting_page_list, "sensortype")->val == coefficient_list[i].type)
+				current_Thermocouple = &coefficient_list[i]; // 更新当前热电偶类型
+		}
 	}
 
 	default:

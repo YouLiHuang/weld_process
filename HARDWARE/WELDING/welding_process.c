@@ -610,7 +610,7 @@ static void End_of_Weld()
 	/*根据计数模式更新焊接计数值*/
 	if (get_comp(param_page_list, "UP_DOWN")->val == UP_CNT)
 		weld_controller->weld_count++;
-	else if (get_comp(param_page_list, "UP_DOWN")->val == DOWN_CNT)
+	else if (get_comp(param_page_list, "UP_DOWN")->val == DOWN_CNT && weld_controller->weld_count > 0)
 		weld_controller->weld_count--;
 
 	RLY10 = 0; // 气阀1关闭
@@ -686,7 +686,7 @@ static void simulate_weld()
 	/*+++根据计数模式更新计数值+++*/
 	if (get_comp(param_page_list, "UP_DOWN")->val == UP_CNT)
 		weld_controller->weld_count++;
-	else if (get_comp(param_page_list, "UP_DOWN")->val == DOWN_CNT)
+	else if (get_comp(param_page_list, "UP_DOWN")->val == DOWN_CNT && weld_controller->weld_count > 0)
 		weld_controller->weld_count--;
 }
 
