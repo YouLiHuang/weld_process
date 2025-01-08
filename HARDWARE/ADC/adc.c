@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-08 09:51:17
+ * @LastEditTime: 2024-12-05 10:47:57
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -13,16 +13,16 @@
 #include "includes.h"
 #include "protect.h"
 
-// PA4：output current
-// PA5：output voltage
-// PA6：voltage overflow check
-// PA7：Thermocouple on board
-#define ADC_SAMPLE_PNUM 15													// AD sampel ponit number for per channel
-#define ADC_SAMPLE_CNUM 6													// AD channel number
-volatile unsigned short m_ADCValue[ADC_SAMPLE_PNUM][ADC_SAMPLE_CNUM] = {0}; // buffer to save adc value
+// PA4采样一次侧/二次测电流
+// PA5采样二次测输出电压
+// PA6采样初级电压
+// PA7采样温度变送器
+#define ADC_SAMPLE_PNUM 15													// AD 采样点数数
+#define ADC_SAMPLE_CNUM 6													// AD 采样通道数
+volatile unsigned short m_ADCValue[ADC_SAMPLE_PNUM][ADC_SAMPLE_CNUM] = {0}; // 列向量
 
 /**
- * @description: ADC DAM config ��continuous sampling mode and DMA loop mode for data transmission
+ * @description: ADC DAM config ，continuous sampling mode and DMA loop mode for data transmission
  * @return {*}
  */
 void ADC_DMA_INIT(void)
@@ -33,26 +33,26 @@ void ADC_DMA_INIT(void)
 	GPIO_InitTypeDef GPIO_InitStructure;
 	GPIO_InitTypeDef GPIO_InitStructure2;
 
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOC, ENABLE);
-	/*GPIOA------------------------------------------------------------------------------------------- */
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOC, ENABLE); // 使能GPIOA时钟
+	/*GPIOA---------------------------------------------------------------------------- */
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-	/*GPIOC------------------------------------------------------------------------------------------- */
+	/*GPIOC---------------------------------------------------------------------------- */
 	GPIO_InitStructure2.GPIO_Mode = GPIO_Mode_AN;
 	GPIO_InitStructure2.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5;
 	GPIO_InitStructure2.GPIO_PuPd = GPIO_PuPd_DOWN;
 	GPIO_Init(GPIOC, &GPIO_InitStructure2);
 
-	/* ADC Init----------------------------------------------------------------------------------------*/
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+	/* ADC Init--------------------------------------------------------------------------*/
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE); // 使能ADC1/2时钟
 
 	ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent;
-	ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div8;
+	ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div8; // 预分频
 	ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled;
-	ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_20Cycles;
+	ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_20Cycles; // 采样间隔
 	ADC_CommonInit(&ADC_CommonInitStructure);
 
 	ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;
@@ -63,18 +63,20 @@ void ADC_DMA_INIT(void)
 	ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
 	ADC_InitStructure.ADC_NbrOfConversion = ADC_SAMPLE_CNUM;
 
+	/*ADC1---------------------------------------------*/
 	ADC_Init(ADC1, &ADC_InitStructure);
 
-	/*ADC1 channel---------------------------------------------------------------------------------------*/
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_14, 1, ADC_SampleTime_56Cycles);
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_15, 2, ADC_SampleTime_56Cycles);
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_4, 3, ADC_SampleTime_56Cycles);
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_5, 4, ADC_SampleTime_56Cycles);
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_6, 5, ADC_SampleTime_56Cycles);
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_7, 6, ADC_SampleTime_56Cycles);
+	/*ADC1通道顺序------------------------------------------------------------------------------*/
 
-	/*DMA config-----------------------------------------------------------------------------------------*/
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_4, 1, ADC_SampleTime_56Cycles);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_5, 2, ADC_SampleTime_56Cycles);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_6, 3, ADC_SampleTime_56Cycles);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_7, 4, ADC_SampleTime_84Cycles);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_14, 5, ADC_SampleTime_84Cycles);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_15, 6, ADC_SampleTime_84Cycles);
+
+	/*DMA配置----------------------------------------------------------------------------*/
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE); // 使能 DMA2 时钟
 
 	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
@@ -86,20 +88,19 @@ void ADC_DMA_INIT(void)
 	DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_HalfFull;
 	DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
 	DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
-	/*stream0 ch0----------------------------------------------------------------------------------------*/
+	/*stream0 ch0-----------------------------------------------------------------------*/
 	DMA_InitStructure.DMA_Channel = DMA_Channel_0;
 	DMA_InitStructure.DMA_PeripheralBaseAddr = (unsigned int)&(ADC1->DR);
 	DMA_InitStructure.DMA_Memory0BaseAddr = (unsigned int)&m_ADCValue;
 	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
 	DMA_InitStructure.DMA_BufferSize = ADC_SAMPLE_PNUM * ADC_SAMPLE_CNUM;
-	DMA_Init(DMA2_Stream0, &DMA_InitStructure); 
-	/*enable----------------------------------------------------------------------------------------------*/
-	DMA_Cmd(DMA2_Stream0, ENABLE);				
+	DMA_Init(DMA2_Stream0, &DMA_InitStructure); // 初始化 DMA
+	DMA_Cmd(DMA2_Stream0, ENABLE);				// 启动 DMA
+
 	ADC_DMARequestAfterLastTransferCmd(ADC1, ENABLE);
 	ADC_DMACmd(ADC1, ENABLE);
 	ADC_Cmd(ADC1, ENABLE);
-
-	/*ADC start with software---------------------------------------------------------------------------- */
+	/*由于没有采用外部触发，所以使用软件触发ADC转换-------------------------------------------- */
 	ADC_SoftwareStartConv(ADC1);
 }
 
@@ -113,7 +114,8 @@ uint16_t ADC_Value_avg(uint16_t channel)
 	uint32_t value = 0;
 	switch (channel)
 	{
-	case ADC_Channel_14:
+
+	case ADC_Channel_4:
 		value = 0;
 		for (uint8_t i = 0; i < ADC_SAMPLE_PNUM; i++)
 		{
@@ -121,7 +123,8 @@ uint16_t ADC_Value_avg(uint16_t channel)
 		}
 		value /= ADC_SAMPLE_PNUM;
 		break;
-	case ADC_Channel_15:
+
+	case ADC_Channel_5:
 		value = 0;
 		for (uint8_t i = 0; i < ADC_SAMPLE_PNUM; i++)
 		{
@@ -129,8 +132,7 @@ uint16_t ADC_Value_avg(uint16_t channel)
 		}
 		value /= ADC_SAMPLE_PNUM;
 		break;
-
-	case ADC_Channel_4:
+	case ADC_Channel_6:
 		value = 0;
 		for (uint8_t i = 0; i < ADC_SAMPLE_PNUM; i++)
 		{
@@ -138,7 +140,7 @@ uint16_t ADC_Value_avg(uint16_t channel)
 		}
 		value /= ADC_SAMPLE_PNUM;
 		break;
-	case ADC_Channel_5:
+	case ADC_Channel_7:
 		value = 0;
 		for (uint8_t i = 0; i < ADC_SAMPLE_PNUM; i++)
 		{
@@ -146,7 +148,7 @@ uint16_t ADC_Value_avg(uint16_t channel)
 		}
 		value /= ADC_SAMPLE_PNUM;
 		break;
-	case ADC_Channel_6:
+	case ADC_Channel_14:
 		value = 0;
 		for (uint8_t i = 0; i < ADC_SAMPLE_PNUM; i++)
 		{
@@ -154,7 +156,7 @@ uint16_t ADC_Value_avg(uint16_t channel)
 		}
 		value /= ADC_SAMPLE_PNUM;
 		break;
-	case ADC_Channel_7:
+	case ADC_Channel_15:
 		value = 0;
 		for (uint8_t i = 0; i < ADC_SAMPLE_PNUM; i++)
 		{
@@ -166,7 +168,6 @@ uint16_t ADC_Value_avg(uint16_t channel)
 
 	return value;
 }
-
 
 
 
@@ -185,6 +186,83 @@ Thermocouple *newThermocouple(SENSOR_TYPE type, float slope, float intercept)
 	{
 		return NULL;
 	}
+}
+
+/**
+ * @description:
+ * @param {u8} ch1
+ * @return {*}
+ */
+u16 Get_Adc1(u8 ch1)
+{
+	// 设置指定ADC的规则组通道，一个序列，采样时间
+	ADC_RegularChannelConfig(ADC1, ch1, 1, ADC_SampleTime_84Cycles); // ADC1,ADC通道15个周期,提高采样时间可以提高精确度
+
+	ADC_SoftwareStartConv(ADC1); // 使能指定的ADC1的软件转换启动功能
+
+	while (!ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC))
+		; // 等待转换结束
+	ADC_ClearFlag(ADC1, ADC_FLAG_EOC);
+
+	return ADC_GetConversionValue(ADC1); // 返回最近一次ADC1规则组的转换结果
+}
+
+/**
+ * @description:
+ * @param {u8} ch1
+ * @param {u16} times1
+ * @return {*}
+ */
+u16 Get_Adc1_Average(u8 ch1, u16 times1)
+{
+	// temp_val1 = 0;
+	// for (t1 = 0; t1 < times1; t1++)
+	// {
+	// 	temp_val1 += Get_Adc1(ch1);
+	// }
+	// return temp_val1 / times1;
+	return ADC_Value_avg(ch1);
+}
+
+/**
+ * @description:
+ * @param {u8} ch1
+ * @param {u16} n
+ * @return {*}
+ */
+u16 Bubble_Sort_Calculate(u8 ch1, u16 n)
+{
+	int i, j, z;
+	u16 Array[n];
+	u32 Sum = 0;
+	int end;
+
+	for (i = 0; i < n; i++)
+	{
+		Array[i] = Get_Adc1(ch1);
+	}
+	for (i = 0; i < n - 1; i++)
+	{
+		for (j = 0; j < n - i - 1; j++)
+		{
+			if (Array[j] > Array[j + 1]) // 如果前者大于后者
+			{
+				int16_t result = Array[j]; // 则交换两者的值
+				Array[j] = Array[j + 1];
+				Array[j + 1] = result;
+			}
+		}
+	}
+
+	// 30个数据，去掉首尾5个，取20个数据
+	for (z = 5; z < n - 5; z++)
+	{
+		Sum = Sum + Array[z];
+	}
+
+	end = Sum / 20;
+
+	return end;
 }
 
 /**
@@ -234,10 +312,10 @@ u16 Bubble_Calculate_lan(u16 arr[], u16 n)
 }
 
 /**
- * @description: ��ʾֵ�������
+ * @description: 显示值求均方根
  * @param {u16} *arr
- * @param {u16} n     ��Ҫ�����õ���
- * @param {u16} start    ��Ч������ʼ�±�
+ * @param {u16} n     需要处理得点数
+ * @param {u16} start    有效数据起始下标
  * @return {*}
  */
 
@@ -254,4 +332,17 @@ float rms_get(u16 *arr, u16 n, u16 start)
 		}
 	}
 	return sqrt(sum / num);
+}
+
+/**
+ * @description:   温度显示
+ * @param {u16} *input
+ * @param {u16} nums   采样点数
+ * @param {u16} start  有效数据起始下标
+ * @param {u16} refer  参考值
+ * @return {*}
+ */
+u16 temp_display(u16 *input, u16 nums, u16 start)
+{
+	return (u16)rms_get(input, nums - start, start);
 }

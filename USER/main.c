@@ -797,9 +797,17 @@ static void Power_on_check(void)
 #endif
 }
 
+static u16 voltage_test[6] = {0};
+
 static void Temp_updata_realtime()
 {
 
+	voltage_test[0] = (ADC_Value_avg(ADC_Channel_4) * 825) >> 10;
+	voltage_test[1] = (ADC_Value_avg(ADC_Channel_5) * 825) >> 10;
+	voltage_test[2] = (ADC_Value_avg(ADC_Channel_6) * 825) >> 10;
+	voltage_test[3] = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10;
+	voltage_test[4] = (ADC_Value_avg(ADC_Channel_14) * 825) >> 10;
+	voltage_test[5] = (ADC_Value_avg(ADC_Channel_15) * 825) >> 10;
 	//	float temp2=0.1618 * adcx7 + 11.048;
 	u16 voltage = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10; //*3300/4096
 	weld_controller->realtime_temp = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
