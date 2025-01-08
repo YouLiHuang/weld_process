@@ -13,16 +13,16 @@
 #include "includes.h"
 #include "protect.h"
 
-// PA4¡ª¡ªoutput current
-// PA5¡ª¡ªoutput voltage
-// PA6¡ª¡ªvoltage overflow check
-// PA7¡ª¡ªThermocouple on board
+// PA4ï¼šoutput current
+// PA5ï¼šoutput voltage
+// PA6ï¼švoltage overflow check
+// PA7ï¼šThermocouple on board
 #define ADC_SAMPLE_PNUM 15													// AD sampel ponit number for per channel
 #define ADC_SAMPLE_CNUM 6													// AD channel number
 volatile unsigned short m_ADCValue[ADC_SAMPLE_PNUM][ADC_SAMPLE_CNUM] = {0}; // buffer to save adc value
 
 /**
- * @description: ADC DAM config £¬continuous sampling mode and DMA loop mode for data transmission
+ * @description: ADC DAM config ï¿½ï¿½continuous sampling mode and DMA loop mode for data transmission
  * @return {*}
  */
 void ADC_DMA_INIT(void)
@@ -167,8 +167,8 @@ uint16_t ADC_Value_avg(uint16_t channel)
 	return value;
 }
 
-u16 t1 = 0;
-u32 temp_val1 = 0;
+
+
 
 Thermocouple *newThermocouple(SENSOR_TYPE type, float slope, float intercept)
 {
@@ -234,10 +234,10 @@ u16 Bubble_Calculate_lan(u16 arr[], u16 n)
 }
 
 /**
- * @description: ÏÔÊ¾ÖµÇó¾ù·½¸ù
+ * @description: ï¿½ï¿½Ê¾Öµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
  * @param {u16} *arr
- * @param {u16} n     ÐèÒª´¦ÀíµÃµãÊý
- * @param {u16} start    ÓÐÐ§Êý¾ÝÆðÊ¼ÏÂ±ê
+ * @param {u16} n     ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½Ãµï¿½ï¿½ï¿½
+ * @param {u16} start    ï¿½ï¿½Ð§ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½Â±ï¿½
  * @return {*}
  */
 

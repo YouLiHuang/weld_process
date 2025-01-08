@@ -1,25 +1,23 @@
-/*** 
+/***
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-24 15:23:46
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
  * @LastEditTime: 2024-12-24 16:25:44
- * @Description: 
+ * @Description:
  * @
- * @Copyright (c) 2024 by huangyouli, All Rights Reserved. 
+ * @Copyright (c) 2024 by huangyouli, All Rights Reserved.
  */
 #ifndef __KEY_H
 #define __KEY_H
 #include "sys.h"
 #include "includes.h"
 
-
-
-#define KEY_PC0 PCin(0)   // 启动1
-#define KEY_PC1 PCin(1)   // 启动2	PC1
-#define KEY_PC2 PCin(2)   // 启动3	PC2
-#define KEY_PC3 PCin(3)   // 启动4	PC3
-#define KEY_In1 PCin(4)   // 输入1
-#define KEY_In2 PCin(5)   // 输入2
+#define KEY_PC0 PCin(0) // 启动1
+#define KEY_PC1 PCin(1) // 启动2	PC1
+#define KEY_PC2 PCin(2) // 启动3	PC2
+#define KEY_PC3 PCin(3) // 启动4	PC3
+// #define KEY_In1 PCin(4)   // 输入1
+// #define KEY_In2 PCin(5)   // 输入2
 #define KEY_In3 PAin(6)   // 输入3
 #define KEY_In4 PCin(7)   // 输入4
 #define KEY_Res PCin(8)   // 复位按键
@@ -50,9 +48,7 @@
 #define OUT3 PDout(10)  // 输出3
 #define OUT4 PDout(11)  // 输出4
 
-
 #define CSN PBout(12) // AT25 cs
-
 
 void KEYin_Init(void);
 void OUT_Init(void);
