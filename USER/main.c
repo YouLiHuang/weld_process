@@ -1498,8 +1498,8 @@ static void Thermocouple_err_eliminate()
 	/*6个IO*/
 
 	/*采集两个通道的初始偏置电压，1ms采集一个点*/
-	static u16 adc_ch14_data[SAMPLE_LEN] = {0};
-	static u16 adc_ch15_data[SAMPLE_LEN] = {0};
+	float adc_ch14_data[SAMPLE_LEN] = {0};
+	float adc_ch15_data[SAMPLE_LEN] = {0};
 	for (u16 i = 0; i < SAMPLE_LEN; i++)
 	{
 		adc_ch14_data[i] = ADC_Value_avg(ADC_Channel_14);
@@ -1508,8 +1508,8 @@ static void Thermocouple_err_eliminate()
 	}
 
 	/*低通滤波*/
-	u16 adc_ch14_fliter_buf[SAMPLE_LEN] = {0};
-	u16 adc_ch15_fliter_buf[SAMPLE_LEN] = {0};
+	float adc_ch14_fliter_buf[SAMPLE_LEN] = {0};
+	float adc_ch15_fliter_buf[SAMPLE_LEN] = {0};
 
 	low_pass_Filter((float *)adc_ch14_data,
 					SAMPLE_LEN,
@@ -1537,7 +1537,7 @@ static void Thermocouple_err_eliminate()
 	}
 	adc_ch15_init_value = sum / SAMPLE_LEN;
 
-	if (adc_ch14_init_value > 300 || adc_ch15_init_value > 300)
+	if (adc_ch14_init_value > 350 || adc_ch15_init_value > 350)
 	{
 		/*偏置过高，异常报警*/
 		OS_ERR err;

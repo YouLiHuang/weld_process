@@ -17,7 +17,7 @@
 // PA5采样二次测输出电压
 // PA6采样初级电压
 // PA7采样温度变送器
-#define ADC_SAMPLE_PNUM 10													// AD 采样点数数
+#define ADC_SAMPLE_PNUM 15													// AD 采样点数数
 #define ADC_SAMPLE_CNUM 6													// AD 采样通道数
 volatile unsigned short m_ADCValue[ADC_SAMPLE_PNUM][ADC_SAMPLE_CNUM] = {0}; // 列向量
 
@@ -26,8 +26,8 @@ volatile unsigned short m_ADCValue[ADC_SAMPLE_PNUM][ADC_SAMPLE_CNUM] = {0}; // �
  * PCLK2=HCLK/APB2 Prescale2=168M/2=84M  ADC clock:PCLK2/4=84M/4=21M
  * there are 6 channels so，total time is：{12cycle（convert time）+10cycle（channle delay）+56cycle（sample time）}*6=468cycle
  * Therefore, the frequency of completing a round of sampling is 21M/468=45KHz
- * DMA calculates the average value of every 10 points,
- * so for each point, the frequency of obtaining an effective value is about 4.5KHz.
+ * DMA calculates the average value of every 15 points,
+ * so for each point, the frequency of obtaining an effective value is about 3KHz.
  * @return {*}
  */
 void ADC_DMA_INIT(void)
