@@ -32,6 +32,7 @@
 #define VOLTAGE_CHECK 1	 // 过欠压报警
 #define POWER_ON_CHECK 1 // 开机自检报警（开机后完成一次热点电偶检测）
 #define ROOM_TEMP 20
+#define JK_TEMP_SHOW 1
 // 任务优先级
 #define START_TASK_PRIO 3
 // 任务堆栈大小
@@ -1232,6 +1233,12 @@ static void page_process(Page_ID id)
 		parse_key_action(page_param->id);
 		/*3、显示实时温度*/
 		command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
+
+#if JK_TEMP_SHOW == 1
+		command_set_comp_val("temp11", "val", temp_convert(&Thermocouple_Lists[1])); // k
+		command_set_comp_val("temp22", "val", temp_convert(&Thermocouple_Lists[2])); // j
+#endif
+
 		/*4、焊接结束后显示三段温度&计数值*/
 		OSSemPend(&TEMP_DRAW_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
@@ -1549,9 +1556,9 @@ static void Thermocouple_err_eliminate()
 		u16 room_temp_voltage = 0; // 常温对应的电压
 
 		room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[1].intercept) / Thermocouple_Lists[1].slope;
-		Thermocouple_Lists[1].Bias = adc_ch14_init_value - room_temp_voltage;
+		Thermocouple_Lists[1].Bias = adc_ch15_init_value - room_temp_voltage;
 		room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[2].intercept) / Thermocouple_Lists[2].slope;
-		Thermocouple_Lists[2].Bias = adc_ch15_init_value - room_temp_voltage;
+		Thermocouple_Lists[2].Bias = adc_ch14_init_value - room_temp_voltage;
 	}
 }
 
