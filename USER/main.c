@@ -31,7 +31,7 @@
 #define REALTIME_TEMP 1	 // 实时温度显示使能
 #define VOLTAGE_CHECK 1	 // 过欠压报警
 #define POWER_ON_CHECK 1 // 开机自检报警（开机后完成一次热点电偶检测）
-
+#define ROOM_TEMP 20
 // 任务优先级
 #define START_TASK_PRIO 3
 // 任务堆栈大小
@@ -1546,8 +1546,12 @@ static void Thermocouple_err_eliminate()
 	}
 	else
 	{
-		Thermocouple_Lists[1].Bias = adc_ch14_init_value;
-		Thermocouple_Lists[2].Bias = adc_ch15_init_value;
+		u16 room_temp_voltage = 0; // 常温对应的电压
+
+		room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[1].intercept) / Thermocouple_Lists[1].slope;
+		Thermocouple_Lists[1].Bias = adc_ch14_init_value - room_temp_voltage;
+		room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[2].intercept) / Thermocouple_Lists[2].slope;
+		Thermocouple_Lists[2].Bias = adc_ch15_init_value - room_temp_voltage;
 	}
 }
 
