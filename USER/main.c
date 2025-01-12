@@ -1,11 +1,11 @@
 /*
  * @Author: huangyouli.scut@gmail.com
- * @Date: 2024-12-05 09:43:02
+ * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-11 15:53:24
+ * @LastEditTime: 2025-01-12 17:52:12
  * @Description:
  *
- * Copyright (c) 2024 by huangyouli, All Rights Reserved.
+ * Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
 
 #include "sys.h"
@@ -151,9 +151,9 @@ static bool Temp_down_reset_callback(u8 index);
 // J：0.2189*3300/4096=0.1763
 // K：0.218*3300/4096=0.1756
 static Thermocouple coefficient_list[] = {
-	{E_TYPE, 0.17, 0},
-	{K_TYPE, 0.17, 0},
-	{J_TYPE, 0.17, 0},
+	{E_TYPE, 0.17, 0, 0},
+	{K_TYPE, 0.17, 0, 0},
+	{J_TYPE, 0.17, 0, 0},
 };
 
 const error_match_list match_list[] = {
@@ -313,9 +313,9 @@ int main(void)
 	ADC_DMA_INIT();
 
 	/*TIM7-TIM3(time)-TIM5(pid)-TIM1(pwm1)-TIM4(pwm2)*/
+	TIM2_Int_Init();
 	TIM3_Int_Init();
 	TIM5_Int_Init();
-	TIM2_Int_Init();
 
 	/*硬件保护初始化*/
 	TestCurrent_GPIO_Config();
@@ -555,7 +555,7 @@ static bool Temp_up_check(void)
 
 #if TEMP_CHECK
 
-	Init_Temperature = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
+	Init_Temperature = temp_convert(current_Thermocouple);
 	TIM1_PWM_Init();
 	TIM4_PWM_Init();
 	TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
@@ -595,7 +595,7 @@ static bool Temp_up_check(void)
 
 	// 延时检测温度
 	user_tim_delay(100);
-	New_Temperature = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
+	New_Temperature = temp_convert(current_Thermocouple);
 
 #endif
 
@@ -802,7 +802,7 @@ static void Power_on_check(void)
 #endif
 }
 
-static u16 voltage_test[6] = {0};
+float voltage_test[6] = {0};
 
 static void Temp_updata_realtime()
 {
@@ -814,8 +814,8 @@ static void Temp_updata_realtime()
 	voltage_test[4] = (ADC_Value_avg(ADC_Channel_14) * 825) >> 10;
 	voltage_test[5] = (ADC_Value_avg(ADC_Channel_15) * 825) >> 10;
 	//	float temp2=0.1618 * adcx7 + 11.048;
-	u16 voltage = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10; //*3300/4096
-	weld_controller->realtime_temp = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
+	float voltage = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10; //*3300/4096
+	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 
 #if TEMP_ADJUST == 1
 	command_set_comp_val("temp22", "val", voltage);
@@ -1540,23 +1540,36 @@ static u16 adc_ch15_init_value = 0;
  */
 static void Thermocouple_err_eliminate()
 {
-	/*采集两个通道的初始偏置电压*/
+
+	/*检测此时接入的是哪种热点偶*/
+	/*...*/
+
+	/*采集两个通道的初始偏置电压，1ms采集一个点*/
 	static u16 adc_ch14_data[SAMPLE_LEN] = {0};
 	static u16 adc_ch15_data[SAMPLE_LEN] = {0};
 	for (u16 i = 0; i < SAMPLE_LEN; i++)
 	{
 		adc_ch14_data[i] = ADC_Value_avg(ADC_Channel_14);
 		adc_ch15_data[i] = ADC_Value_avg(ADC_Channel_15);
+		user_tim_delay(1);
 	}
 
 	/*低通滤波*/
 	u16 adc_ch14_fliter_buf[SAMPLE_LEN] = {0};
 	u16 adc_ch15_fliter_buf[SAMPLE_LEN] = {0};
 
-	low_pass_Filter(adc_ch14_data, SAMPLE_LEN, adc_ch14_fliter_buf, 4500, 1000);
-	low_pass_Filter(adc_ch15_data, SAMPLE_LEN, adc_ch15_fliter_buf, 4500, 1000);
+	low_pass_Filter((float *)adc_ch14_data,
+					SAMPLE_LEN,
+					(float *)adc_ch14_fliter_buf,
+					1000,
+					1000);
+	low_pass_Filter((float *)adc_ch15_data,
+					SAMPLE_LEN,
+					(float *)adc_ch15_fliter_buf,
+					1000,
+					1000);
 
-	/*均值*/
+	/*均值滤波——计算初始偏置*/
 	u32 sum = 0;
 	for (u16 i = 0; i < SAMPLE_LEN; i++)
 	{
@@ -1570,6 +1583,19 @@ static void Thermocouple_err_eliminate()
 		sum += adc_ch15_fliter_buf[i];
 	}
 	adc_ch15_init_value = sum / SAMPLE_LEN;
+
+	if (adc_ch14_init_value > 300 || adc_ch15_init_value > 300)
+	{
+		/*偏置过高，异常报警*/
+		OS_ERR err;
+		/*唤醒错误处理线程*/
+		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+	}
+	else
+	{
+		coefficient_list[1].Bias = adc_ch14_init_value;
+		coefficient_list[2].Bias = adc_ch15_init_value;
+	}
 }
 
 /*
@@ -1581,7 +1607,8 @@ void read_task(void *p_arg)
 {
 
 	OS_ERR err;
-
+	/*消除热电偶静态偏置*/
+	Thermocouple_err_eliminate();
 	while (1)
 	{
 		/*处理页面逻辑*/
@@ -1890,7 +1917,7 @@ void draw_task(void *p_arg)
 			{
 				if (get_weld_flag() == BUSY_MODE) // 非焊接状态才进行绘制
 					break;
-				temp = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept; // 温度采样
+				temp = temp_convert(current_Thermocouple); // 温度采样
 				if (temp > MAX_TEMP_DISPLAY)																		 // 限幅
 					temp = MAX_TEMP_DISPLAY;
 				temp_display = temp * 7 / 24;				//*210/720=21/72=7/24

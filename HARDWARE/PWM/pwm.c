@@ -116,8 +116,8 @@ void TIM4_PWM_Init(void)
 	TIM_OC1Init(TIM4, &TIM_OCInitStructure);		  // OC1
 	TIM_OC1PreloadConfig(TIM4, TIM_OCPreload_Enable); // 配置
 	TIM_ARRPreloadConfig(TIM4, ENABLE);				  // ARPE使能
-	TIM_SetCompare1(TIM4, 0);
-	TIM_SelectSlaveMode(TIM4, TIM_SlaveMode_Reset); // 复位模式
-	TIM_SelectInputTrigger(TIM4, TIM_TS_ITR0);		// 内部触发源 TIM_TS_ITR0，让CH2触发TIM4
-	TIM_Cmd(TIM4, ENABLE);							// 使能TIM4
+	TIM_SetCompare1(TIM4, 0);						  // 初始占空比=0
+	TIM_SelectSlaveMode(TIM4, TIM_SlaveMode_Reset);	  // 复位模式
+	TIM_SelectInputTrigger(TIM4, TIM_TS_ITR0);		  // 内部触发源 TIM_TS_ITR0，让CH2触发TIM4
+	TIM_Cmd(TIM4, ENABLE);							  // 使能TIM4
 }

@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-11 17:47:17
+ * @LastEditTime: 2025-01-12 17:50:58
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -116,7 +116,7 @@ void ADC_DMA_INIT(void)
  */
 uint16_t ADC_Value_avg(uint16_t channel)
 {
-	uint32_t value = 0;
+	float value = 0;
 	switch (channel)
 	{
 
@@ -171,7 +171,7 @@ uint16_t ADC_Value_avg(uint16_t channel)
 		break;
 	}
 
-	return value;
+	return (uint16_t)value;
 }
 
 Thermocouple *newThermocouple(SENSOR_TYPE type, float slope, float intercept)
@@ -182,6 +182,7 @@ Thermocouple *newThermocouple(SENSOR_TYPE type, float slope, float intercept)
 		thermocouple->type = type;
 		thermocouple->slope = slope;
 		thermocouple->intercept = intercept;
+		thermocouple->Bias = 0;
 
 		return thermocouple;
 	}
@@ -189,6 +190,24 @@ Thermocouple *newThermocouple(SENSOR_TYPE type, float slope, float intercept)
 	{
 		return NULL;
 	}
+}
+
+uint16_t temp_convert(Thermocouple *thermocouple)
+{
+	uint16_t temp = 0;
+	switch (thermocouple->type)
+	{
+	case E_TYPE:
+		temp = thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + thermocouple->intercept;
+		break;
+	case J_TYPE:
+		temp = thermocouple->slope * (ADC_Value_avg(ADC_Channel_14) - thermocouple->Bias) + thermocouple->intercept;
+		break;
+	case K_TYPE:
+		temp = thermocouple->slope * (ADC_Value_avg(ADC_Channel_15) - thermocouple->Bias) + thermocouple->intercept;
+		break;
+	}
+	return temp;
 }
 
 /**

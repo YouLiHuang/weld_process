@@ -3,6 +3,6 @@
 #include "includes.h"
 #define PI 3.1415
 
-void low_pass_Filter(u16 *input, u16 data_len, u16 *output, u16 freq_s, u16 freq_c);
+void low_pass_Filter(float *input, float data_len, float *output, float freq_s, float freq_c);
 
 #endif

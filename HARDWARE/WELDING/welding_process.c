@@ -435,7 +435,7 @@ static void First_Step()
 		while (weld_controller->step_time_tick < weld_controller->weld_time[1])
 		{
 
-			weld_controller->realtime_temp = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
+			weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 			if (weld_controller->realtime_temp >= weld_controller->first_step_turn && weld_controller->pid_ctrl->stable_flag == false)
 			{
 				weld_controller->pid_ctrl->stable_flag = true;
@@ -491,7 +491,7 @@ static void Second_Step()
 		TIM_Cmd(TIM5, ENABLE);				 // 开启实时控制器
 		while (weld_controller->step_time_tick < weld_controller->weld_time[2])
 		{
-			weld_controller->realtime_temp = current_Thermocouple->slope * ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
+			weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 			/*到达刹车点，转阶段*/
 			if (weld_controller->realtime_temp >= weld_controller->second_step_turn && weld_controller->pid_ctrl->stable_flag == false)
 			{
@@ -555,7 +555,7 @@ static void Third_Step()
 		TIM_Cmd(TIM5, ENABLE);				 // 开启实时控制器
 		while (weld_controller->step_time_tick < weld_controller->weld_time[3])
 		{
-			current_Thermocouple->slope *ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
+			weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 			if (weld_controller->realtime_temp > weld_controller->alarm_temp[4])
 			{
 				stop_weld();
@@ -710,24 +710,24 @@ static void weld_real_time_ctrl()
 	Preload();
 
 	/*一阶段*/
-	err_cnt_clear(err_ctrl);																		 // 报错统计值复位
-	weld_controller->first_step_start_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2; // 起始温度
-	First_Step();																					 // 一阶段
-	if (true == err_occur(err_ctrl))																 // 唤醒错误处理线程
+	err_cnt_clear(err_ctrl);													 // 报错统计值复位
+	weld_controller->first_step_start_temp = temp_convert(current_Thermocouple); // 起始温度
+	First_Step();																 // 一阶段
+	if (true == err_occur(err_ctrl))											 // 唤醒错误处理线程
 		goto STOP_LABEL;
 
 	/*二阶段*/
-	err_cnt_clear(err_ctrl);																		  // 报错统计值复位
-	weld_controller->second_step_start_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2; // 起始温度
-	Second_Step();																					  // 二阶段
-	if (true == err_occur(err_ctrl))																  // 唤醒错误处理线程
+	err_cnt_clear(err_ctrl);													  // 报错统计值复位
+	weld_controller->second_step_start_temp = temp_convert(current_Thermocouple); // 起始温度
+	Second_Step();																  // 二阶段
+	if (true == err_occur(err_ctrl))											  // 唤醒错误处理线程
 		goto STOP_LABEL;
 
 	/*三阶段*/
-	err_cnt_clear(err_ctrl);																		 // 报错统计值复位
-	weld_controller->third_step_start_temp = TEMP_GAIN1 * ADC_Value_avg(ADC_Channel_7) + TEMP_GAIN2; // 起始温度
-	Third_Step();																					 // 三阶段
-	if (true == err_occur(err_ctrl))																 // 唤醒错误处理线程
+	err_cnt_clear(err_ctrl);													 // 报错统计值复位
+	weld_controller->third_step_start_temp = temp_convert(current_Thermocouple); // 起始温度
+	Third_Step();																 // 三阶段
+	if (true == err_occur(err_ctrl))											 // 唤醒错误处理线程
 		goto STOP_LABEL;
 
 	/*结束一轮焊接*/
@@ -780,7 +780,7 @@ void welding_process(void)
 		OS_ERR err;
 		u8 key = 0;
 		/*获取当前实时温度*/
-		current_Thermocouple->slope *ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
+		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 		key = new_key_scan();
 		// 不松开脚踏就进入持续焊接模式
 		while (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
@@ -846,7 +846,7 @@ void welding_process(void)
 		OS_ERR err;
 		u8 key = 0;
 		/*获取当前实时温度*/
-		current_Thermocouple->slope *ADC_Value_avg(ADC_Channel_7) + current_Thermocouple->intercept;
+		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 		key = new_key_scan();
 		if (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
 		{
