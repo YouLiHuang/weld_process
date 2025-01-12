@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-12 18:12:58
+ * @LastEditTime: 2025-01-12 18:14:04
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -29,7 +29,6 @@
 /*调试接口*/
 #define TEMP_ADJUST 0	 // 温度校准
 #define REALTIME_TEMP 1	 // 实时温度显示使能
-#define TEMP_CHECK 1	 // 热电偶检测
 #define VOLTAGE_CHECK 1	 // 过欠压报警
 #define POWER_ON_CHECK 1 // 开机自检报警（开机后完成一次热点电偶检测）
 
@@ -553,8 +552,6 @@ static bool Temp_up_check(void)
 	uint16_t Init_Temperature = 0;
 	uint16_t New_Temperature = 0;
 
-#if TEMP_CHECK
-
 	Init_Temperature = temp_convert(current_Thermocouple);
 	TIM1_PWM_Init();
 	TIM4_PWM_Init();
@@ -596,8 +593,6 @@ static bool Temp_up_check(void)
 	// 延时检测温度
 	user_tim_delay(100);
 	New_Temperature = temp_convert(current_Thermocouple);
-
-#endif
 
 	/*判断温度变化*/
 	if (New_Temperature < Init_Temperature + 5 || New_Temperature > 4 * Init_Temperature || New_Temperature > 200)
