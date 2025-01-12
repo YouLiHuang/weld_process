@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-12 17:52:12
+ * @LastEditTime: 2025-01-12 18:08:10
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -150,7 +150,7 @@ static bool Temp_down_reset_callback(u8 index);
 // E：0.222*3300/4096=0.1788
 // J：0.2189*3300/4096=0.1763
 // K：0.218*3300/4096=0.1756
-static Thermocouple coefficient_list[] = {
+static Thermocouple Thermocouple_Lists[] = {
 	{E_TYPE, 0.17, 0, 0},
 	{K_TYPE, 0.17, 0, 0},
 	{J_TYPE, 0.17, 0, 0},
@@ -298,7 +298,7 @@ int main(void)
 	temp_draw_ctrl = new_temp_draw_ctrl(realtime_temp_buf, 500, 2000, 500);
 
 	/*默认e型热电偶*/
-	current_Thermocouple = &coefficient_list[0];
+	current_Thermocouple = &Thermocouple_Lists[0];
 
 	/*------------------------------------------------------硬件层数据对象-----------------------------------------------------------*/
 	/*外设初始化*/
@@ -1394,48 +1394,7 @@ static void page_process(Page_ID id)
 	}
 }
 
-#if 0
-static void CMD_touchscreen_reset_callback()
-{
-	u8 remember_array_init = 0;
-	Load_param(weld_controller, remember_array_init);
-	Load_param_alarm(weld_controller, remember_array_init);
 
-	command_send_raw("page 4");
-	command_set_comp_val("ION_OFF", "pic", ION);
-	for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
-	{
-		Component *comp = get_comp(temp_page_list, alarm_temp_name_list[i]);
-		if (comp != NULL)
-			command_set_comp_val(alarm_temp_name_list[i], "val", comp->val);
-	}
-	for (uint8_t i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
-	{
-		Component *comp = get_comp(temp_page_list, gain_name_list[i]);
-		if (comp != NULL)
-			command_set_comp_val(gain_name_list[i], "val", comp->val);
-	}
-	command_set_comp_val("count", "val", 0);
-
-	command_send("page 1");
-	command_set_comp_val("ION_OFF", "pic", ION);
-	/*发送到触摸屏*/
-	for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
-	{
-		Component *comp = get_comp(param_page_list, weld_time_name_list[i]);
-		if (comp != NULL)
-			command_set_comp_val(weld_time_name_list[i], "val", comp->val);
-	}
-	for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
-	{
-		Component *comp = get_comp(param_page_list, weld_temp_name_list[i]);
-		if (comp != NULL)
-			command_set_comp_val(weld_temp_name_list[i], "val", comp->val);
-	}
-	command_set_comp_val("count", "val", 0);
-}
-
-#endif
 
 static bool data_syn(Page_ID id)
 {
@@ -1516,10 +1475,10 @@ static bool data_syn(Page_ID id)
 		}
 
 		/*更新热电偶类型*/
-		for (u8 i = 0; i < sizeof(coefficient_list) / sizeof(coefficient_list[0]); i++)
+		for (u8 i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple_Lists[0]); i++)
 		{
-			if (get_comp(setting_page_list, "sensortype")->val == coefficient_list[i].type)
-				current_Thermocouple = &coefficient_list[i]; // 更新当前热电偶类型
+			if (get_comp(setting_page_list, "sensortype")->val == Thermocouple_Lists[i].type)
+				current_Thermocouple = &Thermocouple_Lists[i]; // 更新当前热电偶类型
 		}
 	}
 
@@ -1542,7 +1501,8 @@ static void Thermocouple_err_eliminate()
 {
 
 	/*检测此时接入的是哪种热点偶*/
-	/*...*/
+
+	/*6个IO*/
 
 	/*采集两个通道的初始偏置电压，1ms采集一个点*/
 	static u16 adc_ch14_data[SAMPLE_LEN] = {0};
@@ -1593,8 +1553,8 @@ static void Thermocouple_err_eliminate()
 	}
 	else
 	{
-		coefficient_list[1].Bias = adc_ch14_init_value;
-		coefficient_list[2].Bias = adc_ch15_init_value;
+		Thermocouple_Lists[1].Bias = adc_ch14_init_value;
+		Thermocouple_Lists[2].Bias = adc_ch15_init_value;
 	}
 }
 

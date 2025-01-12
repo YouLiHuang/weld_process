@@ -439,7 +439,6 @@ static void First_Step()
 			if (weld_controller->realtime_temp >= weld_controller->first_step_turn && weld_controller->pid_ctrl->stable_flag == false)
 			{
 				weld_controller->pid_ctrl->stable_flag = true;
-				// reset_forword_ctrl(weld_controller->pid_ctrl);
 			}
 
 			// 过温保护
@@ -496,7 +495,6 @@ static void Second_Step()
 			if (weld_controller->realtime_temp >= weld_controller->second_step_turn && weld_controller->pid_ctrl->stable_flag == false)
 			{
 				weld_controller->pid_ctrl->stable_flag = true;
-				// reset_forword_ctrl(weld_controller->pid_ctrl);
 			}
 
 			/*后续计算稳定温度值索引（待改进）*/
