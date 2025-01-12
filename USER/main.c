@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-12 18:08:10
+ * @LastEditTime: 2025-01-12 18:12:58
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -1394,8 +1394,6 @@ static void page_process(Page_ID id)
 	}
 }
 
-
-
 static bool data_syn(Page_ID id)
 {
 	/*1、按键状态同步*/
@@ -1878,7 +1876,7 @@ void draw_task(void *p_arg)
 				if (get_weld_flag() == BUSY_MODE) // 非焊接状态才进行绘制
 					break;
 				temp = temp_convert(current_Thermocouple); // 温度采样
-				if (temp > MAX_TEMP_DISPLAY)																		 // 限幅
+				if (temp > MAX_TEMP_DISPLAY)			   // 限幅
 					temp = MAX_TEMP_DISPLAY;
 				temp_display = temp * 7 / 24;				//*210/720=21/72=7/24
 				draw_point(temp_display);					// 绘图
