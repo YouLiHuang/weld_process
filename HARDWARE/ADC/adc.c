@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-05 10:47:57
+ * @LastEditTime: 2025-01-11 17:47:17
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -17,12 +17,17 @@
 // PA5采样二次测输出电压
 // PA6采样初级电压
 // PA7采样温度变送器
-#define ADC_SAMPLE_PNUM 15													// AD 采样点数数
+#define ADC_SAMPLE_PNUM 10													// AD 采样点数数
 #define ADC_SAMPLE_CNUM 6													// AD 采样通道数
 volatile unsigned short m_ADCValue[ADC_SAMPLE_PNUM][ADC_SAMPLE_CNUM] = {0}; // 列向量
 
 /**
  * @description: ADC DAM config ，continuous sampling mode and DMA loop mode for data transmission
+ * PCLK2=HCLK/APB2 Prescale2=168M/2=84M  ADC clock:PCLK2/4=84M/4=21M
+ * there are 6 channels so，total time is：{12cycle（convert time）+10cycle（channle delay）+56cycle（sample time）}*6=468cycle
+ * Therefore, the frequency of completing a round of sampling is 21M/468=45KHz
+ * DMA calculates the average value of every 10 points,
+ * so for each point, the frequency of obtaining an effective value is about 4.5KHz.
  * @return {*}
  */
 void ADC_DMA_INIT(void)
@@ -50,9 +55,9 @@ void ADC_DMA_INIT(void)
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE); // 使能ADC1/2时钟
 
 	ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent;
-	ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div8; // 预分频
+	ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div4;
 	ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled;
-	ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_20Cycles; // 采样间隔
+	ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_10Cycles;
 	ADC_CommonInit(&ADC_CommonInitStructure);
 
 	ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;
@@ -71,9 +76,9 @@ void ADC_DMA_INIT(void)
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_4, 1, ADC_SampleTime_56Cycles);
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_5, 2, ADC_SampleTime_56Cycles);
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_6, 3, ADC_SampleTime_56Cycles);
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_7, 4, ADC_SampleTime_84Cycles);
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_14, 5, ADC_SampleTime_84Cycles);
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_15, 6, ADC_SampleTime_84Cycles);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_7, 4, ADC_SampleTime_56Cycles);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_14, 5, ADC_SampleTime_56Cycles);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_15, 6, ADC_SampleTime_56Cycles);
 
 	/*DMA配置----------------------------------------------------------------------------*/
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE); // 使能 DMA2 时钟
@@ -168,8 +173,6 @@ uint16_t ADC_Value_avg(uint16_t channel)
 
 	return value;
 }
-
-
 
 Thermocouple *newThermocouple(SENSOR_TYPE type, float slope, float intercept)
 {

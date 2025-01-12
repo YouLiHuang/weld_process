@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-08 10:03:47
+ * @LastEditTime: 2025-01-11 15:53:24
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -24,6 +24,7 @@
 #include "Kalman.h"
 #include "touchscreen.h"
 #include "PID.h"
+#include "filter.h"
 
 /*调试接口*/
 #define TEMP_ADJUST 0	 // 温度校准
@@ -146,6 +147,9 @@ static bool Temp_up_reset_callback(u8 index);
 static bool Temp_down_reset_callback(u8 index);
 
 /*采用硬件校准模式，不同的热电偶的板级放大系数不同，需要单独进行校准，但是软件层是一致的*/
+// E：0.222*3300/4096=0.1788
+// J：0.2189*3300/4096=0.1763
+// K：0.218*3300/4096=0.1756
 static Thermocouple coefficient_list[] = {
 	{E_TYPE, 0.17, 0},
 	{K_TYPE, 0.17, 0},
@@ -785,6 +789,7 @@ void error_task(void *p_arg)
 /*-------------------------------------------------------------------------------------------------------------------------*/
 static void Power_on_check(void)
 {
+
 #if POWER_ON_CHECK == 1
 	// 热电偶开机自检标志位——上电只进行一次检查
 	if (false == Temp_up_check())
@@ -1523,6 +1528,48 @@ static bool data_syn(Page_ID id)
 	}
 
 	return true;
+}
+
+static u16 adc_ch14_init_value = 0;
+static u16 adc_ch15_init_value = 0;
+
+#define SAMPLE_LEN 100
+/**
+ * @description: 消除E/J两个热电偶地误差
+ * @return {*}
+ */
+static void Thermocouple_err_eliminate()
+{
+	/*采集两个通道的初始偏置电压*/
+	static u16 adc_ch14_data[SAMPLE_LEN] = {0};
+	static u16 adc_ch15_data[SAMPLE_LEN] = {0};
+	for (u16 i = 0; i < SAMPLE_LEN; i++)
+	{
+		adc_ch14_data[i] = ADC_Value_avg(ADC_Channel_14);
+		adc_ch15_data[i] = ADC_Value_avg(ADC_Channel_15);
+	}
+
+	/*低通滤波*/
+	u16 adc_ch14_fliter_buf[SAMPLE_LEN] = {0};
+	u16 adc_ch15_fliter_buf[SAMPLE_LEN] = {0};
+
+	low_pass_Filter(adc_ch14_data, SAMPLE_LEN, adc_ch14_fliter_buf, 4500, 1000);
+	low_pass_Filter(adc_ch15_data, SAMPLE_LEN, adc_ch15_fliter_buf, 4500, 1000);
+
+	/*均值*/
+	u32 sum = 0;
+	for (u16 i = 0; i < SAMPLE_LEN; i++)
+	{
+		sum += adc_ch14_fliter_buf[i];
+	}
+	adc_ch14_init_value = sum / SAMPLE_LEN;
+
+	sum = 0;
+	for (u16 i = 0; i < SAMPLE_LEN; i++)
+	{
+		sum += adc_ch15_fliter_buf[i];
+	}
+	adc_ch15_init_value = sum / SAMPLE_LEN;
 }
 
 /*
