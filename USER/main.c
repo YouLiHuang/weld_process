@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-12 18:14:04
+ * @LastEditTime: 2025-01-13 10:02:33
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -31,8 +31,8 @@
 #define REALTIME_TEMP 1	 // 实时温度显示使能
 #define VOLTAGE_CHECK 1	 // 过欠压报警
 #define POWER_ON_CHECK 1 // 开机自检报警（开机后完成一次热点电偶检测）
-#define ROOM_TEMP 20
-#define JK_TEMP_SHOW 1
+#define ROOM_TEMP 20	 // 默认室温
+#define JK_TEMP_SHOW 1	 // JK热电偶显示
 // 任务优先级
 #define START_TASK_PRIO 3
 // 任务堆栈大小
