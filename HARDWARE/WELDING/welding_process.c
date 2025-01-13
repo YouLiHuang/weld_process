@@ -465,7 +465,7 @@ static void First_Step()
 
 			/*实时温度显示*/
 			if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
-				draw_point(weld_controller->realtime_temp * 7 / 24);
+				draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
 #endif
 		}
 
@@ -528,7 +528,7 @@ static void Second_Step()
 #if REALTIME_TEMP_DISPLAY == 1
 			/*实时温度显示*/
 			if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
-				draw_point(weld_controller->realtime_temp * 7 / 24);
+				draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
 #endif
 		}
 		/*3、第二段结束后，对变量进行复位*/
@@ -573,7 +573,7 @@ static void Third_Step()
 #if REALTIME_TEMP_DISPLAY == 1
 			/*实时温度显示*/
 			if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
-				draw_point(weld_controller->realtime_temp * 7 / 24);
+				draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
 #endif
 		}
 

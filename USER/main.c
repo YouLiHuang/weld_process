@@ -107,7 +107,7 @@ extern u16 realtime_temp_buf[TEMP_BUF_MAX_LEN]; // 温度保存缓冲区
 OS_Q UART_Msg;									// 串口数据队列
 ////////////////////////UART3资源保护：互斥锁（暂时未用）////////////////////////
 OS_MUTEX UARTMutex;
-////////////////////////线程同步：信号量//////////////////////////////////////// 
+////////////////////////线程同步：信号量////////////////////////////////////////
 OS_SEM CMD_OK_SEM;		 // 指令成功执行信号
 OS_SEM PAGE_UPDATE_SEM;	 // 页面刷新信号
 OS_SEM COMP_VAL_GET_SEM; // 组件属性值成功获取信号
@@ -1893,7 +1893,7 @@ void draw_task(void *p_arg)
 				temp = temp_convert(current_Thermocouple); // 温度采样
 				if (temp > MAX_TEMP_DISPLAY)			   // 限幅
 					temp = MAX_TEMP_DISPLAY;
-				temp_display = temp * 7 / 24;				//*210/720=21/72=7/24
+				temp_display = temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY;
 				draw_point(temp_display);					// 绘图
 				user_tim_delay(temp_draw_ctrl->delta_tick); // 采样间隔
 				index++;
