@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-13 10:45:12
+ * @LastEditTime: 2025-01-13 11:01:47
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -107,7 +107,7 @@ extern u16 realtime_temp_buf[TEMP_BUF_MAX_LEN]; // 温度保存缓冲区
 OS_Q UART_Msg;									// 串口数据队列
 ////////////////////////UART3资源保护：互斥锁（暂时未用）////////////////////////
 OS_MUTEX UARTMutex;
-////////////////////////线程同步：信号量////////////////////////////////////////
+////////////////////////线程同步：信号量//////////////////////////////////////// 
 OS_SEM CMD_OK_SEM;		 // 指令成功执行信号
 OS_SEM PAGE_UPDATE_SEM;	 // 页面刷新信号
 OS_SEM COMP_VAL_GET_SEM; // 组件属性值成功获取信号
