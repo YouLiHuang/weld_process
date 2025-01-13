@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-13 10:02:33
+ * @LastEditTime: 2025-01-13 10:45:12
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -99,8 +99,6 @@ CPU_STK DRAW_TASK_STK[DRAW_STK_SIZE];
 void draw_task(void *p_arg);
 
 /*--------------------------------------------------------新触摸屏界面部分------------------------------------------------------------------*/
-///////////////////////////////////////////////////////////////////////////////
-
 ////////////////////////RS485的消息队列/////////////////////////////////////////
 extern u32 baud_list[11];
 extern uint8_t USART_RX_BUF[USART_REC_LEN];		// 触摸屏串口接收缓冲
@@ -110,6 +108,7 @@ OS_Q UART_Msg;									// 串口数据队列
 ////////////////////////UART3资源保护：互斥锁（暂时未用）////////////////////////
 OS_MUTEX UARTMutex;
 ////////////////////////线程同步：信号量////////////////////////////////////////
+OS_SEM CMD_OK_SEM;		 // 指令成功执行信号
 OS_SEM PAGE_UPDATE_SEM;	 // 页面刷新信号
 OS_SEM COMP_VAL_GET_SEM; // 组件属性值成功获取信号
 OS_SEM COMP_STR_GET_SEM; // 组件属性值(字符串型)成功获取信号
@@ -395,6 +394,23 @@ void start_task(void *p_arg)
 		// 创建失败
 	}
 
+	/*--------------------------------------------UI相关信号量--------------------------------------------*/
+	// 创建指令成功执行信号
+	OSSemCreate(&CMD_OK_SEM, "command ok", 0, &err);
+	if (err != OS_ERR_NONE)
+	{
+		;
+		// 创建失败
+	}
+
+	// 创建页面更新信号
+	OSSemCreate(&PAGE_UPDATE_SEM, "page update", 0, &err);
+	if (err != OS_ERR_NONE)
+	{
+		;
+		// 创建失败
+	}
+
 	// 专门用于获取组件属性值的信号量
 	OSSemCreate(&COMP_VAL_GET_SEM, "comp val get", 0, &err);
 	if (err != OS_ERR_NONE)
@@ -409,14 +425,7 @@ void start_task(void *p_arg)
 		// 创建失败
 	}
 
-	//   创建页面更新信号
-	OSSemCreate(&PAGE_UPDATE_SEM, "page update", 0, &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
-
+	/*--------------------------------------------其他信号量--------------------------------------------*/
 	//  创建报警复位信号量
 	OSSemCreate(&ALARM_RESET_SEM, "alarm reset", 0, &err);
 	if (err != OS_ERR_NONE)

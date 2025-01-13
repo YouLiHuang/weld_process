@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-02 15:16:32
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-08 09:58:06
+ * @LastEditTime: 2025-01-13 10:42:52
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -68,8 +68,8 @@ int receive_number_computer = 0;
 int Host_action = 0;
 
 int Host_GP = 0;	// GP
-int Host_gain1_raw; // 整数
-int Host_gain2_raw; // 整数
+int Host_gain1_raw; // 增益暂存
+int Host_gain2_raw; // 增益暂存
 float Host_gain2;	// 上位机增益1参数暂存（浮点数）
 float Host_gain1;	// 上位机增益2参数暂存（浮点数）
 
@@ -79,14 +79,17 @@ struct crc16_struct3 temp2 = {0x00, 0x00}; // 上位机crc16 校验
 extern u8 ID_OF_MAS; // 焊机485通讯机号，默认是零
 extern int RDY_SCH;	 // 参数设置按键
 
-extern OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
-extern OS_Q UART_Msg;				 // 消息队列
-extern Error_ctrl *err_ctrl;		 // 错误控制器
-extern Page_Param *page_param;		 // 页面信息
-extern OS_SEM ALARM_RESET_SEM;
+extern OS_Q UART_Msg;		   // 消息队列
+extern Error_ctrl *err_ctrl;   // 错误控制器
+extern Page_Param *page_param; // 页面信息
+
+/*信号量接口*/
+extern OS_SEM CMD_OK_SEM;
 extern OS_SEM PAGE_UPDATE_SEM;
 extern OS_SEM COMP_VAL_GET_SEM;
 extern OS_SEM COMP_STR_GET_SEM;
+extern OS_SEM ALARM_RESET_SEM;
+extern OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
 
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------------触摸屏---------------------------------------------------------------------------------*/
@@ -190,6 +193,7 @@ void UART4_IRQHandler(void)
 			switch (USART_RX_BUF[0])
 			{
 			case CMD_OK:
+				OSSemPost(&PAGE_UPDATE_SEM, OS_OPT_POST_ALL, &err);
 				break;
 			case CMD_PAGEID_RETURN:
 				OSSemPost(&PAGE_UPDATE_SEM, OS_OPT_POST_ALL, &err);
