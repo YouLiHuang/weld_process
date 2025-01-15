@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-02 15:16:32
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-13 10:42:52
+ * @LastEditTime: 2025-01-15 19:49:11
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -211,6 +211,8 @@ void UART4_IRQHandler(void)
 			case CMD_STR_VAR_RETURN:
 				OSSemPost(&COMP_STR_GET_SEM, OS_OPT_POST_ALL, &err);
 				break;
+			case CMD_SENSOR_UPDATE:
+				
 			case CMD_DATA_TRANSFER_READY:
 				break;
 

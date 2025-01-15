@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-13 11:01:47
+ * @LastEditTime: 2025-01-15 20:40:20
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -108,11 +108,12 @@ OS_Q UART_Msg;									// 串口数据队列
 ////////////////////////UART3资源保护：互斥锁（暂时未用）////////////////////////
 OS_MUTEX UARTMutex;
 ////////////////////////线程同步：信号量////////////////////////////////////////
-OS_SEM CMD_OK_SEM;		 // 指令成功执行信号
-OS_SEM PAGE_UPDATE_SEM;	 // 页面刷新信号
-OS_SEM COMP_VAL_GET_SEM; // 组件属性值成功获取信号
-OS_SEM COMP_STR_GET_SEM; // 组件属性值(字符串型)成功获取信号
-OS_SEM ALARM_RESET_SEM;	 // 报警复位信号
+OS_SEM CMD_OK_SEM;		  // 指令成功执行信号
+OS_SEM PAGE_UPDATE_SEM;	  // 页面刷新信号
+OS_SEM COMP_VAL_GET_SEM;  // 组件属性值成功获取信号
+OS_SEM COMP_STR_GET_SEM;  // 组件属性值(字符串型)成功获取信号
+OS_SEM ALARM_RESET_SEM;	  // 报警复位信号
+OS_SEM SENSOR_UPDATE_SEM; // 热电偶校准信号
 
 OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
 /*主线程使用*/
@@ -425,6 +426,14 @@ void start_task(void *p_arg)
 		// 创建失败
 	}
 
+	// 热电偶校准信号
+	OSSemCreate(&SENSOR_UPDATE_SEM, "SENSOR_UPDATE_SEM", 0, &err);
+	if (err != OS_ERR_NONE)
+	{
+		;
+		// 创建失败
+	}
+
 	/*--------------------------------------------其他信号量--------------------------------------------*/
 	//  创建报警复位信号量
 	OSSemCreate(&ALARM_RESET_SEM, "alarm reset", 0, &err);
@@ -559,7 +568,7 @@ void start_task(void *p_arg)
  */
 static bool Temp_up_check(void)
 {
-	#if 0
+#if 0
 	uint16_t Init_Temperature = 0;
 	uint16_t New_Temperature = 0;
 
@@ -613,9 +622,9 @@ static bool Temp_up_check(void)
 	{
 		return true;
 	}
-	
-	#endif
-	
+
+#endif
+
 	return true;
 }
 
@@ -1392,15 +1401,28 @@ static void page_process(Page_ID id)
 
 	case UART_PAGE:
 	{
+		OS_ERR err;
 
 		/*...机地址以及波特率修改，同步到上位机...*/
 		/*1、读取界面设定的地址*/
 		command_get_comp_val(setting_page_list, "adress", "val");
 		/*2、读取页面设定的波特率*/
 		command_get_comp_val(setting_page_list, "baudrate", "val");
-
 		/*3、读取热电偶类型*/
 		command_get_comp_val(setting_page_list, "sensortype", "val");
+		/*订阅热电偶校准信号*/
+		OSSemPend(&SENSOR_UPDATE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+		if (OS_ERR_NONE == err)
+		{
+			if (temp_convert(current_Thermocouple) < 35)
+			{
+				Thermocouple_err_eliminate();
+			}
+			else
+			{
+				command_set_comp_val("warning", "aph", 127);
+			}
+		}
 	}
 	break;
 
@@ -1516,7 +1538,11 @@ static void Thermocouple_err_eliminate()
 
 	/*检测此时接入的是哪种热点偶*/
 
-	/*6个IO*/
+	/*6个IO...*/
+
+	/*检测完成后将设置页面的热电偶更新为对应的值*/
+	// SENSOR_TYPE type;
+	// command_set_comp_val("KEJ", "val", type);
 
 	/*采集两个通道的初始偏置电压，1ms采集一个点*/
 	float adc_ch14_data[SAMPLE_LEN] = {0};
@@ -1573,6 +1599,9 @@ static void Thermocouple_err_eliminate()
 		Thermocouple_Lists[1].Bias = adc_ch15_init_value - room_temp_voltage;
 		room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[2].intercept) / Thermocouple_Lists[2].slope;
 		Thermocouple_Lists[2].Bias = adc_ch14_init_value - room_temp_voltage;
+
+		/*校准完成*/
+		command_set_comp_val("tm0", "en", 1);
 	}
 }
 
@@ -1586,7 +1615,7 @@ void read_task(void *p_arg)
 
 	OS_ERR err;
 	/*消除热电偶静态偏置*/
-	//Thermocouple_err_eliminate();
+	// Thermocouple_err_eliminate();
 	while (1)
 	{
 		/*处理页面逻辑*/

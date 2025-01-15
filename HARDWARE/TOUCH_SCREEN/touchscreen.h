@@ -64,7 +64,8 @@
 #define CMD_WAKE_UP 0x87
 #define CMD_SYSTEM_START_OK 0x88
 #define CMD_SD_CARD_UPDATE_START 0x89
-#define CMD_ALARM_RESET 0x90 // 这个为自定义的指令！！！
+#define CMD_ALARM_RESET 0x90   // 这个为自定义的指令！！！
+#define CMD_SENSOR_UPDATE 0x99 // 这个为自定义的指令！！！
 #define CMD_DATA_TRANSFER_OK 0xFD
 #define CMD_DATA_TRANSFER_READY 0xFE
 
@@ -111,8 +112,8 @@ typedef enum UP_DOWN
 
 typedef enum SENSOR_TYPE
 {
-    E_TYPE = 1,
-    K_TYPE,
+    K_TYPE = 0,
+    E_TYPE,
     J_TYPE
 } SENSOR_TYPE;
 
