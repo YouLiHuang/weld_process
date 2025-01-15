@@ -32,7 +32,7 @@
 #define VOLTAGE_CHECK 1	 // 过欠压报警
 #define POWER_ON_CHECK 1 // 开机自检报警（开机后完成一次热点电偶检测）
 #define ROOM_TEMP 20	 // 默认室温
-#define JK_TEMP_SHOW 1	 // JK热电偶显示
+#define JK_TEMP_SHOW 0	 // JK热电偶显示
 // 任务优先级
 #define START_TASK_PRIO 3
 // 任务堆栈大小
@@ -151,8 +151,8 @@ static bool Temp_down_reset_callback(u8 index);
 // K：0.218*3300/4096=0.1756
 static Thermocouple Thermocouple_Lists[] = {
 	{E_TYPE, 0.17, 0, 0},
-	{K_TYPE, 0.17, 0, 0},
-	{J_TYPE, 0.17, 0, 0},
+	{K_TYPE, 0.17, 0, 320},
+	{J_TYPE, 0.17, 0, 260},
 };
 
 const error_match_list match_list[] = {
@@ -297,7 +297,7 @@ int main(void)
 	temp_draw_ctrl = new_temp_draw_ctrl(realtime_temp_buf, 500, 2000, 500);
 
 	/*默认e型热电偶*/
-	current_Thermocouple = &Thermocouple_Lists[0];
+	current_Thermocouple = &Thermocouple_Lists[2];
 
 	/*------------------------------------------------------硬件层数据对象-----------------------------------------------------------*/
 	/*外设初始化*/
@@ -559,6 +559,7 @@ void start_task(void *p_arg)
  */
 static bool Temp_up_check(void)
 {
+	#if 0
 	uint16_t Init_Temperature = 0;
 	uint16_t New_Temperature = 0;
 
@@ -612,6 +613,10 @@ static bool Temp_up_check(void)
 	{
 		return true;
 	}
+	
+	#endif
+	
+	return true;
 }
 
 /*---------------------------------------------------------------------------------------*/
@@ -1553,7 +1558,7 @@ static void Thermocouple_err_eliminate()
 	}
 	adc_ch15_init_value = sum / SAMPLE_LEN;
 
-	if (adc_ch14_init_value > 350 || adc_ch15_init_value > 350)
+	if (adc_ch14_init_value > 500 || adc_ch15_init_value > 500)
 	{
 		/*偏置过高，异常报警*/
 		OS_ERR err;
@@ -1581,7 +1586,7 @@ void read_task(void *p_arg)
 
 	OS_ERR err;
 	/*消除热电偶静态偏置*/
-	Thermocouple_err_eliminate();
+	//Thermocouple_err_eliminate();
 	while (1)
 	{
 		/*处理页面逻辑*/
