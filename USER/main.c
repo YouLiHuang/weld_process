@@ -625,6 +625,10 @@ static bool Temp_up_check(void)
 
 #endif
 
+	/*1、开机自检需要检测当前是哪一路热电偶，如果是KJ热电偶*/
+
+	/*2、同时需要适配存储接口，读取出上次保存的热电偶校准值*/
+
 	return true;
 }
 
