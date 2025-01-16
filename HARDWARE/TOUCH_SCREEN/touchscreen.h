@@ -156,7 +156,7 @@ typedef struct Component_Queue
 } Component_Queue;
 
 //////////////////////////////////////////触摸屏API////////////////////////////////////////
-void RS485_send(const char *buffer, const u16 len);
+void RS485_send(const char *buffer, const uint16_t len);
 /*初始化接口*/
 void command_send_raw(const char *cmd);
 void command_set_comp_val_raw(const char *name, const char *compatible, int val);
@@ -169,7 +169,7 @@ bool command_get_comp_val(Component_Queue *list, const char *name, const char *c
 /*常用接口*/
 void Touchscreen_init(void);
 bool Page_to(const Page_Param *page_param, const Page_ID id);
-void draw_point(u16 val);
+void draw_point(uint16_t val);
 bool alram_clear(Page_Param *page_param);
 bool Page_id_get(void);
 //////////////////////////////////控件数据对象API///////////////////////////////////////////
@@ -183,7 +183,7 @@ void deleteComponent(Component *comp);
 Component *get_comp(Component_Queue *list, const char *name);
 Component *newComponet(const char *name, int val);
 
-bool page_list_init(Component_Queue *page_list, char *name_list[], u8 list_len);
+bool page_list_init(Component_Queue *page_list, char *name_list[], uint8_t list_len);
 bool param_page_list_init(Component_Queue *param_page_list);
 bool temp_page_list_init(Component_Queue *temp_page_list);
 bool uart_page_list_init(Component_Queue *temp_page_list);

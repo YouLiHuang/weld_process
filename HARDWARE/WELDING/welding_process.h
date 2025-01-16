@@ -14,7 +14,7 @@
 #include "sys.h"
 #include "PID.h"
 
-void user_value_convert_to_string(char *buffer, const u8 buf_len, const u16 value);
+void user_value_convert_to_string(char *buffer, const uint8_t buf_len, const uint16_t value);
 void welding_process(void);
 
 /*调试接口*/
@@ -50,36 +50,36 @@ typedef enum WELD_MODE
 
 typedef struct temp_setting_point
 {
-    u16 time;
-    u16 temp;
+    uint16_t time;
+    uint16_t temp;
 } temp_setting_point;
 
 typedef struct weld_realtime_controller
 {
-    u16 weld_time_tick; /*total time tick*/
-    u16 step_time_tick; /*every step tick*/
-    u16 Duty_Cycle;     /*Duty Cycle*/
-    u16 weld_count;     /*weld count*/
+    uint16_t weld_time_tick; /*total time tick*/
+    uint16_t step_time_tick; /*every step tick*/
+    uint16_t Duty_Cycle;     /*Duty Cycle*/
+    uint16_t weld_count;     /*weld count*/
     WELD_STATE state;   /*wled state*/
 
     /*Transition Parameters*/
-    u16 first_step_start_temp;
-    u16 second_step_start_temp;
-    u16 third_step_start_temp;
-    u16 third_step_start_duty_cycle;
-    u16 realtime_temp;
+    uint16_t first_step_start_temp;
+    uint16_t second_step_start_temp;
+    uint16_t third_step_start_temp;
+    uint16_t third_step_start_duty_cycle;
+    uint16_t realtime_temp;
 
     /*user parameter*/
-    u16 weld_time[5];
-    u16 weld_temp[3];
-    u16 alarm_temp[6];
+    uint16_t weld_time[5];
+    uint16_t weld_temp[3];
+    uint16_t alarm_temp[6];
 
     /*ctrl param*/
-    u16 first_step_set;
-    u16 first_step_turn;
+    uint16_t first_step_set;
+    uint16_t first_step_turn;
 
-    u16 second_step_set;
-    u16 second_step_turn;
+    uint16_t second_step_set;
+    uint16_t second_step_turn;
     /*gain param*/
     double temp_gain1;
     double temp_gain2;
@@ -91,6 +91,6 @@ typedef struct weld_realtime_controller
 
 weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl);
 
-u8 get_weld_flag(void);
+WELD_MODE get_weld_flag(void);
 
 #endif

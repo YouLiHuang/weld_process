@@ -1,13 +1,15 @@
-/*
- * @Author: <lan> <1791060296@qq.com>
- * @Date: 2024-06-26 09:09:37
- * @LastEditors: <lan> <1791060296@qq.com>
- * @LastEditTime: 2024-06-26 09:09:49
- * @FilePath: \��ѹ��������_�ȵ�ż����20240626\HARDWARE\TEMPCOMPA\tempcomp.h
- * @Description:
- *
- * Copyright (c) 2024 by ${git_name_email}, All Rights Reserved.
+/*** 
+ * @Author: huangyouli.scut@gmail.com
+ * @Date: 2025-01-15 19:17:48
+ * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
+ * @LastEditTime: 2025-01-16 10:58:15
+ * @Description: 
+ * @
+ * @Copyright (c) 2025 by huangyouli, All Rights Reserved. 
  */
+
+
+
 #ifndef __TEMPCOMP_H
 #define __TEMPCOMP_H
 #include "sys.h"

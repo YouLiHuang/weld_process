@@ -27,34 +27,34 @@ void user_timer_handle(void);
 #define TEMP_BUF_MAX_LEN 3000
 typedef struct Temp_draw_controller
 {
-    u16 *temp_buf;
-    u16 current_index;
-    u16 buf_len_max;
+    uint16_t *temp_buf;
+    uint16_t current_index;
+    uint16_t buf_len_max;
 
-    u16 first_step_index_start;
-    u16 first_step_index_end;
+    uint16_t first_step_index_start;
+    uint16_t first_step_index_end;
 
-    u16 second_step_index_start;
-    u16 second_step_index_end;
-    u16 second_step_stable_index;
+    uint16_t second_step_index_start;
+    uint16_t second_step_index_end;
+    uint16_t second_step_stable_index;
 
-    u16 third_step_index_start;
-    u16 third_step_index_end;
+    uint16_t third_step_index_start;
+    uint16_t third_step_index_end;
 
-    u8 sample_freq;
-    u16 tick_record;
+    uint8_t sample_freq;
+    uint16_t tick_record;
 
     /*绘图间隔*/
-    u8 delta_tick;
+    uint8_t delta_tick;
 } Temp_draw_ctrl;
-Temp_draw_ctrl *new_temp_draw_ctrl(u16 *buf, u16 len1, u16 len2, u16 len3);
-void reset_temp_draw_ctrl(Temp_draw_ctrl *ctrl, const u16 welding_time[]);
+Temp_draw_ctrl *new_temp_draw_ctrl(uint16_t *buf, uint16_t len1, uint16_t len2, uint16_t len3);
+void reset_temp_draw_ctrl(Temp_draw_ctrl *ctrl, const uint16_t welding_time[]);
 
-void pid_param_dynamic_reload(void *controller, double *fitting_curves, u16 setting);
+void pid_param_dynamic_reload(void *controller, double *fitting_curves, uint16_t setting);
 
 /*可将该api进一步封装为，支持回调函数作为参数*/
-void user_tim_delay(u16 time_ms);
-u16 tim2_cnt_get(void);
-void tim2_cnt_set(u16 val);
+void user_tim_delay(uint16_t time_ms);
+uint16_t tim2_cnt_get(void);
+void tim2_cnt_set(uint16_t val);
 
 #endif

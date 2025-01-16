@@ -33,7 +33,7 @@ void ADC_DMA_INIT(void);
 uint16_t ADC_Value_avg(uint16_t channel);
 uint16_t temp_convert(Thermocouple *thermocouple);
 
-u16 Bubble_Calculate_lan(u16 arr[], u16 n);
-float rms_get(u16 *arr, u16 n, u16 start);
+uint16_t Bubble_Calculate_lan(uint16_t arr[], uint16_t n);
+float rms_get(uint16_t *arr, uint16_t n, uint16_t start);
 
 #endif

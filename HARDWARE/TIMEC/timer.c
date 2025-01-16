@@ -21,7 +21,7 @@ double fitting_curves[3] = {-0.00004, 0.0159, 12.756}; // 二次曲线拟合系�
 extern Kalman kfp;
 extern dynamical_comp dynam_comp;
 last_temp_sotre lasttemp;
-u16 kalman_comp_temp = 0; // 卡尔曼滤波+动态补偿后的温度值
+uint16_t kalman_comp_temp = 0; // 卡尔曼滤波+动态补偿后的温度值
 
 /*错误处理*/
 extern Error_ctrl *err_ctrl;	// 错误注册表
@@ -29,20 +29,20 @@ extern OS_SEM ERROR_HANDLE_SEM; // 错误信号
 
 /*绘图专用数据*/
 extern Temp_draw_ctrl *temp_draw_ctrl;
-u16 realtime_temp_buf[TEMP_BUF_MAX_LEN] = {0}; // 温度保存缓冲区
+uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN] = {0}; // 温度保存缓冲区
 
 /*热电偶*/
 extern Thermocouple *current_Thermocouple;
 
 /**
  * @description: create an new controller
- * @param {u16} *buf
- * @param {u16} len1
- * @param {u16} len2
- * @param {u16} len3
+ * @param {uint16_t} *buf
+ * @param {uint16_t} len1
+ * @param {uint16_t} len2
+ * @param {uint16_t} len3
  * @return {*}
  */
-Temp_draw_ctrl *new_temp_draw_ctrl(u16 *buf, u16 len1, u16 len2, u16 len3)
+Temp_draw_ctrl *new_temp_draw_ctrl(uint16_t *buf, uint16_t len1, uint16_t len2, uint16_t len3)
 {
 	if (len1 + len2 + len3 > TEMP_BUF_MAX_LEN)
 		return NULL;
@@ -73,11 +73,11 @@ Temp_draw_ctrl *new_temp_draw_ctrl(u16 *buf, u16 len1, u16 len2, u16 len3)
  * @param {Temp_draw_ctrl} *ctrl
  * @return {*}
  */
-void reset_temp_draw_ctrl(Temp_draw_ctrl *ctrl, const u16 welding_time[])
+void reset_temp_draw_ctrl(Temp_draw_ctrl *ctrl, const uint16_t welding_time[])
 {
-	u16 total_time_length = welding_time[0] + welding_time[1] + welding_time[2] + welding_time[3] + welding_time[4];
+	uint16_t total_time_length = welding_time[0] + welding_time[1] + welding_time[2] + welding_time[3] + welding_time[4];
 	if (total_time_length > ctrl->buf_len_max)
-		ctrl->sample_freq = (u8)(total_time_length / ctrl->buf_len_max) + 1;
+		ctrl->sample_freq = (uint8_t)(total_time_length / ctrl->buf_len_max) + 1;
 	else
 		ctrl->sample_freq = 1;
 
@@ -94,7 +94,7 @@ void reset_temp_draw_ctrl(Temp_draw_ctrl *ctrl, const u16 welding_time[])
 	ctrl->second_step_stable_index = 0;
 
 	ctrl->tick_record = 0;
-	for (u16 i = 0; i < ctrl->buf_len_max; i++)
+	for (uint16_t i = 0; i < ctrl->buf_len_max; i++)
 	{
 		ctrl->temp_buf[i] = 0;
 	}
@@ -104,10 +104,10 @@ void reset_temp_draw_ctrl(Temp_draw_ctrl *ctrl, const u16 welding_time[])
  * @description: Dynamically adjust pid parameters according to set values
  * @param {void} *controller
  * @param {double} *fitting_curves
- * @param {u16} setting
+ * @param {uint16_t} setting
  * @return {*}
  */
-void pid_param_dynamic_reload(void *controller, double *fitting_curves, u16 setting)
+void pid_param_dynamic_reload(void *controller, double *fitting_curves, uint16_t setting)
 {
 #if PID_DEBUG == 0
 
@@ -141,8 +141,8 @@ void pid_param_dynamic_reload(void *controller, double *fitting_curves, u16 sett
  */
 void TIM2_Int_Init(void)
 {
-	u16 arr = 1000 - 1;
-	u16 psc = 168 - 1;
+	uint16_t arr = 1000 - 1;
+	uint16_t psc = 168 - 1;
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 	RCC_PCLK1Config(RCC_HCLK_Div1);						 // APB1不分频（168M）
@@ -172,8 +172,8 @@ void TIM2_Int_Init(void)
  */
 void TIM3_Int_Init(void)
 {
-	u16 arr = 2000 - 1; // 1ms发生中断
-	u16 psc = 84 - 1;
+	uint16_t arr = 2000 - 1; // 1ms发生中断
+	uint16_t psc = 84 - 1;
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
@@ -202,8 +202,8 @@ void TIM3_Int_Init(void)
  */
 void TIM5_Int_Init(void)
 {
-	u16 arr = 2000 - 1;
-	u16 psc = 84 - 1;
+	uint16_t arr = 2000 - 1;
+	uint16_t psc = 84 - 1;
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
@@ -227,7 +227,7 @@ void TIM5_Int_Init(void)
 	NVIC_Init(&NVIC_InitStructure);
 }
 
-static volatile u16 current_temp_comp = 0; // 当前温度估计值
+static volatile uint16_t current_temp_comp = 0; // 当前温度估计值
 /*
   定时器5中断函数——焊接实时闭环控制
  */
@@ -243,7 +243,7 @@ void TIM5_IRQHandler(void)
 		/*Ⅰ、反馈*/
 #if COMPENSATION == 1
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);		 // 原始温度数据实时温度
-		u16 kalman_filter_temp = KalmanFilter(&kfp, weld_controller->realtime_temp); // 卡尔曼滤波
+		uint16_t kalman_filter_temp = KalmanFilter(&kfp, weld_controller->realtime_temp); // 卡尔曼滤波
 		slid_windows(&lasttemp, kalman_filter_temp);								 // 滑动窗口
 		kalman_comp_temp = dynamic_temp_comp(lasttemp, dynam_comp);					 // 动态补偿
 		current_temp_comp = kalman_comp_temp;										 // 获取当前温度估计值
@@ -433,7 +433,7 @@ void TIM3_IRQHandler(void)
  * @description: tim2 irq handle
  * @return {*}
  */
-static u16 tim2_user_cnt;
+static uint16_t tim2_user_cnt;
 void TIM2_IRQHandler(void)
 {
 #if SYSTEM_SUPPORT_OS // 使用UCOS操作系统
@@ -449,22 +449,22 @@ void TIM2_IRQHandler(void)
 #endif
 }
 
-void tim2_cnt_set(u16 val)
+void tim2_cnt_set(uint16_t val)
 {
 	tim2_user_cnt = val;
 }
 
-u16 tim2_cnt_get()
+uint16_t tim2_cnt_get()
 {
 	return tim2_user_cnt;
 }
 
 /**
  * @description: this api is use to provide precise delay
- * @param {u16} time_ms
+ * @param {uint16_t} time_ms
  * @return {*}
  */
-void user_tim_delay(u16 time_ms)
+void user_tim_delay(uint16_t time_ms)
 {
 	TIM_Cmd(TIM2, ENABLE);
 	tim2_user_cnt = 0;

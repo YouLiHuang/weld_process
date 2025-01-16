@@ -1,12 +1,4 @@
-/*
- * @Author: huangyouli.scut@gmail.com
- * @Date: 2025-01-02 15:16:32
- * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-15 19:49:11
- * @Description:
- *
- * Copyright (c) 2025 by huangyouli, All Rights Reserved.
- */
+
 #include "sys.h"
 #include "usart.h"
 #include "crc16.h"
@@ -38,46 +30,28 @@ int fputc(int ch, FILE *f)
 {
 	while ((USART1->SR & 0X40) == 0)
 		; // 循环发送,直到发送完毕
-	USART1->DR = (u8)ch;
+	USART1->DR = (uint8_t)ch;
 	return ch;
 }
 #endif
 
-// 注意,读取USARTx->SR能避免莫名其妙的错误
-
-struct crc16_struct1
-{
-	unsigned char crc16_high;
-	unsigned char crc16_low;
-};
-struct crc16_struct3
-{
-
-	unsigned char crc16_high;
-	unsigned char crc16_low;
-};
-
-u8 USART_RX_BUF3[USART3_REC_LEN3]; // 接收缓冲,最大USART_REC_LEN个字节.
-u8 USART_RX_BUF[USART_REC_LEN];	   // 接收缓冲,最大USART_REC_LEN个字节.
+uint8_t USART_RX_BUF3[USART3_REC_LEN3]; // 接收缓冲,最大USART_REC_LEN个字节.
+uint8_t USART_RX_BUF[USART_REC_LEN];	// 接收缓冲,最大USART_REC_LEN个字节.
 
 uint16_t ModBus_time[6];	   // 焊接时间6段
 uint16_t ModBus_temp[3];	   // 焊接温度3段
 uint16_t ModBus_alarm_temp[6]; // 限制温度6段
 
-int receive_number_computer = 0;
-int Host_action = 0;
+int receive_number_computer = 0; // 接收的数据个数
+int Host_action = 0;			 // 主机动作
+int Host_GP = 0;				 // GP
+int Host_gain1_raw;				 // 增益暂存
+int Host_gain2_raw;				 // 增益暂存
+float Host_gain2;				 // 上位机增益1参数暂存（浮点数）
+float Host_gain1;				 // 上位机增益2参数暂存（浮点数）
 
-int Host_GP = 0;	// GP
-int Host_gain1_raw; // 增益暂存
-int Host_gain2_raw; // 增益暂存
-float Host_gain2;	// 上位机增益1参数暂存（浮点数）
-float Host_gain1;	// 上位机增益2参数暂存（浮点数）
-
-struct crc16_struct1 temp1 = {0x00, 0x00}; // 触摸屏crc16 校验
-struct crc16_struct3 temp2 = {0x00, 0x00}; // 上位机crc16 校验
-
-extern u8 ID_OF_MAS; // 焊机485通讯机号，默认是零
-extern int RDY_SCH;	 // 参数设置按键
+extern uint8_t ID_OF_MAS; // 焊机485通讯机号，默认是零
+extern int RDY_SCH;		  // 参数设置按键
 
 extern OS_Q UART_Msg;		   // 消息队列
 extern Error_ctrl *err_ctrl;   // 错误控制器
@@ -159,12 +133,12 @@ void uart_init(u32 bound)
 	RS485_TX_EN = 0; // 默认为接收模式
 }
 
-static volatile u16 receive_number = 0; // 记录接收字节长度
-u16 get_receive_number()
+static volatile uint16_t receive_number = 0; // 记录接收字节长度
+uint16_t get_receive_number()
 {
 	return receive_number;
 }
-void set_receive_number(u16 val)
+void set_receive_number(uint16_t val)
 {
 	receive_number = val;
 }
@@ -212,7 +186,7 @@ void UART4_IRQHandler(void)
 				OSSemPost(&COMP_STR_GET_SEM, OS_OPT_POST_ALL, &err);
 				break;
 			case CMD_SENSOR_UPDATE:
-				
+
 			case CMD_DATA_TRANSFER_READY:
 				break;
 
@@ -333,12 +307,12 @@ void usart3_set_bound(u32 bound)
 
 /**
  * @description:  控制板给上位机发送响应数据
- * @param {u8} IDNUM
- * @param {u8} flag
- * @param {u8} comd
+ * @param {uint8_t} IDNUM
+ * @param {uint8_t} flag
+ * @param {uint8_t} comd
  * @return {*}
  */
-void usart3_ack_to_host(u8 IDNUM, u8 flag, u8 comd)
+void usart3_ack_to_host(uint8_t IDNUM, uint8_t flag, uint8_t comd)
 {
 	int crc16_data = 0;
 	unsigned char array_ouput_end[7] = {0};
@@ -363,6 +337,9 @@ void usart3_ack_to_host(u8 IDNUM, u8 flag, u8 comd)
 	BIT_ADDR(GPIOB_ODR_Addr, 9) = 0; // 设置为接收模式
 }
 
+static void computer_write_callback(void);
+static void computer_write_all_callback(void);
+
 /**
  * @description: 串口3中断，实现对上位机数据的接收和处理
  * @return {*}
@@ -381,219 +358,37 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 
 	if (USART_GetITStatus(USART3, USART_IT_IDLE) == SET) // 空闲中断
 	{
-
-		USART_ClearITPendingBit(USART3, USART_IT_IDLE); // 清除空闲中断
 		OS_ERR err;
 		int crc16_get = 0;
-		int temp;
+		uint8_t crc16H = 0, crc16L = 0;
+		int sr_read;
+
+		USART_ClearITPendingBit(USART3, USART_IT_IDLE); // 清除空闲中断
 		/* 需要保证此时不在焊接过程才能进行数据通讯 */
-		if (receive_number_computer > 2 && (RDY_SCH == 0) && (ID_OF_MAS == USART_RX_BUF3[0]) && (false == err_occur(err_ctrl)) && (get_weld_flag() == IDEAL_MODE))
+		if (receive_number_computer > 2 && (page_param->key1 == RDY) && (ID_OF_MAS == USART_RX_BUF3[0]) && (false == err_occur(err_ctrl)) && (get_weld_flag() == IDEAL_MODE))
 		{
 			crc16_get = CRC16(USART_RX_BUF3, receive_number_computer - 2); // 检测数据是否正确
-			temp2.crc16_high = crc16_get >> 8;
-			temp2.crc16_low = crc16_get;
+			crc16H = crc16_get >> 8;
+			crc16L = crc16_get;
 			/*crc16校验*/
-			if (USART_RX_BUF3[receive_number_computer - 2] == temp2.crc16_high && USART_RX_BUF3[receive_number_computer - 1] == temp2.crc16_low)
+			if (USART_RX_BUF3[receive_number_computer - 2] == crc16H && USART_RX_BUF3[receive_number_computer - 1] == crc16L)
 			{
-				/*单个数据写入处理*/
-				if (USART_RX_BUF3[1] == 0x06)
+				switch (USART_RX_BUF3[1])
 				{
-					int VALUE_DATA = 0;										// 被写入的单个数值大小
-					VALUE_DATA = USART_RX_BUF3[4] * 256 + USART_RX_BUF3[5]; // 即16位，前面8位和后面8位
-					switch (USART_RX_BUF3[3])								// USART_RX_BUF3[3]就是写入的地址
-					{
-					case 0:
-						if (VALUE_DATA <= 20)
-						{
-							Host_GP = VALUE_DATA; // 参数组号
-							Host_action = 1;
-						}
+					/*单个数据写入处理*/
+				case RS485_CMD_WRITE:
+					computer_write_callback();
+					break;
+					/*写入多个数值，就是整一页修改*/
+				case RS485_CMD_WRITE_ALL:
+					if (receive_number_computer < 20)
 						break;
-					case 1:
-						if (VALUE_DATA <= 999)
-						{
-							ModBus_time[0] = VALUE_DATA; // 焊接时间0
-							Host_action = 2;
-						}
-						break;
-					case 2:
-						if (VALUE_DATA <= 999)
-						{
-							ModBus_time[1] = VALUE_DATA; // 焊接时间1
-							Host_action = 3;
-						}
-						break;
-					case 3:
-						if (VALUE_DATA <= 999)
-						{
-							ModBus_time[3] = VALUE_DATA; // 焊接时间3
-							Host_action = 4;
-						}
-						break;
-					case 4:
-						if (VALUE_DATA <= 999)
-						{
-							ModBus_time[4] = VALUE_DATA; // 焊接时间4
-							Host_action = 5;
-						}
-						break;
-					case 5:
-						if (VALUE_DATA <= 999)
-						{
-							ModBus_time[5] = VALUE_DATA; // 焊接时间5
-							Host_action = 6;
-						}
-						break;
-					case 6:
-						if (VALUE_DATA <= 650)
-						{
-							ModBus_temp[0] = VALUE_DATA; // 焊接温度0
-							Host_action = 7;
-						}
-						break;
-					case 7:
-						if (VALUE_DATA <= 650)
-						{
-							ModBus_temp[1] = VALUE_DATA; // 焊接温度1
-							Host_action = 8;
-						}
-						break;
-					case 8:
-						if (VALUE_DATA <= 650)
-						{
-							ModBus_temp[2] = VALUE_DATA; // 焊接温度2
-							Host_action = 9;
-						}
-						break;
-					case 9:
-						if (VALUE_DATA <= 650)
-						{
-							ModBus_alarm_temp[0] = VALUE_DATA; // 报警温度0 up
-							Host_action = 0;
-						}
-						break;
-					case 10:
-						if (VALUE_DATA <= 650)
-						{
-							ModBus_alarm_temp[1] = VALUE_DATA; // 报警温度0 down
-							Host_action = 11;
-						}
-						break;
-					case 11:
-						if (VALUE_DATA <= 650)
-						{
-							ModBus_alarm_temp[2] = VALUE_DATA; // 报警温度1 up
-							Host_action = 12;
-						}
-						break;
-					case 12:
-						if (VALUE_DATA <= 650)
-						{
-							ModBus_alarm_temp[3] = VALUE_DATA; // 报警温度1 down
-							Host_action = 13;
-						}
-						break;
-					case 13:
-						if (VALUE_DATA <= 650)
-						{
-							ModBus_alarm_temp[4] = VALUE_DATA; // 报警温度2 up
-							Host_action = 14;
-						}
-						break;
-					case 14:
-						if (VALUE_DATA <= 650)
-						{
-							ModBus_alarm_temp[5] = VALUE_DATA; // 报警温度2 down
-							Host_action = 15;
-						}
-						break;
-					case 15:
-						if (VALUE_DATA <= 999)
-						{
-							Host_gain1 = VALUE_DATA * 0.01; // 温度增益1
-							Host_gain1_raw = VALUE_DATA;
-							Host_action = 16;
-						}
-						break;
-					case 16:
-						if (VALUE_DATA <= 999)
-						{
+					computer_write_all_callback();
+					break;
 
-							Host_gain2 = VALUE_DATA * 0.01; // 温度增益2
-							Host_gain2_raw = VALUE_DATA;
-							Host_action = 17;
-						}
-						break;
-					}
-				}
-				/*写入多个数值，就是整一页修改*/
-				if (USART_RX_BUF3[1] == 0x10 && receive_number_computer >= 20)
-				{
-					int VALUE_DATA2[18] = {0}; // 定义一个存放16个数的数组
-					VALUE_DATA2[0] = USART_RX_BUF3[4] * 256 + USART_RX_BUF3[5];
-					VALUE_DATA2[1] = USART_RX_BUF3[6] * 256 + USART_RX_BUF3[7];
-					VALUE_DATA2[2] = USART_RX_BUF3[8] * 256 + USART_RX_BUF3[9];
-					VALUE_DATA2[3] = USART_RX_BUF3[10] * 256 + USART_RX_BUF3[11];
-					VALUE_DATA2[4] = USART_RX_BUF3[12] * 256 + USART_RX_BUF3[13];
-					VALUE_DATA2[5] = USART_RX_BUF3[14] * 256 + USART_RX_BUF3[15];
-					VALUE_DATA2[6] = USART_RX_BUF3[16] * 256 + USART_RX_BUF3[17];
-					VALUE_DATA2[7] = USART_RX_BUF3[18] * 256 + USART_RX_BUF3[19];
-					VALUE_DATA2[8] = USART_RX_BUF3[20] * 256 + USART_RX_BUF3[21];
-					VALUE_DATA2[9] = USART_RX_BUF3[22] * 256 + USART_RX_BUF3[23];
-					VALUE_DATA2[10] = USART_RX_BUF3[24] * 256 + USART_RX_BUF3[25];
-					VALUE_DATA2[11] = USART_RX_BUF3[26] * 256 + USART_RX_BUF3[27];
-					VALUE_DATA2[12] = USART_RX_BUF3[28] * 256 + USART_RX_BUF3[29];
-					VALUE_DATA2[13] = USART_RX_BUF3[30] * 256 + USART_RX_BUF3[31];
-					VALUE_DATA2[14] = USART_RX_BUF3[32] * 256 + USART_RX_BUF3[33];
-					VALUE_DATA2[15] = USART_RX_BUF3[34] * 256 + USART_RX_BUF3[35];
-					VALUE_DATA2[16] = USART_RX_BUF3[36] * 256 + USART_RX_BUF3[37];
-
-					// GP值
-					if (VALUE_DATA2[0] < 20)
-						Host_GP = VALUE_DATA2[0];
-					// 焊接各段时间,ModBus_time[2]弃用
-					if (VALUE_DATA2[1] <= 999)
-						ModBus_time[0] = VALUE_DATA2[1];
-					if (VALUE_DATA2[2] <= 999)
-						ModBus_time[1] = VALUE_DATA2[2];
-					if (VALUE_DATA2[3] <= 999)
-						ModBus_time[3] = VALUE_DATA2[3];
-					if (VALUE_DATA2[4] <= 9999)
-						ModBus_time[4] = VALUE_DATA2[4];
-					if (VALUE_DATA2[5] <= 999)
-						ModBus_time[5] = VALUE_DATA2[5];
-					//  三段焊接温度
-					if (VALUE_DATA2[6] <= 650)
-						ModBus_temp[0] = VALUE_DATA2[6];
-					if (VALUE_DATA2[7] <= 650)
-						ModBus_temp[1] = VALUE_DATA2[7];
-					if (VALUE_DATA2[8] <= 650)
-						ModBus_temp[2] = VALUE_DATA2[8];
-					// 温度限制
-					if (VALUE_DATA2[9] <= 650)
-						ModBus_alarm_temp[0] = VALUE_DATA2[9];
-					if (VALUE_DATA2[10] <= 650)
-						ModBus_alarm_temp[1] = VALUE_DATA2[10];
-					if (VALUE_DATA2[11] <= 650)
-						ModBus_alarm_temp[2] = VALUE_DATA2[11];
-					if (VALUE_DATA2[12] <= 650)
-						ModBus_alarm_temp[3] = VALUE_DATA2[12];
-					if (VALUE_DATA2[13] <= 650)
-						ModBus_alarm_temp[4] = VALUE_DATA2[13];
-					if (VALUE_DATA2[14] <= 650)
-						ModBus_alarm_temp[5] = VALUE_DATA2[14];
-					// gain
-					if (VALUE_DATA2[15] <= 999)
-					{
-						Host_gain1 = VALUE_DATA2[15] * 0.01;
-						Host_gain1_raw = VALUE_DATA2[15];
-					}
-					if (VALUE_DATA2[16] <= 999)
-					{
-						Host_gain2 = VALUE_DATA2[16] * 0.01;
-						Host_gain2_raw = VALUE_DATA2[16];
-					}
-					Host_action = 20;
+				case RS485_CMD_WELD_START:
+					/*...*/
+					break;
 				}
 			}
 		}
@@ -607,11 +402,11 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 			usart3_ack_to_host(ID_OF_MAS, 1, 0x10);
 
 		/*清除标志*/
-		temp = USART3->SR;
-		temp = USART3->DR;
-		temp = temp;
+		sr_read = USART3->SR;
+		sr_read = USART3->DR;
+		sr_read = sr_read;
 
-		for (u8 i = 0; i < sizeof(USART_RX_BUF3) / sizeof(USART_RX_BUF3[0]); i++) // 接收数组复位
+		for (uint8_t i = 0; i < sizeof(USART_RX_BUF3) / sizeof(USART_RX_BUF3[0]); i++) // 接收数组复位
 			USART_RX_BUF3[i] = 0;
 
 		receive_number_computer = 0;							  // 接收长度复位
@@ -629,7 +424,195 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 #endif
 }
 
-void usart3_send_char(u8 c)
+static void computer_write_callback(void)
+{
+	int VALUE_DATA = 0;										// 被写入的单个数值大小
+	VALUE_DATA = USART_RX_BUF3[4] * 256 + USART_RX_BUF3[5]; // 即16位，前面8位和后面8位
+	switch (USART_RX_BUF3[3])								// USART_RX_BUF3[3]就是写入的地址
+	{
+	case 0:
+		if (VALUE_DATA <= 20)
+		{
+			Host_GP = VALUE_DATA; // 参数组号
+			Host_action = 1;
+		}
+		break;
+	case 1:
+		if (VALUE_DATA <= 999)
+		{
+			ModBus_time[0] = VALUE_DATA; // 焊接时间0
+			Host_action = 2;
+		}
+		break;
+	case 2:
+		if (VALUE_DATA <= 999)
+		{
+			ModBus_time[1] = VALUE_DATA; // 焊接时间1
+			Host_action = 3;
+		}
+		break;
+	case 3:
+		if (VALUE_DATA <= 999)
+		{
+			ModBus_time[3] = VALUE_DATA; // 焊接时间3
+			Host_action = 4;
+		}
+		break;
+	case 4:
+		if (VALUE_DATA <= 999)
+		{
+			ModBus_time[4] = VALUE_DATA; // 焊接时间4
+			Host_action = 5;
+		}
+		break;
+	case 5:
+		if (VALUE_DATA <= 999)
+		{
+			ModBus_time[5] = VALUE_DATA; // 焊接时间5
+			Host_action = 6;
+		}
+		break;
+	case 6:
+		if (VALUE_DATA <= 650)
+		{
+			ModBus_temp[0] = VALUE_DATA; // 焊接温度0
+			Host_action = 7;
+		}
+		break;
+	case 7:
+		if (VALUE_DATA <= 650)
+		{
+			ModBus_temp[1] = VALUE_DATA; // 焊接温度1
+			Host_action = 8;
+		}
+		break;
+	case 8:
+		if (VALUE_DATA <= 650)
+		{
+			ModBus_temp[2] = VALUE_DATA; // 焊接温度2
+			Host_action = 9;
+		}
+		break;
+	case 9:
+		if (VALUE_DATA <= 650)
+		{
+			ModBus_alarm_temp[0] = VALUE_DATA; // 报警温度0 up
+			Host_action = 0;
+		}
+		break;
+	case 10:
+		if (VALUE_DATA <= 650)
+		{
+			ModBus_alarm_temp[1] = VALUE_DATA; // 报警温度0 down
+			Host_action = 11;
+		}
+		break;
+	case 11:
+		if (VALUE_DATA <= 650)
+		{
+			ModBus_alarm_temp[2] = VALUE_DATA; // 报警温度1 up
+			Host_action = 12;
+		}
+		break;
+	case 12:
+		if (VALUE_DATA <= 650)
+		{
+			ModBus_alarm_temp[3] = VALUE_DATA; // 报警温度1 down
+			Host_action = 13;
+		}
+		break;
+	case 13:
+		if (VALUE_DATA <= 650)
+		{
+			ModBus_alarm_temp[4] = VALUE_DATA; // 报警温度2 up
+			Host_action = 14;
+		}
+		break;
+	case 14:
+		if (VALUE_DATA <= 650)
+		{
+			ModBus_alarm_temp[5] = VALUE_DATA; // 报警温度2 down
+			Host_action = 15;
+		}
+		break;
+	case 15:
+		if (VALUE_DATA <= 999)
+		{
+			Host_gain1 = VALUE_DATA * 0.01; // 温度增益1
+			Host_gain1_raw = VALUE_DATA;
+			Host_action = 16;
+		}
+		break;
+	case 16:
+		if (VALUE_DATA <= 999)
+		{
+
+			Host_gain2 = VALUE_DATA * 0.01; // 温度增益2
+			Host_gain2_raw = VALUE_DATA;
+			Host_action = 17;
+		}
+		break;
+	}
+}
+
+static void computer_write_all_callback(void)
+{
+
+	int VALUE_DATA2[18] = {0}; // 定义一个存放16个数的数组
+	for (uint8_t i = 0; i <= 16; i++)
+	{
+		VALUE_DATA2[i] = USART_RX_BUF3[2 * i + 4] * 256 + USART_RX_BUF3[2 * i + 5];
+	}
+	// GP值
+	if (VALUE_DATA2[0] < 20)
+		Host_GP = VALUE_DATA2[0];
+	// 焊接各段时间,ModBus_time[2]弃用
+	if (VALUE_DATA2[1] <= 999)
+		ModBus_time[0] = VALUE_DATA2[1];
+	if (VALUE_DATA2[2] <= 999)
+		ModBus_time[1] = VALUE_DATA2[2];
+	if (VALUE_DATA2[3] <= 999)
+		ModBus_time[3] = VALUE_DATA2[3];
+	if (VALUE_DATA2[4] <= 9999)
+		ModBus_time[4] = VALUE_DATA2[4];
+	if (VALUE_DATA2[5] <= 999)
+		ModBus_time[5] = VALUE_DATA2[5];
+	//  三段焊接温度
+	if (VALUE_DATA2[6] <= 650)
+		ModBus_temp[0] = VALUE_DATA2[6];
+	if (VALUE_DATA2[7] <= 650)
+		ModBus_temp[1] = VALUE_DATA2[7];
+	if (VALUE_DATA2[8] <= 650)
+		ModBus_temp[2] = VALUE_DATA2[8];
+	// 温度限制
+	if (VALUE_DATA2[9] <= 650)
+		ModBus_alarm_temp[0] = VALUE_DATA2[9];
+	if (VALUE_DATA2[10] <= 650)
+		ModBus_alarm_temp[1] = VALUE_DATA2[10];
+	if (VALUE_DATA2[11] <= 650)
+		ModBus_alarm_temp[2] = VALUE_DATA2[11];
+	if (VALUE_DATA2[12] <= 650)
+		ModBus_alarm_temp[3] = VALUE_DATA2[12];
+	if (VALUE_DATA2[13] <= 650)
+		ModBus_alarm_temp[4] = VALUE_DATA2[13];
+	if (VALUE_DATA2[14] <= 650)
+		ModBus_alarm_temp[5] = VALUE_DATA2[14];
+	// gain
+	if (VALUE_DATA2[15] <= 999)
+	{
+		Host_gain1 = VALUE_DATA2[15] * 0.01;
+		Host_gain1_raw = VALUE_DATA2[15];
+	}
+	if (VALUE_DATA2[16] <= 999)
+	{
+		Host_gain2 = VALUE_DATA2[16] * 0.01;
+		Host_gain2_raw = VALUE_DATA2[16];
+	}
+	Host_action = 20;
+}
+
+#if 0
+void usart3_send_char(uint8_t c)
 {
 	BIT_ADDR(GPIOB_ODR_Addr, 9) = 1;
 	while ((USART3->SR & 0X40) == 0)
@@ -643,10 +626,10 @@ void usart3_send_char(u8 c)
 			len:data区有效数据个数
 			格式为：0x88+FUN+LEN+DATA+SUM
 			SUM是0x88一直到DATA最后一字节的和，uint8格式。    */
-void usart3_niming_report(u8 fun, u8 *data, u8 len)
+void usart3_niming_report(uint8_t fun, uint8_t *data, uint8_t len)
 {
-	u8 send_buf[32];
-	u8 i;
+	uint8_t send_buf[32];
+	uint8_t i;
 	if (len > 28)
 		return;			   // 最多28字节数据
 	send_buf[len + 3] = 0; // 校验数置零
@@ -663,7 +646,7 @@ void usart3_niming_report(u8 fun, u8 *data, u8 len)
 
 void test_send(short roll, short pitch, short yaw, short Cduk)
 {
-	u8 tbuf[12];
+	uint8_t tbuf[12];
 	tbuf[0] = (roll >> 8) & 0XFF;
 	tbuf[1] = roll & 0XFF;
 	tbuf[2] = (pitch >> 8) & 0XFF;
@@ -675,3 +658,5 @@ void test_send(short roll, short pitch, short yaw, short Cduk)
 
 	usart3_niming_report(0XA1, tbuf, 8); // 自定义帧,0XA1
 }
+
+#endif

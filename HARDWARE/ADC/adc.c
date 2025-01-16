@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-12 17:50:58
+ * @LastEditTime: 2025-01-16 10:55:50
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -212,10 +212,10 @@ uint16_t temp_convert(Thermocouple *thermocouple)
 
 /**
  * @description:
- * @param {u8} ch1
+ * @param {uint8_t} ch1
  * @return {*}
  */
-u16 Get_Adc1(u8 ch1)
+uint16_t Get_Adc1(uint8_t ch1)
 {
 	// 设置指定ADC的规则组通道，一个序列，采样时间
 	ADC_RegularChannelConfig(ADC1, ch1, 1, ADC_SampleTime_84Cycles); // ADC1,ADC通道15个周期,提高采样时间可以提高精确度
@@ -231,11 +231,11 @@ u16 Get_Adc1(u8 ch1)
 
 /**
  * @description:
- * @param {u8} ch1
- * @param {u16} times1
+ * @param {uint8_t} ch1
+ * @param {uint16_t} times1
  * @return {*}
  */
-u16 Get_Adc1_Average(u8 ch1, u16 times1)
+uint16_t Get_Adc1_Average(uint8_t ch1, uint16_t times1)
 {
 	// temp_val1 = 0;
 	// for (t1 = 0; t1 < times1; t1++)
@@ -248,15 +248,15 @@ u16 Get_Adc1_Average(u8 ch1, u16 times1)
 
 /**
  * @description:
- * @param {u8} ch1
- * @param {u16} n
+ * @param {uint8_t} ch1
+ * @param {uint16_t} n
  * @return {*}
  */
-u16 Bubble_Sort_Calculate(u8 ch1, u16 n)
+uint16_t Bubble_Sort_Calculate(uint8_t ch1, uint16_t n)
 {
 	int i, j, z;
-	u16 Array[n];
-	u32 Sum = 0;
+	uint16_t Array[n];
+	uint32_t Sum = 0;
 	int end;
 
 	for (i = 0; i < n; i++)
@@ -289,15 +289,15 @@ u16 Bubble_Sort_Calculate(u8 ch1, u16 n)
 
 /**
  * @description:
- * @param {u16} arr
- * @param {u16} n
+ * @param {uint16_t} arr
+ * @param {uint16_t} n
  * @return {*}
  */
-u16 Bubble_Calculate_lan(u16 arr[], u16 n)
+uint16_t Bubble_Calculate_lan(uint16_t arr[], uint16_t n)
 {
-	u16 temp = 0;
-	u32 sum = 0;
-	u16 avg_current = 0;
+	uint16_t temp = 0;
+	uint32_t sum = 0;
+	uint16_t avg_current = 0;
 	for (int i = n - 1; i > 0; i--)
 	{
 		for (int j = 0; j < i; j++)
@@ -335,17 +335,17 @@ u16 Bubble_Calculate_lan(u16 arr[], u16 n)
 
 /**
  * @description: 显示值求均方根
- * @param {u16} *arr
- * @param {u16} n     需要处理得点数
- * @param {u16} start    有效数据起始下标
+ * @param {uint16_t} *arr
+ * @param {uint16_t} n     需要处理得点数
+ * @param {uint16_t} start    有效数据起始下标
  * @return {*}
  */
 
-float rms_get(u16 *arr, u16 n, u16 start)
+float rms_get(uint16_t *arr, uint16_t n, uint16_t start)
 {
 	float sum = 0;
 	int num = 0;
-	for (u16 i = 0; i < n; i++)
+	for (uint16_t i = 0; i < n; i++)
 	{
 		if (start + i < 1000)
 		{
@@ -358,13 +358,13 @@ float rms_get(u16 *arr, u16 n, u16 start)
 
 /**
  * @description:   温度显示
- * @param {u16} *input
- * @param {u16} nums   采样点数
- * @param {u16} start  有效数据起始下标
- * @param {u16} refer  参考值
+ * @param {uint16_t} *input
+ * @param {uint16_t} nums   采样点数
+ * @param {uint16_t} start  有效数据起始下标
+ * @param {uint16_t} refer  参考值
  * @return {*}
  */
-u16 temp_display(u16 *input, u16 nums, u16 start)
+uint16_t temp_display(uint16_t *input, uint16_t nums, uint16_t start)
 {
-	return (u16)rms_get(input, nums - start, start);
+	return (uint16_t)rms_get(input, nums - start, start);
 }

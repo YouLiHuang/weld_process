@@ -222,13 +222,13 @@ bool param_page_list_init(Component_Queue *param_page_list)
       "time5",
   };
   component_insert(param_page_list, newComponet("GP", 0)); // GP
-  for (u8 i = 0; i < sizeof(temp_name_list) / sizeof(char *); i++)
+  for (uint8_t i = 0; i < sizeof(temp_name_list) / sizeof(char *); i++)
   {
     /*插入新组件*/
     if (component_insert(param_page_list, newComponet(temp_name_list[i], 0)) != true)
       return false;
   }
-  for (u8 i = 0; i < sizeof(time_name_list) / sizeof(char *); i++)
+  for (uint8_t i = 0; i < sizeof(time_name_list) / sizeof(char *); i++)
   {
     /*插入新组件*/
     if (component_insert(param_page_list, newComponet(time_name_list[i], 0)) != true)
@@ -291,7 +291,7 @@ bool temp_page_list_init(Component_Queue *temp_page_list)
   return true;
 }
 
-bool page_list_init(Component_Queue *page_list, char *name_list[], u8 list_len)
+bool page_list_init(Component_Queue *page_list, char *name_list[], uint8_t list_len)
 {
 
   component_insert(page_list, newComponet("GP", 0)); // GP
@@ -353,9 +353,9 @@ bool command_send(const char *cmd)
 {
   uart_init(115200);
   /*清缓存*/
-  for (u16 i = 0; i < USART_REC_LEN; i++)
+  for (uint16_t i = 0; i < USART_REC_LEN; i++)
     USART_RX_BUF[i] = 0;
-  for (u8 i = 0; i < sizeof(buffer) / sizeof(char); i++)
+  for (uint8_t i = 0; i < sizeof(buffer) / sizeof(char); i++)
     buffer[i] = 0;
 
   /*指令处理*/
@@ -387,9 +387,9 @@ bool command_set_comp_val(const char *name, const char *compatible, const int va
   if (name == NULL || compatible == NULL)
     return false;
   /*清缓存*/
-  for (u16 i = 0; i < USART_REC_LEN; i++)
+  for (uint16_t i = 0; i < USART_REC_LEN; i++)
     USART_RX_BUF[i] = 0;
-  for (u8 i = 0; i < sizeof(buffer) / sizeof(char); i++)
+  for (uint8_t i = 0; i < sizeof(buffer) / sizeof(char); i++)
     buffer[i] = 0;
 
   /*指令处理*/
@@ -421,9 +421,9 @@ bool command_set_comp_str(const char *name, const char *compatible, const char *
   if (name == NULL || compatible == NULL)
     return false;
   /*清缓存*/
-  for (u16 i = 0; i < USART_REC_LEN; i++)
+  for (uint16_t i = 0; i < USART_REC_LEN; i++)
     USART_RX_BUF[i] = 0;
-  for (u8 i = 0; i < sizeof(buffer) / sizeof(char); i++)
+  for (uint8_t i = 0; i < sizeof(buffer) / sizeof(char); i++)
     buffer[i] = 0;
 
   sprintf(buffer, "%s.%s=%s%s", name, compatible, str, END_OF_CMD); // 指令处理
@@ -454,9 +454,9 @@ bool command_get_comp_val(Component_Queue *list, const char *name, const char *c
   if (list == NULL || name == NULL || compatible == NULL)
     return false;
   /*清缓存*/
-  for (u16 i = 0; i < USART_REC_LEN; i++)
+  for (uint16_t i = 0; i < USART_REC_LEN; i++)
     USART_RX_BUF[i] = 0;
-  for (u8 i = 0; i < sizeof(buffer) / sizeof(char); i++)
+  for (uint8_t i = 0; i < sizeof(buffer) / sizeof(char); i++)
     buffer[i] = 0;
 
   /*数据处理*/
@@ -498,9 +498,9 @@ bool command_get_comp_str(Component_Queue *list, const char *name, const char *c
   if (list == NULL || name == NULL || compatible == NULL)
     return false;
   /*清缓存*/
-  for (u16 i = 0; i < USART_REC_LEN; i++)
+  for (uint16_t i = 0; i < USART_REC_LEN; i++)
     USART_RX_BUF[i] = 0;
-  for (u8 i = 0; i < sizeof(buffer) / sizeof(char); i++)
+  for (uint8_t i = 0; i < sizeof(buffer) / sizeof(char); i++)
     buffer[i] = 0;
 
   /*数据处理*/
@@ -536,9 +536,9 @@ void command_send_raw(const char *cmd)
 {
   uart_init(115200);
   /*清缓存*/
-  for (u16 i = 0; i < USART_REC_LEN; i++)
+  for (uint16_t i = 0; i < USART_REC_LEN; i++)
     USART_RX_BUF[i] = 0;
-  for (u8 i = 0; i < sizeof(buffer) / sizeof(char); i++)
+  for (uint8_t i = 0; i < sizeof(buffer) / sizeof(char); i++)
     buffer[i] = 0;
 
   /*指令处理*/
@@ -561,9 +561,9 @@ void command_set_comp_val_raw(const char *name, const char *compatible, int val)
   if (name == NULL || compatible == NULL)
     return;
   /*清缓存*/
-  for (u16 i = 0; i < USART_REC_LEN; i++)
+  for (uint16_t i = 0; i < USART_REC_LEN; i++)
     USART_RX_BUF[i] = 0;
-  for (u8 i = 0; i < sizeof(buffer) / sizeof(char); i++)
+  for (uint8_t i = 0; i < sizeof(buffer) / sizeof(char); i++)
     buffer[i] = 0;
 
   sprintf(buffer, "%s.%s=%d%s", name, compatible, val, END_OF_CMD); // 指令处理
@@ -585,9 +585,9 @@ void command_set_comp_str_raw(const char *name, const char *compatible, const ch
   if (name == NULL || compatible == NULL)
     return;
   /*清缓存*/
-  for (u16 i = 0; i < USART_REC_LEN; i++)
+  for (uint16_t i = 0; i < USART_REC_LEN; i++)
     USART_RX_BUF[i] = 0;
-  for (u8 i = 0; i < sizeof(buffer) / sizeof(char); i++)
+  for (uint8_t i = 0; i < sizeof(buffer) / sizeof(char); i++)
     buffer[i] = 0;
 
   sprintf(buffer, "%s.%s=%s%s", name, compatible, str, END_OF_CMD); // 指令处理
@@ -599,9 +599,9 @@ bool Page_id_get(void)
 {
   uart_init(115200);
   /*清缓存*/
-  for (u16 i = 0; i < USART_REC_LEN; i++)
+  for (uint16_t i = 0; i < USART_REC_LEN; i++)
     USART_RX_BUF[i] = 0;
-  for (u8 i = 0; i < 50; i++)
+  for (uint8_t i = 0; i < 50; i++)
     buffer[i] = 0;
 
   /*数据处理*/
@@ -630,9 +630,9 @@ bool Page_to(const Page_Param *page_param, const Page_ID id)
 
   uart_init(115200);
   /*清缓存*/
-  for (u16 i = 0; i < USART_REC_LEN; i++)
+  for (uint16_t i = 0; i < USART_REC_LEN; i++)
     USART_RX_BUF[i] = 0;
-  for (u8 i = 0; i < 50; i++)
+  for (uint8_t i = 0; i < 50; i++)
     buffer[i] = 0;
 
   /*已经处于该界面，不重复发送*/
@@ -675,12 +675,12 @@ bool alram_clear(Page_Param *page_param)
     return false;
   uart_init(115200);
   /*清缓存*/
-  for (u16 i = 0; i < USART_REC_LEN; i++)
+  for (uint16_t i = 0; i < USART_REC_LEN; i++)
     USART_RX_BUF[i] = 0;
-  for (u8 i = 0; i < 50; i++)
+  for (uint8_t i = 0; i < 50; i++)
     buffer[i] = 0;
 
-  for (u8 i = 0; i < sizeof(name_list) / sizeof(char *); i++)
+  for (uint8_t i = 0; i < sizeof(name_list) / sizeof(char *); i++)
   {
     sprintf(buffer, "%s.aph=0%s", name_list[i], END_OF_CMD);
     RS485_send(buffer, strlen(buffer)); // 发送数据
@@ -690,7 +690,7 @@ bool alram_clear(Page_Param *page_param)
 }
 
 /*绘图——绘点*/
-void draw_point(u16 val)
+void draw_point(uint16_t val)
 {
   char pre_cmd[50] = "add wave_line.id,0,";
   char value_buf[5] = {0};

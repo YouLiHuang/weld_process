@@ -1,6 +1,6 @@
 #include "welding_process.h"
-#include "includes.h"
 
+#include "includes.h"
 #include "key.h"
 #include "pwm.h"
 #include "PID.h"
@@ -15,7 +15,7 @@
 
 /*--------------------------------------------------旧版本接口---------------------------------------------------------*/
 volatile WELD_MODE welding_flag = IDEAL_MODE; // 焊接的标志
-extern u16 kalman_comp_temp;				  // 温度补偿值
+extern uint16_t kalman_comp_temp;				  // 温度补偿值
 
 /*-------------------------------------------------------新接口--------------------------------------------------------*/
 
@@ -25,7 +25,7 @@ extern double fitting_curves[3];   // pid 参数动态拟合曲线x*x+x+1
 /*-----------------------------------------------适配的触摸屏数据接口--------------------------------------------------*/
 extern Component_Queue *temp_page_list;	 // 温度限制界面UI队列
 extern Component_Queue *param_page_list; // 参数设定界面的组件列表
-extern u8 ID_OF_MAS;
+extern uint8_t ID_OF_MAS;
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 /*--------------------------------------------------错误报警-----------------------------------------------------------*/
@@ -42,7 +42,7 @@ extern last_temp_sotre lasttemp; // 过往温度记录
 extern OS_SEM TEMP_DRAW_SEM;					// 绘图事件信号
 extern Temp_draw_ctrl *temp_draw_ctrl;			// 绘图控制器
 extern Page_Param *page_param;					// 实时页面参数
-extern u16 realtime_temp_buf[TEMP_BUF_MAX_LEN]; // 温度保存缓冲区
+extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN]; // 温度保存缓冲区
 
 /*热电偶*/
 extern Thermocouple *current_Thermocouple;
@@ -78,15 +78,15 @@ weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl)
 		ctrl->weld_count = 0;
 
 		/*user parameter*/
-		for (u8 i = 0; i < 5; i++)
+		for (uint8_t i = 0; i < 5; i++)
 		{
 			ctrl->weld_time[i] = 0;
 		}
-		for (u8 i = 0; i < 3; i++)
+		for (uint8_t i = 0; i < 3; i++)
 		{
 			ctrl->weld_temp[i] = 0;
 		}
-		for (u8 i = 0; i < 6; i++)
+		for (uint8_t i = 0; i < 6; i++)
 		{
 			ctrl->alarm_temp[i] = 0;
 		}
@@ -102,16 +102,16 @@ weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl)
 /**
  * @description: number convert to string
  * @param {char} *buffer
- * @param {u8} buf_len
- * @param {u16} value
+ * @param {uint8_t} buf_len
+ * @param {uint16_t} value
  * @return {*}
  */
-void user_value_convert_to_string(char *buffer, const u8 buf_len, const u16 value)
+void user_value_convert_to_string(char *buffer, const uint8_t buf_len, const uint16_t value)
 {
 
 	/*data length calculate*/
-	u8 length = 1;
-	u16 cal_val = value;
+	uint8_t length = 1;
+	uint16_t cal_val = value;
 	while (cal_val > 0)
 	{
 		cal_val /= 10;
@@ -120,8 +120,8 @@ void user_value_convert_to_string(char *buffer, const u8 buf_len, const u16 valu
 	}
 
 	/*value convert to string*/
-	u8 per_bit = 0;
-	u8 cnt;
+	uint8_t per_bit = 0;
+	uint8_t cnt;
 	if (length <= buf_len) // len:4 /1000%10 /100%10 /10%10 %10
 	{
 		for (int i = length - 1; i >= 0; i--)
@@ -150,8 +150,8 @@ void user_value_convert_to_string(char *buffer, const u8 buf_len, const u16 valu
 
 static void Load_Data()
 {
-	u8 GP_Temp = 0;
-	u8 key = 0;
+	uint8_t GP_Temp = 0;
+	uint8_t key = 0;
 	Component *comp = get_comp(param_page_list, "GP");
 	/*扫描按键，根据启动模式对对应参数组数据进行读取，并将其发送至触摸屏*/
 	GP_Temp = comp->val;
@@ -191,7 +191,7 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 	/*动态调整曲线*/
 	double set_gain = 0;
 	double percent = 0;
-	u16 delta_temp = 0;
+	uint16_t delta_temp = 0;
 
 	/*-------------------------------------------------------用户自定义模式-------------------------------------------------------*/
 	if (get_comp(temp_page_list, "switch")->val == 0)
@@ -638,10 +638,10 @@ static void End_of_Weld()
 
 /**
  * @description: Transmit data to the host computer
- * @param {u16} Temp_Send
+ * @param {uint16_t} Temp_Send
  * @return {*}
  */
-static void data_transfer_to_computer(const u16 Temp_Send[])
+static void data_transfer_to_computer(const uint16_t Temp_Send[])
 {
 	// 调试时暂时注释掉，防止对温度曲线进行干扰
 	//  发送各段焊接温度给上位机
@@ -791,7 +791,7 @@ void welding_process(void)
 	if (page_param->key3 == CTW && page_param->key2 == ION)
 	{
 		OS_ERR err;
-		u8 key = 0;
+		uint8_t key = 0;
 		/*获取当前实时温度*/
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 		key = new_key_scan();
@@ -836,7 +836,7 @@ void welding_process(void)
 	else if (page_param->key3 == CTW && page_param->key2 == IOFF)
 	{
 		OS_ERR err;
-		u8 key = 0;
+		uint8_t key = 0;
 		key = new_key_scan();
 		while (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
 		{
@@ -857,7 +857,7 @@ void welding_process(void)
 	if (page_param->key3 == SGW && page_param->key2 == ION)
 	{
 		OS_ERR err;
-		u8 key = 0;
+		uint8_t key = 0;
 		/*获取当前实时温度*/
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 		key = new_key_scan();
@@ -894,7 +894,7 @@ void welding_process(void)
 	else if (page_param->key3 == SGW && page_param->key2 == IOFF)
 	{
 		OS_ERR err;
-		u8 key = 0;
+		uint8_t key = 0;
 		key = new_key_scan();
 		if (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
 		{

@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-15 20:40:20
+ * @LastEditTime: 2025-01-16 10:53:52
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -32,7 +32,9 @@
 #define VOLTAGE_CHECK 1	 // 过欠压报警
 #define POWER_ON_CHECK 1 // 开机自检报警（开机后完成一次热点电偶检测）
 #define ROOM_TEMP 20	 // 默认室温
+#define SAMPLE_LEN 100	 // 采样深度
 #define JK_TEMP_SHOW 0	 // JK热电偶显示
+
 // 任务优先级
 #define START_TASK_PRIO 3
 // 任务堆栈大小
@@ -100,11 +102,11 @@ void draw_task(void *p_arg);
 
 /*--------------------------------------------------------新触摸屏界面部分------------------------------------------------------------------*/
 ////////////////////////RS485的消息队列/////////////////////////////////////////
-extern u32 baud_list[11];
-extern uint8_t USART_RX_BUF[USART_REC_LEN];		// 触摸屏串口接收缓冲
-extern u16 realtime_temp_buf[TEMP_BUF_MAX_LEN]; // 温度保存缓冲区
-#define UART_Q_NUM 100							// 按键消息队列的数量
-OS_Q UART_Msg;									// 串口数据队列
+extern uint32_t baud_list[11];
+extern uint8_t USART_RX_BUF[USART_REC_LEN];			 // 触摸屏串口接收缓冲
+extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN]; // 温度保存缓冲区
+#define UART_Q_NUM 100								 // 按键消息队列的数量
+OS_Q UART_Msg;										 // 串口数据队列
 ////////////////////////UART3资源保护：互斥锁（暂时未用）////////////////////////
 OS_MUTEX UARTMutex;
 ////////////////////////线程同步：信号量////////////////////////////////////////
@@ -135,16 +137,16 @@ Thermocouple *current_Thermocouple = NULL;
 /////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////错误处理回调//////////////////////////////
-static bool Thermocouple_recheck_callback(u8 index);
-static bool Current_out_of_ctrl_callback(u8 index);
-static bool Temp_up_err_callback(u8 index);
-static bool Temp_down_err_callback(u8 index);
+static bool Thermocouple_recheck_callback(uint8_t index);
+static bool Current_out_of_ctrl_callback(uint8_t index);
+static bool Temp_up_err_callback(uint8_t index);
+static bool Temp_down_err_callback(uint8_t index);
 
 /////////////////////////////////////错误复位回调/////////////////////////////////
-static bool Thermocouple_reset_callback(u8 index);
-static bool Current_out_of_ctrl_reset_callback(u8 index);
-static bool Temp_up_reset_callback(u8 index);
-static bool Temp_down_reset_callback(u8 index);
+static bool Thermocouple_reset_callback(uint8_t index);
+static bool Current_out_of_ctrl_reset_callback(uint8_t index);
+static bool Temp_up_reset_callback(uint8_t index);
+static bool Temp_down_reset_callback(uint8_t index);
 
 /*采用硬件校准模式，不同的热电偶的板级放大系数不同，需要单独进行校准，但是软件层是一致的*/
 // E：0.222*3300/4096=0.1788
@@ -235,7 +237,7 @@ static char *setting_page_name_list[] = {
 /*上位机485参数*/
 uint8_t ID_OF_MAS = 0;		// 焊机485通讯机号，默认是零,最大可设置15
 uint8_t last_id_of_mas = 0; // 机号存储
-u32 BOUND_SET = 0;			// 从机波特率设定
+uint32_t BOUND_SET = 0;		// 从机波特率设定
 /*上位机通信参数*/
 extern int Host_action;
 extern int Host_GP;
@@ -285,7 +287,7 @@ int main(void)
 	/*错误类型注册表*/
 	err_ctrl = new_error_ctrl();
 	/*注册错误类型*/
-	for (u8 i = 0; i < sizeof(match_list) / sizeof(error_match_list); i++)
+	for (uint8_t i = 0; i < sizeof(match_list) / sizeof(error_match_list); i++)
 	{
 		error_handle *handle = new_error_handle(match_list[i].type,
 												match_list[i].pic,
@@ -636,25 +638,25 @@ static bool Temp_up_check(void)
 /*--------------------------------------错误回调API--------------------------------------*/
 /*---------------------------------------------------------------------------------------*/
 
-static bool Temp_up_err_callback(u8 index)
+static bool Temp_up_err_callback(uint8_t index)
 {
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
 	return true;
 }
 
-static bool Temp_down_err_callback(u8 index)
+static bool Temp_down_err_callback(uint8_t index)
 {
 
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
 	return true;
 }
 
-static bool Current_out_of_ctrl_callback(u8 index)
+static bool Current_out_of_ctrl_callback(uint8_t index)
 {
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
 	return true;
 }
-static bool Thermocouple_recheck_callback(u8 index)
+static bool Thermocouple_recheck_callback(uint8_t index)
 {
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
 	return true;
@@ -664,7 +666,7 @@ static bool Thermocouple_recheck_callback(u8 index)
 /*--------------------------------------复位回调API--------------------------------------*/
 /*---------------------------------------------------------------------------------------*/
 
-static bool Thermocouple_reset_callback(u8 index)
+static bool Thermocouple_reset_callback(uint8_t index)
 {
 	bool ret;
 	if (true == Temp_up_check())
@@ -683,7 +685,7 @@ static bool Thermocouple_reset_callback(u8 index)
 	}
 	return ret;
 }
-static bool Current_out_of_ctrl_reset_callback(u8 index)
+static bool Current_out_of_ctrl_reset_callback(uint8_t index)
 {
 
 	bool ret = false;
@@ -702,13 +704,13 @@ static bool Current_out_of_ctrl_reset_callback(u8 index)
 	}
 	return ret;
 }
-static bool Temp_up_reset_callback(u8 index)
+static bool Temp_up_reset_callback(uint8_t index)
 {
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
 	err_ctrl->err_list[index]->state = false; // 清除错误状态
 	return true;
 }
-static bool Temp_down_reset_callback(u8 index)
+static bool Temp_down_reset_callback(uint8_t index)
 {
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
 	err_ctrl->err_list[index]->state = false; // 清除错误状态
@@ -757,7 +759,7 @@ void error_task(void *p_arg)
 			user_tim_delay(20);
 			Page_to(page_param, ALARM_PAGE);
 			page_param->id = ALARM_PAGE;
-			for (u8 i = 0; i < err_ctrl->error_cnt; i++)
+			for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
 			{
 				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
 					err_ctrl->err_list[i]->error_callback(i);
@@ -768,7 +770,7 @@ void error_task(void *p_arg)
 		OSSemPend(&ALARM_RESET_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
-			for (u8 i = 0; i < err_ctrl->error_cnt; i++)
+			for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
 			{
 				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->reset_callback != NULL)
 					err_ctrl->err_list[i]->reset_callback(i);
@@ -795,7 +797,7 @@ void error_task(void *p_arg)
 				/*仍有错误则继续报警*/
 				Page_to(page_param, ALARM_PAGE);
 				page_param->id = ALARM_PAGE;
-				for (u8 i = 0; i < err_ctrl->error_cnt; i++)
+				for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
 				{
 					if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
 						err_ctrl->err_list[i]->error_callback(i);
@@ -830,14 +832,13 @@ float voltage_test[6] = {0};
 static void Temp_updata_realtime()
 {
 
-	voltage_test[0] = (ADC_Value_avg(ADC_Channel_4) * 825) >> 10;
-	voltage_test[1] = (ADC_Value_avg(ADC_Channel_5) * 825) >> 10;
-	voltage_test[2] = (ADC_Value_avg(ADC_Channel_6) * 825) >> 10;
-	voltage_test[3] = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10;
-	voltage_test[4] = (ADC_Value_avg(ADC_Channel_14) * 825) >> 10;
-	voltage_test[5] = (ADC_Value_avg(ADC_Channel_15) * 825) >> 10;
-	//	float temp2=0.1618 * adcx7 + 11.048;
-	float voltage = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10; //*3300/4096
+	// voltage_test[0] = (ADC_Value_avg(ADC_Channel_4) * 825) >> 10;
+	// voltage_test[1] = (ADC_Value_avg(ADC_Channel_5) * 825) >> 10;
+	// voltage_test[2] = (ADC_Value_avg(ADC_Channel_6) * 825) >> 10;
+	// voltage_test[3] = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10;
+	// voltage_test[4] = (ADC_Value_avg(ADC_Channel_14) * 825) >> 10;
+	// voltage_test[5] = (ADC_Value_avg(ADC_Channel_15) * 825) >> 10;
+
 	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 
 #if TEMP_ADJUST == 1
@@ -927,6 +928,85 @@ void main_task(void *p_arg)
 /*-------------------------------------------------------------------------------------------------------------------------*/
 /*----------------------------------------------------触摸屏通信线程--------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
+
+/**
+ * @description: 消除E/J两个热电偶地误差
+ * @return {*}
+ */
+static void Thermocouple_err_eliminate()
+{
+
+	/*检测此时接入的是哪种热点偶*/
+
+	/*6个IO...*/
+
+	/*检测完成后将设置页面的热电偶更新为对应的值*/
+	// SENSOR_TYPE type;
+	// command_set_comp_val("KEJ", "val", type);
+
+	static uint16_t adc_ch14_init_value = 0;
+	static uint16_t adc_ch15_init_value = 0;
+	/*采集两个通道的初始偏置电压，1ms采集一个点*/
+	float adc_ch14_data[SAMPLE_LEN] = {0};
+	float adc_ch15_data[SAMPLE_LEN] = {0};
+	for (uint16_t i = 0; i < SAMPLE_LEN; i++)
+	{
+		adc_ch14_data[i] = ADC_Value_avg(ADC_Channel_14);
+		adc_ch15_data[i] = ADC_Value_avg(ADC_Channel_15);
+		user_tim_delay(1);
+	}
+
+	/*低通滤波*/
+	float adc_ch14_fliter_buf[SAMPLE_LEN] = {0};
+	float adc_ch15_fliter_buf[SAMPLE_LEN] = {0};
+
+	low_pass_Filter((float *)adc_ch14_data,
+					SAMPLE_LEN,
+					(float *)adc_ch14_fliter_buf,
+					1000,
+					1000);
+	low_pass_Filter((float *)adc_ch15_data,
+					SAMPLE_LEN,
+					(float *)adc_ch15_fliter_buf,
+					1000,
+					1000);
+
+	/*均值滤波——计算初始偏置*/
+	uint32_t sum = 0;
+	for (uint16_t i = 0; i < SAMPLE_LEN; i++)
+	{
+		sum += adc_ch14_fliter_buf[i];
+	}
+	adc_ch14_init_value = sum / SAMPLE_LEN;
+
+	sum = 0;
+	for (uint16_t i = 0; i < SAMPLE_LEN; i++)
+	{
+		sum += adc_ch15_fliter_buf[i];
+	}
+	adc_ch15_init_value = sum / SAMPLE_LEN;
+
+	if (adc_ch14_init_value > 500 || adc_ch15_init_value > 500)
+	{
+		/*偏置过高，异常报警*/
+		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+		OS_ERR err;
+		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+	}
+	else
+	{
+		uint16_t room_temp_voltage = 0; // 常温对应的电压
+
+		room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[1].intercept) / Thermocouple_Lists[1].slope;
+		Thermocouple_Lists[1].Bias = adc_ch15_init_value - room_temp_voltage;
+		room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[2].intercept) / Thermocouple_Lists[2].slope;
+		Thermocouple_Lists[2].Bias = adc_ch14_init_value - room_temp_voltage;
+
+		/*校准完成，开启进度条动画*/
+		command_set_comp_val("tm0", "en", 1);
+	}
+}
+
 /*通信任务API*/
 static void key_action_callback_param(Component_Queue *page_list);
 static void key_action_callback_temp(Component_Queue *page_list);
@@ -946,12 +1026,12 @@ static void key_action_callback_param(Component_Queue *page_list)
 		if (comp->val != page_param->key1)
 		{
 			/*Ⅰ、读取界面上的参数*/
-			for (u8 i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
+			for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
 			{
 				/*参数读取*/
 				command_get_comp_val(page_list, weld_temp_name_list[i], "val");
 			}
-			for (u8 i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
+			for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
 			{
 				/*参数读取*/
 				command_get_comp_val(page_list, weld_time_name_list[i], "val");
@@ -1033,12 +1113,12 @@ static void key_action_callback_param(Component_Queue *page_list)
 			}
 		}
 		/*Ⅱ、读取界面上的参数*/
-		for (u8 i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
+		for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
 		{
 			/*参数读取*/
 			command_get_comp_val(page_list, weld_temp_name_list[i], "val");
 		}
-		for (u8 i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
+		for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
 		{
 			/*参数读取*/
 			command_get_comp_val(page_list, weld_time_name_list[i], "val");
@@ -1065,12 +1145,12 @@ static void key_action_callback_temp(Component_Queue *page_list)
 		if (comp->val != page_param->key1)
 		{
 			/*Ⅰ、读取界面上的参数*/
-			for (u8 i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
+			for (uint8_t i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
 			{
 				/*参数读取*/
 				command_get_comp_val(page_list, gain_name_list[i], "val");
 			}
-			for (u8 i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
+			for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
 			{
 				/*参数读取*/
 				command_get_comp_val(page_list, alarm_temp_name_list[i], "val");
@@ -1149,12 +1229,12 @@ static void key_action_callback_temp(Component_Queue *page_list)
 			}
 		}
 		/*Ⅱ、读取界面上的参数*/
-		for (u8 i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
+		for (uint8_t i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
 		{
 			/*参数读取*/
 			command_get_comp_val(page_list, gain_name_list[i], "val");
 		}
-		for (u8 i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
+		for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
 		{
 			/*参数读取*/
 			command_get_comp_val(page_list, alarm_temp_name_list[i], "val");
@@ -1193,7 +1273,7 @@ static void parse_key_action(Page_ID id)
 }
 
 #if PID_DEBUG == 1
-static bool pid_param_get(u16 *pid_raw_param)
+static bool pid_param_get(uint16_t *pid_raw_param)
 {
 	const char *pid_param_name_list[4] = {
 		"kpf",
@@ -1204,9 +1284,9 @@ static bool pid_param_get(u16 *pid_raw_param)
 	uint8_t *msg = NULL;
 	OS_ERR err;
 	OS_MSG_SIZE msg_size = 0;
-	u8 param_get_success_cnt = 0;
+	uint8_t param_get_success_cnt = 0;
 
-	for (u8 i = 0; i < 4; i++)
+	for (uint8_t i = 0; i < 4; i++)
 	{
 
 		char buffer[50] = {0};
@@ -1250,7 +1330,7 @@ static void page_process(Page_ID id)
 	{
 		OS_ERR err;
 		/*1、读取界面上的参数*/
-		for (u8 i = 0; i < sizeof(key_name_list) / sizeof(char *); i++)
+		for (uint8_t i = 0; i < sizeof(key_name_list) / sizeof(char *); i++)
 		{
 			command_get_comp_val(param_page_list, key_name_list[i], "pic");
 		}
@@ -1270,12 +1350,12 @@ static void page_process(Page_ID id)
 		OSSemPend(&TEMP_DRAW_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
-			u16 temp_display[3] = {0};
+			uint16_t temp_display[3] = {0};
 			char *temp_display_name[] = {"temp11", "temp22", "temp33"};
 			/*三段均温显示*/
 			temp_display[0] = weld_controller->second_step_start_temp;
-			u32 sum = 0;
-			for (u16 i = temp_draw_ctrl->second_step_stable_index; i < temp_draw_ctrl->second_step_index_end; i++)
+			uint32_t sum = 0;
+			for (uint16_t i = temp_draw_ctrl->second_step_stable_index; i < temp_draw_ctrl->second_step_index_end; i++)
 				sum += temp_draw_ctrl->temp_buf[i];
 			temp_display[1] = sum / (temp_draw_ctrl->second_step_index_end - temp_draw_ctrl->second_step_stable_index + 1);
 			/*一二段均值发送到触摸屏*/
@@ -1285,7 +1365,7 @@ static void page_process(Page_ID id)
 			/*绘图控制器复位*/
 			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
 			/*绘图结束清空缓存*/
-			memset(temp_draw_ctrl->temp_buf, 0, sizeof(temp_draw_ctrl->temp_buf) / sizeof(u16));
+			memset(temp_draw_ctrl->temp_buf, 0, sizeof(temp_draw_ctrl->temp_buf) / sizeof(uint16_t));
 
 			/*更新焊接计数值*/
 			command_set_comp_val("count", "val", weld_controller->weld_count);
@@ -1296,7 +1376,7 @@ static void page_process(Page_ID id)
 	case TEMP_PAGE:
 	{
 		/*1、读取界面上的参数*/
-		for (u8 i = 0; i < sizeof(key_name_list) / sizeof(char *); i++)
+		for (uint8_t i = 0; i < sizeof(key_name_list) / sizeof(char *); i++)
 		{
 			command_get_comp_val(temp_page_list, key_name_list[i], "pic");
 		}
@@ -1316,7 +1396,7 @@ static void page_process(Page_ID id)
 		command_set_comp_val("wave_page.kp", "aph", 127);
 		command_set_comp_val("wave_page.ki", "aph", 127);
 		command_set_comp_val("wave_page.kd", "aph", 127);
-		u16 pid_param[4] = {0};
+		uint16_t pid_param[4] = {0};
 		if (pid_param_get(pid_param) == true)
 		{
 			weld_controller->pid_ctrl->kp_f = pid_param[0] / 100.0;
@@ -1327,16 +1407,16 @@ static void page_process(Page_ID id)
 
 #else
 		OS_ERR err;
-		u16 total_time = 0;		// 总焊接时长
-		u16 delta_tick = 0;		// 坐标间隔
-		u16 total_tick_len = 0; // 横坐标总长度
-		u16 win_width = 0;		// 绘图区域占据的实际窗口大小
+		uint16_t total_time = 0;	 // 总焊接时长
+		uint16_t delta_tick = 0;	 // 坐标间隔
+		uint16_t total_tick_len = 0; // 横坐标总长度
+		uint16_t win_width = 0;		 // 绘图区域占据的实际窗口大小
 
 		/*实时温度显示*/
 		command_set_comp_val("step3", "val", weld_controller->realtime_temp);
 
 		/*更新坐标*/
-		for (u8 i = 0; i < 5; i++)
+		for (uint8_t i = 0; i < 5; i++)
 			total_time += weld_controller->weld_time[i];
 		/*坐标划分*/
 		if (total_time <= 500)
@@ -1361,19 +1441,19 @@ static void page_process(Page_ID id)
 		win_width = WIN_WIDTH * total_time / total_tick_len;	 // 焊接周期绘图区域
 		temp_draw_ctrl->delta_tick = total_time / win_width + 1; // 绘点时间间隔
 		/*坐标发送到触摸屏*/
-		for (u8 i = 0; i < sizeof(tick_name) / sizeof(char *); i++)
+		for (uint8_t i = 0; i < sizeof(tick_name) / sizeof(char *); i++)
 			command_set_comp_val(tick_name[i], "val", (1 + i) * delta_tick);
 
 		/*焊接接收后显示三段温度*/
 		OSSemPend(&TEMP_DRAW_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
-			u16 temp_display[3] = {0};
+			uint16_t temp_display[3] = {0};
 			char *temp_display_name[] = {"step1", "step2", "step3"};
 			/*三段均温显示*/
 			temp_display[0] = weld_controller->second_step_start_temp;
-			u32 sum = 0;
-			for (u16 i = temp_draw_ctrl->second_step_stable_index; i < temp_draw_ctrl->second_step_index_end; i++)
+			uint32_t sum = 0;
+			for (uint16_t i = temp_draw_ctrl->second_step_stable_index; i < temp_draw_ctrl->second_step_index_end; i++)
 				sum += temp_draw_ctrl->temp_buf[i];
 			temp_display[1] = sum / (temp_draw_ctrl->second_step_index_end - temp_draw_ctrl->second_step_stable_index + 1);
 			/*一二段均值发送到触摸屏*/
@@ -1383,7 +1463,7 @@ static void page_process(Page_ID id)
 			/*绘图控制器复位*/
 			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
 			/*绘图结束清空缓存*/
-			memset(temp_draw_ctrl->temp_buf, 0, sizeof(temp_draw_ctrl->temp_buf) / sizeof(u16));
+			memset(temp_draw_ctrl->temp_buf, 0, sizeof(temp_draw_ctrl->temp_buf) / sizeof(uint16_t));
 
 			/*绘制降温曲线*/
 			OSSemPost(&TEMP_DOWN_LINE_SEM, OS_OPT_POST_ALL, &err);
@@ -1515,7 +1595,7 @@ static bool data_syn(Page_ID id)
 		}
 
 		/*更新热电偶类型*/
-		for (u8 i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple_Lists[0]); i++)
+		for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple_Lists[0]); i++)
 		{
 			if (get_comp(setting_page_list, "sensortype")->val == Thermocouple_Lists[i].type)
 				current_Thermocouple = &Thermocouple_Lists[i]; // 更新当前热电偶类型
@@ -1527,86 +1607,6 @@ static bool data_syn(Page_ID id)
 	}
 
 	return true;
-}
-
-static u16 adc_ch14_init_value = 0;
-static u16 adc_ch15_init_value = 0;
-
-#define SAMPLE_LEN 100
-/**
- * @description: 消除E/J两个热电偶地误差
- * @return {*}
- */
-static void Thermocouple_err_eliminate()
-{
-
-	/*检测此时接入的是哪种热点偶*/
-
-	/*6个IO...*/
-
-	/*检测完成后将设置页面的热电偶更新为对应的值*/
-	// SENSOR_TYPE type;
-	// command_set_comp_val("KEJ", "val", type);
-
-	/*采集两个通道的初始偏置电压，1ms采集一个点*/
-	float adc_ch14_data[SAMPLE_LEN] = {0};
-	float adc_ch15_data[SAMPLE_LEN] = {0};
-	for (u16 i = 0; i < SAMPLE_LEN; i++)
-	{
-		adc_ch14_data[i] = ADC_Value_avg(ADC_Channel_14);
-		adc_ch15_data[i] = ADC_Value_avg(ADC_Channel_15);
-		user_tim_delay(1);
-	}
-
-	/*低通滤波*/
-	float adc_ch14_fliter_buf[SAMPLE_LEN] = {0};
-	float adc_ch15_fliter_buf[SAMPLE_LEN] = {0};
-
-	low_pass_Filter((float *)adc_ch14_data,
-					SAMPLE_LEN,
-					(float *)adc_ch14_fliter_buf,
-					1000,
-					1000);
-	low_pass_Filter((float *)adc_ch15_data,
-					SAMPLE_LEN,
-					(float *)adc_ch15_fliter_buf,
-					1000,
-					1000);
-
-	/*均值滤波——计算初始偏置*/
-	u32 sum = 0;
-	for (u16 i = 0; i < SAMPLE_LEN; i++)
-	{
-		sum += adc_ch14_fliter_buf[i];
-	}
-	adc_ch14_init_value = sum / SAMPLE_LEN;
-
-	sum = 0;
-	for (u16 i = 0; i < SAMPLE_LEN; i++)
-	{
-		sum += adc_ch15_fliter_buf[i];
-	}
-	adc_ch15_init_value = sum / SAMPLE_LEN;
-
-	if (adc_ch14_init_value > 500 || adc_ch15_init_value > 500)
-	{
-		/*偏置过高，异常报警*/
-		OS_ERR err;
-		/*唤醒错误处理线程*/
-		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-	}
-	else
-	{
-		u16 room_temp_voltage = 0; // 常温对应的电压
-
-		room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[1].intercept) / Thermocouple_Lists[1].slope;
-		Thermocouple_Lists[1].Bias = adc_ch15_init_value - room_temp_voltage;
-		room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[2].intercept) / Thermocouple_Lists[2].slope;
-		Thermocouple_Lists[2].Bias = adc_ch14_init_value - room_temp_voltage;
-
-		/*校准完成*/
-		command_set_comp_val("tm0", "en", 1);
-	}
 }
 
 /*
@@ -1647,7 +1647,7 @@ static void data_sync_from_computer()
 		"time4",
 		"time5",
 	};
-	for (u8 i = 0; i < sizeof(time_name) / sizeof(time_name[0]); i++)
+	for (uint8_t i = 0; i < sizeof(time_name) / sizeof(time_name[0]); i++)
 	{
 		get_comp(param_page_list, time_name[i])->val = weld_controller->weld_time[i];
 	}
@@ -1656,7 +1656,7 @@ static void data_sync_from_computer()
 		"temp2",
 		"temp3",
 	};
-	for (u8 i = 0; i < sizeof(temp_name) / sizeof(temp_name[0]); i++)
+	for (uint8_t i = 0; i < sizeof(temp_name) / sizeof(temp_name[0]); i++)
 	{
 		get_comp(param_page_list, temp_name[i])->val = weld_controller->weld_temp[i];
 	}
@@ -1669,7 +1669,7 @@ static void data_sync_from_computer()
 		"alarm5",
 		"alarm6",
 	};
-	for (u8 i = 0; i < sizeof(alarm_name) / sizeof(alarm_name[0]); i++)
+	for (uint8_t i = 0; i < sizeof(alarm_name) / sizeof(alarm_name[0]); i++)
 	{
 		get_comp(param_page_list, alarm_name[i])->val = weld_controller->alarm_temp[i];
 	}
@@ -1677,11 +1677,11 @@ static void data_sync_from_computer()
 	get_comp(temp_page_list, "GAIN2")->val = weld_controller->temp_gain2;
 }
 
-/*
-	通讯任务
-	功能描述：
-	和上位机的通信任务，读取来自上位机的数据，更新响应参数值，并通知数据同步线程完成参数更新
-*/
+/**
+ * @description: 上位机通信任务
+ * @param {void} *p_arg
+ * @return {*}
+ */
 void computer_read_task(void *p_arg)
 {
 	/*
@@ -1809,13 +1809,13 @@ void computer_read_task(void *p_arg)
 					"param_page.time4",
 					"param_page.time5",
 				};
-				for (u8 i = 0; i < sizeof(time_name_list) / sizeof(time_name_list[0]); i++)
+				for (uint8_t i = 0; i < sizeof(time_name_list) / sizeof(time_name_list[0]); i++)
 				{
 					command_set_comp_val(time_name_list[i], "val", weld_controller->weld_time[i]);
 				}
 				/*温度刷新*/
 				char *temp_name_list[] = {"param_page.temp1", "param_page.temp2", "param_page.temp3"};
-				for (u8 i = 0; i < sizeof(temp_name_list) / sizeof(temp_name_list[0]); i++)
+				for (uint8_t i = 0; i < sizeof(temp_name_list) / sizeof(temp_name_list[0]); i++)
 				{
 					command_set_comp_val(temp_name_list[i], "val", weld_controller->weld_temp[i]);
 				}
@@ -1828,7 +1828,7 @@ void computer_read_task(void *p_arg)
 					"temp_page.alarm5",
 					"temp_page.alarm6",
 				};
-				for (u8 i = 0; i < sizeof(alarm_name_list) / sizeof(alarm_name_list[0]); i++)
+				for (uint8_t i = 0; i < sizeof(alarm_name_list) / sizeof(alarm_name_list[0]); i++)
 				{
 					command_set_comp_val(alarm_name_list[i], "val", weld_controller->alarm_temp[i]);
 				}
@@ -1899,12 +1899,12 @@ void computer_read_task(void *p_arg)
 void draw_task(void *p_arg)
 {
 	OS_ERR err;
-	u16 index;
-	u16 weld_win_width;
-	u16 win_width;
-	u16 total_time;
-	u16 temp = 0;
-	u8 temp_display = 0;
+	uint16_t index;
+	uint16_t weld_win_width;
+	uint16_t win_width;
+	uint16_t total_time;
+	uint16_t temp = 0;
+	uint8_t temp_display = 0;
 	while (1)
 	{
 		index = 0;
@@ -1917,7 +1917,7 @@ void draw_task(void *p_arg)
 			temp = 0;
 			temp_display = 0;
 			total_time = 0; // 焊接总时长
-			for (u8 i = 0; i < 5; i++)
+			for (uint8_t i = 0; i < 5; i++)
 				total_time += weld_controller->weld_time[i];
 
 			weld_win_width = total_time / (temp_draw_ctrl->delta_tick - 1); // 转换计算(参见读写线程的坐标绘制)：焊接周期绘图区域大小
