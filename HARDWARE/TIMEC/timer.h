@@ -55,6 +55,6 @@ void pid_param_dynamic_reload(void *controller, double *fitting_curves, uint16_t
 /*可将该api进一步封装为，支持回调函数作为参数*/
 void user_tim_delay(uint16_t time_ms);
 uint16_t tim2_cnt_get(void);
-void tim2_cnt_set(uint16_t val);
+
 
 #endif

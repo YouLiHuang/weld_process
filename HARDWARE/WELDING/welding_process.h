@@ -1,12 +1,13 @@
-/***
+/*** 
  * @Author: huangyouli.scut@gmail.com
- * @Date: 2024-12-20 10:12:12
+ * @Date: 2025-01-15 19:17:48
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2024-12-20 10:14:07
- * @Description
+ * @LastEditTime: 2025-01-16 11:00:13
+ * @Description: 
  * @
- * @Copyright (c) 2024 by huangyouli, All Rights Reserved.
+ * @Copyright (c) 2025 by huangyouli, All Rights Reserved. 
  */
+
 
 #ifndef __WELDING_PROCESS_H
 #define __WELDING_PROCESS_H

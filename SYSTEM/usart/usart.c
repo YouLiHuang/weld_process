@@ -29,7 +29,7 @@ void _sys_exit(int x)
 int fputc(int ch, FILE *f)
 {
 	while ((USART1->SR & 0X40) == 0)
-		; // 循环发送,直到发送完毕
+		; 
 	USART1->DR = (uint8_t)ch;
 	return ch;
 }
@@ -70,9 +70,8 @@ extern OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 /**
- * @description: 串口初始化，用于触摸屏通讯处理
- * 				用到GPIOA2  GPIOA3 以及 PG8做使能
- * @param {u32} bound 波特率设置
+ * @description: touchscreen usart config
+ * @param {u32} bound
  * @return {*}
  */
 void uart_init(u32 bound)
@@ -80,60 +79,61 @@ void uart_init(u32 bound)
 	GPIO_InitTypeDef GPIO_InitStructure;
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE); // 使能GPIOA时钟
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, ENABLE); // 使能USART2时钟
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE); 
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, ENABLE); 
 
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource0, GPIO_AF_UART4); // GPIOA2复用为USART2
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource1, GPIO_AF_UART4); // GPIOA3复用为USART2
+	/*GPIO AF config*/
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource0, GPIO_AF_UART4); 
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource1, GPIO_AF_UART4); 
 
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;		   // GPIOA2与GPIOA3
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;	   // 复用功能
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz; // 速度100MHz
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;	   // 推挽复用输出
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;	   // 上拉
-	GPIO_Init(GPIOA, &GPIO_InitStructure);			   // 初始化PA2，PA3
+	/*GPIO RXD TXD config*/
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;		   // GPIOA2与GPIOA3
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;	   // 复用功能
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz; // 速度100MHz
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;	   // 推挽复用输出
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;	   // 上拉
-	GPIO_Init(GPIOA, &GPIO_InitStructure);			   // 初始化PA2，PA3
-	// PG8推挽输出，485模式控制
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;		   // GPIOG8
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;	   // 输出
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz; // 速度100MHz
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;	   // 推挽输出
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;	   // 上拉
-	GPIO_Init(GPIOA, &GPIO_InitStructure);			   // 初始化PG8
+	/*GPIO PA2 RX/TX control config*/
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-	USART_InitStructure.USART_BaudRate = bound;										// 波特率设置
-	USART_InitStructure.USART_WordLength = USART_WordLength_8b;						// 字长为8位数据格式
-	USART_InitStructure.USART_StopBits = USART_StopBits_1;							// 一个停止位
-	USART_InitStructure.USART_Parity = USART_Parity_No;								// 无奇偶校验位
-	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None; // 无硬件数据流控制
-	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;					// 收发模式
-	USART_Init(UART4, &USART_InitStructure);										// 初始化串口2
-
-	USART_Cmd(UART4, ENABLE); // 使能串口 2
-
+	/*usart config*/
+	USART_InitStructure.USART_BaudRate = bound;
+	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+	USART_InitStructure.USART_StopBits = USART_StopBits_1;
+	USART_InitStructure.USART_Parity = USART_Parity_No;
+	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+	USART_Init(UART4, &USART_InitStructure);
+	USART_Cmd(UART4, ENABLE);
 	USART_ClearFlag(UART4, USART_FLAG_TC);
 
 #if EN_USART4_RX
-	USART_ITConfig(UART4, USART_IT_RXNE, ENABLE); // 开启接收中断
+	USART_ITConfig(UART4, USART_IT_RXNE, ENABLE);
 	USART_ITConfig(UART4, USART_IT_IDLE, ENABLE);
-	// Usart2 NVIC 配置
+	/*NVIC config*/
 	NVIC_InitStructure.NVIC_IRQChannel = UART4_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3; // 抢占优先级3
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;		  // 子优先级3
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			  // IRQ通道使能
-	NVIC_Init(&NVIC_InitStructure);							  // 根据指定的参数初始化VIC寄存器、
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
 
 #endif
 	RS485_TX_EN = 0; // 默认为接收模式
 }
 
-static volatile uint16_t receive_number = 0; // 记录接收字节长度
+static volatile uint16_t receive_number = 0; 
 uint16_t get_receive_number()
 {
 	return receive_number;
@@ -196,7 +196,8 @@ void UART4_IRQHandler(void)
 
 			receive_number = 0;
 		}
-		// clear flag
+		
+		/*clear flag*/
 		receive_number = 0;
 		int temp;
 		temp = UART4->SR;

@@ -1,4 +1,14 @@
+/*
+ * @Author: huangyouli.scut@gmail.com
+ * @Date: 2025-01-15 19:17:48
+ * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
+ * @LastEditTime: 2025-01-16 11:12:21
+ * @Description:
+ *
+ * Copyright (c) 2025 by huangyouli, All Rights Reserved.
+ */
 #include "timer.h"
+
 #include "welding_process.h"
 #include "stm32f4xx.h"
 #include "includes.h"
@@ -242,15 +252,15 @@ void TIM5_IRQHandler(void)
 	{
 		/*Ⅰ、反馈*/
 #if COMPENSATION == 1
-		weld_controller->realtime_temp = temp_convert(current_Thermocouple);		 // 原始温度数据实时温度
+		weld_controller->realtime_temp = temp_convert(current_Thermocouple);			  // 原始温度数据实时温度
 		uint16_t kalman_filter_temp = KalmanFilter(&kfp, weld_controller->realtime_temp); // 卡尔曼滤波
-		slid_windows(&lasttemp, kalman_filter_temp);								 // 滑动窗口
-		kalman_comp_temp = dynamic_temp_comp(lasttemp, dynam_comp);					 // 动态补偿
-		current_temp_comp = kalman_comp_temp;										 // 获取当前温度估计值
+		slid_windows(&lasttemp, kalman_filter_temp);									  // 滑动窗口
+		kalman_comp_temp = dynamic_temp_comp(lasttemp, dynam_comp);						  // 动态补偿
+		current_temp_comp = kalman_comp_temp;											  // 获取当前温度估计值
 #else
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 		kalman_comp_temp = weld_controller->realtime_temp;
-		current_temp_comp = weld_controller->realtime_temp;
+		current_temp_comp = kalman_comp_temp;
 #endif
 
 		/*Ⅱ、算法控制器*/
@@ -395,7 +405,7 @@ void TIM5_IRQHandler(void)
 		if (weld_controller->weld_time_tick % temp_draw_ctrl->sample_freq == 0)
 		{
 			if (temp_draw_ctrl->current_index < temp_draw_ctrl->buf_len_max)
-				temp_draw_ctrl->temp_buf[temp_draw_ctrl->current_index++] = kalman_comp_temp;
+				temp_draw_ctrl->temp_buf[temp_draw_ctrl->current_index++] = current_temp_comp;
 		}
 	}
 
@@ -447,11 +457,6 @@ void TIM2_IRQHandler(void)
 #if SYSTEM_SUPPORT_OS
 	OSIntExit(); // 退出中断
 #endif
-}
-
-void tim2_cnt_set(uint16_t val)
-{
-	tim2_user_cnt = val;
 }
 
 uint16_t tim2_cnt_get()

@@ -38,22 +38,21 @@ void ADC_DMA_INIT(void)
 	GPIO_InitTypeDef GPIO_InitStructure;
 	GPIO_InitTypeDef GPIO_InitStructure2;
 
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOC, ENABLE); // 使能GPIOA时钟
-	/*GPIOA---------------------------------------------------------------------------- */
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOC, ENABLE);
+	/*GPIOA-----------------------------------------------------------------------------*/
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-	/*GPIOC---------------------------------------------------------------------------- */
+	/*GPIOC-----------------------------------------------------------------------------*/
 	GPIO_InitStructure2.GPIO_Mode = GPIO_Mode_AN;
 	GPIO_InitStructure2.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5;
 	GPIO_InitStructure2.GPIO_PuPd = GPIO_PuPd_DOWN;
 	GPIO_Init(GPIOC, &GPIO_InitStructure2);
 
-	/* ADC Init--------------------------------------------------------------------------*/
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE); // 使能ADC1/2时钟
-
+	/* ADC Init-------------------------------------------------------------------------*/
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
 	ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent;
 	ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div4;
 	ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled;
@@ -67,12 +66,9 @@ void ADC_DMA_INIT(void)
 	ADC_InitStructure.ADC_ExternalTrigConv = 0;
 	ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
 	ADC_InitStructure.ADC_NbrOfConversion = ADC_SAMPLE_CNUM;
-
-	/*ADC1---------------------------------------------*/
 	ADC_Init(ADC1, &ADC_InitStructure);
 
-	/*ADC1通道顺序------------------------------------------------------------------------------*/
-
+	/*ADC1通道顺序-----------------------------------------------------------------------*/
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_4, 1, ADC_SampleTime_56Cycles);
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_5, 2, ADC_SampleTime_56Cycles);
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_6, 3, ADC_SampleTime_56Cycles);
@@ -105,7 +101,7 @@ void ADC_DMA_INIT(void)
 	ADC_DMARequestAfterLastTransferCmd(ADC1, ENABLE);
 	ADC_DMACmd(ADC1, ENABLE);
 	ADC_Cmd(ADC1, ENABLE);
-	/*由于没有采用外部触发，所以使用软件触发ADC转换-------------------------------------------- */
+	/*由于没有采用外部触发，所以使用软件触发ADC转换-----------------------------------------*/
 	ADC_SoftwareStartConv(ADC1);
 }
 
@@ -210,82 +206,6 @@ uint16_t temp_convert(Thermocouple *thermocouple)
 	return temp;
 }
 
-/**
- * @description:
- * @param {uint8_t} ch1
- * @return {*}
- */
-uint16_t Get_Adc1(uint8_t ch1)
-{
-	// 设置指定ADC的规则组通道，一个序列，采样时间
-	ADC_RegularChannelConfig(ADC1, ch1, 1, ADC_SampleTime_84Cycles); // ADC1,ADC通道15个周期,提高采样时间可以提高精确度
-
-	ADC_SoftwareStartConv(ADC1); // 使能指定的ADC1的软件转换启动功能
-
-	while (!ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC))
-		; // 等待转换结束
-	ADC_ClearFlag(ADC1, ADC_FLAG_EOC);
-
-	return ADC_GetConversionValue(ADC1); // 返回最近一次ADC1规则组的转换结果
-}
-
-/**
- * @description:
- * @param {uint8_t} ch1
- * @param {uint16_t} times1
- * @return {*}
- */
-uint16_t Get_Adc1_Average(uint8_t ch1, uint16_t times1)
-{
-	// temp_val1 = 0;
-	// for (t1 = 0; t1 < times1; t1++)
-	// {
-	// 	temp_val1 += Get_Adc1(ch1);
-	// }
-	// return temp_val1 / times1;
-	return ADC_Value_avg(ch1);
-}
-
-/**
- * @description:
- * @param {uint8_t} ch1
- * @param {uint16_t} n
- * @return {*}
- */
-uint16_t Bubble_Sort_Calculate(uint8_t ch1, uint16_t n)
-{
-	int i, j, z;
-	uint16_t Array[n];
-	uint32_t Sum = 0;
-	int end;
-
-	for (i = 0; i < n; i++)
-	{
-		Array[i] = Get_Adc1(ch1);
-	}
-	for (i = 0; i < n - 1; i++)
-	{
-		for (j = 0; j < n - i - 1; j++)
-		{
-			if (Array[j] > Array[j + 1]) // 如果前者大于后者
-			{
-				int16_t result = Array[j]; // 则交换两者的值
-				Array[j] = Array[j + 1];
-				Array[j + 1] = result;
-			}
-		}
-	}
-
-	// 30个数据，去掉首尾5个，取20个数据
-	for (z = 5; z < n - 5; z++)
-	{
-		Sum = Sum + Array[z];
-	}
-
-	end = Sum / 20;
-
-	return end;
-}
 
 /**
  * @description:
@@ -293,7 +213,7 @@ uint16_t Bubble_Sort_Calculate(uint8_t ch1, uint16_t n)
  * @param {uint16_t} n
  * @return {*}
  */
-uint16_t Bubble_Calculate_lan(uint16_t arr[], uint16_t n)
+uint16_t Bubble_Calculate(uint16_t arr[], uint16_t n)
 {
 	uint16_t temp = 0;
 	uint32_t sum = 0;
@@ -354,17 +274,4 @@ float rms_get(uint16_t *arr, uint16_t n, uint16_t start)
 		}
 	}
 	return sqrt(sum / num);
-}
-
-/**
- * @description:   温度显示
- * @param {uint16_t} *input
- * @param {uint16_t} nums   采样点数
- * @param {uint16_t} start  有效数据起始下标
- * @param {uint16_t} refer  参考值
- * @return {*}
- */
-uint16_t temp_display(uint16_t *input, uint16_t nums, uint16_t start)
-{
-	return (uint16_t)rms_get(input, nums - start, start);
 }

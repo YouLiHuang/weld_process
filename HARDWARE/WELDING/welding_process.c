@@ -15,7 +15,7 @@
 
 /*--------------------------------------------------旧版本接口---------------------------------------------------------*/
 volatile WELD_MODE welding_flag = IDEAL_MODE; // 焊接的标志
-extern uint16_t kalman_comp_temp;				  // 温度补偿值
+extern uint16_t kalman_comp_temp;			  // 温度补偿值
 
 /*-------------------------------------------------------新接口--------------------------------------------------------*/
 
@@ -39,9 +39,9 @@ Kalman kfp;
 dynamical_comp dynam_comp;		 // 动态补偿
 extern last_temp_sotre lasttemp; // 过往温度记录
 /*--------------------------------------------------------绘图---------------------------------------------------------*/
-extern OS_SEM TEMP_DRAW_SEM;					// 绘图事件信号
-extern Temp_draw_ctrl *temp_draw_ctrl;			// 绘图控制器
-extern Page_Param *page_param;					// 实时页面参数
+extern OS_SEM TEMP_DRAW_SEM;						 // 绘图事件信号
+extern Temp_draw_ctrl *temp_draw_ctrl;				 // 绘图控制器
+extern Page_Param *page_param;						 // 实时页面参数
 extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN]; // 温度保存缓冲区
 
 /*热电偶*/

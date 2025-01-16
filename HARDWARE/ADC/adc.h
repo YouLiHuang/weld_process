@@ -29,11 +29,11 @@ Thermocouple *newThermocouple(SENSOR_TYPE type, float slope, float intercept);
 
 /*NEW API*/
 void ADC_DMA_INIT(void);
-
 uint16_t ADC_Value_avg(uint16_t channel);
 uint16_t temp_convert(Thermocouple *thermocouple);
 
-uint16_t Bubble_Calculate_lan(uint16_t arr[], uint16_t n);
+/*API*/
+uint16_t Bubble_Calculate(uint16_t arr[], uint16_t n);
 float rms_get(uint16_t *arr, uint16_t n, uint16_t start);
 
 #endif
