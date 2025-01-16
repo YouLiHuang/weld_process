@@ -1,13 +1,12 @@
-/*** 
+/***
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-15 19:17:48
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
  * @LastEditTime: 2025-01-16 11:00:13
- * @Description: 
+ * @Description:
  * @
- * @Copyright (c) 2025 by huangyouli, All Rights Reserved. 
+ * @Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
-
 
 #ifndef __WELDING_PROCESS_H
 #define __WELDING_PROCESS_H
@@ -23,6 +22,8 @@ void welding_process(void);
 #define COMMUNICATE 0           // 上位机通信接口
 #define REALTIME_TEMP_DISPLAY 1 // 实时温度绘制开关
 
+#define HOST_WELD_CTRL 1 // 上位机控制焊接
+
 /*温升控制*/
 #define STABLE_ERR 40           // 稳态误差补偿
 #define USER_SET_MAX_TEMP 650.0 // 允许用户设定的最大温度
@@ -30,6 +31,7 @@ void welding_process(void);
 #define MAX_WELD_TIME 9999      // 最长焊接用时
 #define DELTA_COMPENSATE_MAX 250
 #define DETTA_COMPENSATE_MIN 100
+#define DEFAULT_GAIN 0.85
 
 /*
  *焊接状态
@@ -61,7 +63,7 @@ typedef struct weld_realtime_controller
     uint16_t step_time_tick; /*every step tick*/
     uint16_t Duty_Cycle;     /*Duty Cycle*/
     uint16_t weld_count;     /*weld count*/
-    WELD_STATE state;   /*wled state*/
+    WELD_STATE state;        /*wled state*/
 
     /*Transition Parameters*/
     uint16_t first_step_start_temp;
@@ -88,6 +90,9 @@ typedef struct weld_realtime_controller
 
     /*pid ctrl*/
     pid_feedforword_ctrl *pid_ctrl;
+
+    /*hook*/
+    void (*user_hook_callback)(void);
 } weld_ctrl;
 
 weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl);

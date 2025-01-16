@@ -26,6 +26,7 @@ extern uint8_t USART_RX_BUF[USART_REC_LEN]; // 接收缓冲,最大USART_REC_LEN�
 #define RS485_CMD_WRITE 0x06
 #define RS485_CMD_WRITE_ALL 0x10
 #define RS485_CMD_WELD_START 0x1f
+#define RS485_CMD_WELD_STOP 0xf1
 
 void uart_init(u32 bound);
 void usart3_init(u32 bound);

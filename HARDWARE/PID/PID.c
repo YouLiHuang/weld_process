@@ -47,9 +47,6 @@ void reset_forword_ctrl(pid_feedforword_ctrl *ctrl)
 }
 
 
-
-pid_feedforword_ctrl feedforword_ctrl;
-
 int PI_ctrl_output(int target, int feedback, int current_output, pid_feedforword_ctrl *ctrl)
 {
 	int new_output = 0;

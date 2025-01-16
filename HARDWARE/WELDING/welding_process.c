@@ -47,15 +47,23 @@ extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN]; // 温度保存缓冲区
 /*热电偶*/
 extern Thermocouple *current_Thermocouple;
 
+/*上位机信号*/
+extern OS_SEM HOST_WELD_CTRL_SEM; // 上位机开启焊接信号
+
 /*--------------------------------------------------------------------------------------------------------------------*/
 /*													 数据对象API                                                       */
 /*--------------------------------------------------------------------------------------------------------------------*/
-
+static void stop_weld(void);
 WELD_MODE get_weld_flag()
 {
 	return welding_flag;
 }
 
+/**
+ * @description: create a new controller
+ * @param {pid_feedforword_ctrl} *pid_ctrl
+ * @return {*}
+ */
 weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl)
 {
 	weld_ctrl *ctrl = (weld_ctrl *)malloc(sizeof(weld_ctrl));
@@ -78,25 +86,74 @@ weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl)
 		ctrl->weld_count = 0;
 
 		/*user parameter*/
-		for (uint8_t i = 0; i < 5; i++)
+		for (uint8_t i = 0; i < sizeof(ctrl->weld_time) / sizeof(ctrl->weld_time[0]); i++)
 		{
 			ctrl->weld_time[i] = 0;
 		}
-		for (uint8_t i = 0; i < 3; i++)
+		for (uint8_t i = 0; i < sizeof(ctrl->weld_temp) / sizeof(ctrl->weld_temp[0]); i++)
 		{
 			ctrl->weld_temp[i] = 0;
 		}
-		for (uint8_t i = 0; i < 6; i++)
+		for (uint8_t i = 0; i < sizeof(ctrl->alarm_temp) / sizeof(ctrl->alarm_temp[0]); i++)
 		{
 			ctrl->alarm_temp[i] = 0;
 		}
-		ctrl->temp_gain1 = 0.85;
-		ctrl->temp_gain2 = 0.85;
-		ctrl->temp_gain2 = 0.85;
+		ctrl->temp_gain1 = DEFAULT_GAIN;
+		ctrl->temp_gain2 = DEFAULT_GAIN;
+
+		ctrl->user_hook_callback = stop_weld;
 
 		return ctrl;
 	}
 	return NULL;
+}
+
+/**
+ * @description: controller reset
+ * @param {weld_ctrl} *ctrl
+ * @return {*}
+ */
+bool weld_ctrl_reset(weld_ctrl *ctrl)
+{
+	if (ctrl != NULL)
+	{
+		/*control parameter*/
+		ctrl->Duty_Cycle = PD_MIN;
+		/*realtime parameter*/
+		ctrl->first_step_start_temp = 0;
+		ctrl->second_step_start_temp = 0;
+		ctrl->third_step_start_temp = 0;
+		ctrl->state = IDEAL_STATE;
+
+		/*time tick*/
+		ctrl->step_time_tick = 0;
+		ctrl->weld_time_tick = 0;
+
+		/*count*/
+		ctrl->weld_count = 0;
+
+		ctrl->temp_gain1 = DEFAULT_GAIN;
+		ctrl->temp_gain2 = DEFAULT_GAIN;
+		/*user parameter*/
+		for (uint8_t i = 0; i < sizeof(ctrl->weld_time) / sizeof(ctrl->weld_time[0]); i++)
+		{
+			ctrl->weld_time[i] = 0;
+		}
+		for (uint8_t i = 0; i < sizeof(ctrl->weld_temp) / sizeof(ctrl->weld_temp[0]); i++)
+		{
+			ctrl->weld_temp[i] = 0;
+		}
+		for (uint8_t i = 0; i < sizeof(ctrl->alarm_temp) / sizeof(ctrl->alarm_temp[0]); i++)
+		{
+			ctrl->alarm_temp[i] = 0;
+		}
+
+		/*pid controller reset*/
+		reset_forword_ctrl(ctrl->pid_ctrl);
+
+		return true;
+	}
+	return false;
 }
 
 /**
@@ -147,7 +204,10 @@ void user_value_convert_to_string(char *buffer, const uint8_t buf_len, const uin
 /*--------------------------------------------------------------------------------------------------------------------*/
 /*													 过程控制API                                                       */
 /*--------------------------------------------------------------------------------------------------------------------*/
-
+/**
+ * @description: load data from eeprom
+ * @return {*}
+ */
 static void Load_Data()
 {
 	uint8_t GP_Temp = 0;
@@ -391,7 +451,7 @@ static void Weld_Preparation()
  * @description: 中途停止焊接————后续可作为急停警报
  * @return {*}
  */
-static void stop_weld()
+static void stop_weld(void)
 {
 	/*确保PWM关闭*/
 	TIM_SetCompare1(TIM1, 0);
@@ -407,6 +467,8 @@ static void stop_weld()
 	TIM_ClearITPendingBit(TIM5, TIM_IT_Update); // 清除中断5标志位
 	TIM3->CNT = 0;
 	TIM5->CNT = 0;
+
+	weld_ctrl_reset(weld_controller);
 }
 /**
  * @description: Pre-stress before welding
@@ -792,10 +854,9 @@ void welding_process(void)
 	{
 		OS_ERR err;
 		uint8_t key = 0;
-		/*获取当前实时温度*/
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 		key = new_key_scan();
-		// 不松开脚踏就进入持续焊接模式
+		/*不松开脚踏就进入持续焊接模式*/
 		while (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
 		{
 			/*焊前擦除上次温度显示*/
@@ -819,12 +880,7 @@ void welding_process(void)
 			/*三段温度显示&计数值更新*/
 			OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
 
-#if COMMUNICATE == 1
-			/*数据传输到上位机*/
-			data_transfer_to_computer(Temp_Send);
-#endif
 			OVER = 0;
-			/*设置连续焊接间隔——同时也腾出时间片*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 
 			key = new_key_scan();
@@ -858,7 +914,6 @@ void welding_process(void)
 	{
 		OS_ERR err;
 		uint8_t key = 0;
-		/*获取当前实时温度*/
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 		key = new_key_scan();
 		if (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
@@ -881,14 +936,39 @@ void welding_process(void)
 			/*三段温度显示&计数值更新*/
 			OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
 
-#if COMMUNICATE == 1
-			/*数据传输到上位机*/
-			data_transfer_to_computer(Temp_Send);
-#endif
 			OVER = 0;
 			/*设置焊接间隔*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 		}
+
+#if HOST_WELD_CTRL == 1
+		OSSemPend(&HOST_WELD_CTRL_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+		if (err == OS_ERR_NONE)
+		{
+			/*焊前擦除上次温度显示*/
+			if (page_param->id == WAVE_PAGE)
+			{
+				command_send("cle wave_line.id,0");
+				OSTimeDly(2, OS_OPT_TIME_DLY, &err);
+				command_send("cle wave_line.id,0");
+				OSTimeDly(2, OS_OPT_TIME_DLY, &err);
+			}
+
+			/*进入焊接的条件*/
+			if (page_param->key1 != RDY || weld_controller->realtime_temp > weld_controller->weld_temp[2])
+				return;
+
+			/*实时焊接控制*/
+			weld_real_time_ctrl();
+			/*三段温度显示&计数值更新*/
+			OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
+
+			OVER = 0;
+			/*设置焊接间隔*/
+			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
+		}
+
+#endif
 	}
 	/*模拟焊接*/
 	else if (page_param->key3 == SGW && page_param->key2 == IOFF)

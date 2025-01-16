@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-16 10:53:52
+ * @LastEditTime: 2025-01-16 15:21:13
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -110,7 +110,6 @@ OS_Q UART_Msg;										 // 串口数据队列
 ////////////////////////UART3资源保护：互斥锁（暂时未用）////////////////////////
 OS_MUTEX UARTMutex;
 ////////////////////////线程同步：信号量////////////////////////////////////////
-OS_SEM CMD_OK_SEM;		  // 指令成功执行信号
 OS_SEM PAGE_UPDATE_SEM;	  // 页面刷新信号
 OS_SEM COMP_VAL_GET_SEM;  // 组件属性值成功获取信号
 OS_SEM COMP_STR_GET_SEM;  // 组件属性值(字符串型)成功获取信号
@@ -118,6 +117,7 @@ OS_SEM ALARM_RESET_SEM;	  // 报警复位信号
 OS_SEM SENSOR_UPDATE_SEM; // 热电偶校准信号
 
 OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
+OS_SEM HOST_WELD_CTRL_SEM;	  // 上位机开启焊接信号
 /*主线程使用*/
 OS_SEM ERROR_HANDLE_SEM;   // 错误信号
 OS_SEM TEMP_DRAW_SEM;	   // 绘图信号
@@ -398,14 +398,6 @@ void start_task(void *p_arg)
 	}
 
 	/*--------------------------------------------UI相关信号量--------------------------------------------*/
-	// 创建指令成功执行信号
-	OSSemCreate(&CMD_OK_SEM, "command ok", 0, &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
-
 	// 创建页面更新信号
 	OSSemCreate(&PAGE_UPDATE_SEM, "page update", 0, &err);
 	if (err != OS_ERR_NONE)
@@ -436,17 +428,26 @@ void start_task(void *p_arg)
 		// 创建失败
 	}
 
-	/*--------------------------------------------其他信号量--------------------------------------------*/
-	//  创建报警复位信号量
-	OSSemCreate(&ALARM_RESET_SEM, "alarm reset", 0, &err);
+	/*--------------------------------------------上位机信号量------------------------------------------*/
+	// 创建上位机数据同步信号
+	OSSemCreate(&COMPUTER_DATA_SYN_SEM, "data sync", 0, &err);
 	if (err != OS_ERR_NONE)
 	{
 		;
 		// 创建失败
 	}
 
-	// 创建上位机数据同步信号
-	OSSemCreate(&COMPUTER_DATA_SYN_SEM, "data sync", 0, &err);
+	// 创建上位机开启焊接信号量
+	OSSemCreate(&HOST_WELD_CTRL_SEM, "HOST_WELD_CTRL_SEM", 0, &err);
+	if (err != OS_ERR_NONE)
+	{
+		;
+		// 创建失败
+	}
+
+	/*--------------------------------------------其他信号量--------------------------------------------*/
+	//  创建报警复位信号量
+	OSSemCreate(&ALARM_RESET_SEM, "alarm reset", 0, &err);
 	if (err != OS_ERR_NONE)
 	{
 		;

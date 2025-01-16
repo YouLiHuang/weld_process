@@ -155,7 +155,7 @@ void TestCurrent_GPIO_Config(void)
 
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; // 默认是高电平，上拉
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
 
@@ -164,7 +164,7 @@ void TestCurrent_GPIO_Config(void)
 	EXTI_InitStructure.EXTI_Line = EXTI_Line0;
 	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
 	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling; // 上升沿还是下降沿到时候需要验证修改
+	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
 	EXTI_Init(&EXTI_InitStructure);
 
 	NVIC_InitStructure.NVIC_IRQChannel = EXTI0_IRQn;
@@ -183,7 +183,7 @@ static void TIM_PROTECT_Mode_Config(void)
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, ENABLE);
 
-	TIM_TimeBaseStructure.TIM_Prescaler = 20 - 1; // 20-10us
+	TIM_TimeBaseStructure.TIM_Prescaler = 20 - 1;
 	TIM_TimeBaseStructure.TIM_Period = 84 - 1;
 	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
@@ -209,9 +209,9 @@ static void EXTI_PROTECT_Config(void)
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE); // 使能 SYSCFG 时钟
 
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;	   // 普通输入模式
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz; // 100M
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;	   // 下拉
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 
 	// 连线
@@ -221,7 +221,7 @@ static void EXTI_PROTECT_Config(void)
 	// 配置 EXTI_Line9，10
 	EXTI_InitStructure.EXTI_Line = EXTI_Line9 | EXTI_Line10;
 	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising; // 低转高电平触发
+	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
 	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
 	EXTI_Init(&EXTI_InitStructure);
 }
@@ -259,7 +259,7 @@ void PROTECT_Init(void)
 	PROTECT_NVIC_Config();
 }
 
-extern OS_SEM ERROR_HANDLE_SEM; // 错误信号
+extern OS_SEM ERROR_HANDLE_SEM;
 
 /**
  * @description: Interrupt callback of timer 7
@@ -267,18 +267,18 @@ extern OS_SEM ERROR_HANDLE_SEM; // 错误信号
  */
 void TIM_P_Protect_IT(void)
 {
-#if SYSTEM_SUPPORT_OS // 使用UCOS操作系统
+#if SYSTEM_SUPPORT_OS
 	OSIntEnter();
 #endif
 
-	if (TIM_GetITStatus(TIM7, TIM_IT_Update) == SET) // 溢出中断
+	if (TIM_GetITStatus(TIM7, TIM_IT_Update) == SET)
 	{
 		__NOP();
 	}
 
-	TIM_ClearITPendingBit(TIM7, TIM_IT_Update); // 清除中断标志位
+	TIM_ClearITPendingBit(TIM7, TIM_IT_Update);
 #if SYSTEM_SUPPORT_OS
-	OSIntExit(); // 退出中断
+	OSIntExit();
 #endif
 }
 
@@ -288,7 +288,7 @@ void TIM_P_Protect_IT(void)
  */
 void EXTI0_Currunt_Protect_IT(void)
 {
-#if SYSTEM_SUPPORT_OS // 使用UCOS操作系统
+#if SYSTEM_SUPPORT_OS
 	OSIntEnter();
 #endif
 	if (EXTI_GetITStatus(EXTI_Line0) != RESET)
@@ -300,7 +300,7 @@ void EXTI0_Currunt_Protect_IT(void)
 	}
 	EXTI_ClearITPendingBit(EXTI_Line0);
 #if SYSTEM_SUPPORT_OS
-	OSIntExit(); // 退出中断
+	OSIntExit();
 #endif
 }
 
@@ -310,7 +310,7 @@ void EXTI0_Currunt_Protect_IT(void)
  */
 void EXTI9_Temperature_Protect_IT(void)
 {
-#if SYSTEM_SUPPORT_OS // 使用UCOS操作系统
+#if SYSTEM_SUPPORT_OS
 	OSIntEnter();
 #endif
 	if (EXTI_GetITStatus(EXTI_Line9) != RESET)
@@ -322,7 +322,7 @@ void EXTI9_Temperature_Protect_IT(void)
 	}
 	EXTI_ClearITPendingBit(EXTI_Line9);
 #if SYSTEM_SUPPORT_OS
-	OSIntExit(); // 退出中断
+	OSIntExit();
 #endif
 }
 
@@ -332,7 +332,7 @@ void EXTI9_Temperature_Protect_IT(void)
  */
 void EXTI10_Temperature_Protect_IT(void)
 {
-#if SYSTEM_SUPPORT_OS // 使用UCOS操作系统
+#if SYSTEM_SUPPORT_OS
 	OSIntEnter();
 #endif
 	if (EXTI_GetITStatus(EXTI_Line10) != RESET)
@@ -344,6 +344,6 @@ void EXTI10_Temperature_Protect_IT(void)
 	}
 	EXTI_ClearITPendingBit(EXTI_Line10);
 #if SYSTEM_SUPPORT_OS
-	OSIntExit(); // 退出中断
+	OSIntExit();
 #endif
 }

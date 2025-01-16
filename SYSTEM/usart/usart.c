@@ -29,7 +29,7 @@ void _sys_exit(int x)
 int fputc(int ch, FILE *f)
 {
 	while ((USART1->SR & 0X40) == 0)
-		; 
+		;
 	USART1->DR = (uint8_t)ch;
 	return ch;
 }
@@ -58,13 +58,15 @@ extern Error_ctrl *err_ctrl;   // 错误控制器
 extern Page_Param *page_param; // 页面信息
 
 /*信号量接口*/
-extern OS_SEM CMD_OK_SEM;
 extern OS_SEM PAGE_UPDATE_SEM;
 extern OS_SEM COMP_VAL_GET_SEM;
 extern OS_SEM COMP_STR_GET_SEM;
 extern OS_SEM ALARM_RESET_SEM;
 extern OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
+extern OS_SEM HOST_WELD_CTRL_SEM;	 // 上位机开启焊接信号
 
+/*焊接控制器*/
+extern weld_ctrl *weld_controller;
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------------触摸屏---------------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -79,12 +81,12 @@ void uart_init(u32 bound)
 	GPIO_InitTypeDef GPIO_InitStructure;
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE); 
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, ENABLE); 
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, ENABLE);
 
 	/*GPIO AF config*/
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource0, GPIO_AF_UART4); 
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource1, GPIO_AF_UART4); 
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource0, GPIO_AF_UART4);
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource1, GPIO_AF_UART4);
 
 	/*GPIO RXD TXD config*/
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
@@ -133,7 +135,7 @@ void uart_init(u32 bound)
 	RS485_TX_EN = 0; // 默认为接收模式
 }
 
-static volatile uint16_t receive_number = 0; 
+static volatile uint16_t receive_number = 0;
 uint16_t get_receive_number()
 {
 	return receive_number;
@@ -186,6 +188,7 @@ void UART4_IRQHandler(void)
 				OSSemPost(&COMP_STR_GET_SEM, OS_OPT_POST_ALL, &err);
 				break;
 			case CMD_SENSOR_UPDATE:
+				break;
 
 			case CMD_DATA_TRANSFER_READY:
 				break;
@@ -196,7 +199,7 @@ void UART4_IRQHandler(void)
 
 			receive_number = 0;
 		}
-		
+
 		/*clear flag*/
 		receive_number = 0;
 		int temp;
@@ -388,7 +391,11 @@ void USART3_IRQHandler(void) // 串口3中断服务程序
 					break;
 
 				case RS485_CMD_WELD_START:
-					/*...*/
+					/*开启焊接信号*/
+					OSSemPost(&HOST_WELD_CTRL_SEM, OS_OPT_POST_ALL, &err);
+					break;
+				case RS485_CMD_WELD_STOP:
+					weld_controller->user_hook_callback(); // 停止焊接
 					break;
 				}
 			}
@@ -611,53 +618,3 @@ static void computer_write_all_callback(void)
 	}
 	Host_action = 20;
 }
-
-#if 0
-void usart3_send_char(uint8_t c)
-{
-	BIT_ADDR(GPIOB_ODR_Addr, 9) = 1;
-	while ((USART3->SR & 0X40) == 0)
-		; // 等待上一次发送完毕
-	USART3->DR = c;
-}
-
-/*		传送数据给匿名四轴上位机软件(V2.6版本)
-			fun:功能字. 0XA0~0XAF
-			data:数据缓存区,最多28字节!!
-			len:data区有效数据个数
-			格式为：0x88+FUN+LEN+DATA+SUM
-			SUM是0x88一直到DATA最后一字节的和，uint8格式。    */
-void usart3_niming_report(uint8_t fun, uint8_t *data, uint8_t len)
-{
-	uint8_t send_buf[32];
-	uint8_t i;
-	if (len > 28)
-		return;			   // 最多28字节数据
-	send_buf[len + 3] = 0; // 校验数置零
-	send_buf[0] = 0X88;	   // 帧头
-	send_buf[1] = fun;	   // 功能字
-	send_buf[2] = len;	   // 数据长度
-	for (i = 0; i < len; i++)
-		send_buf[3 + i] = data[i]; // 复制数据
-	for (i = 0; i < len + 3; i++)
-		send_buf[len + 3] += send_buf[i]; // 计算校验和
-	for (i = 0; i < len + 4; i++)
-		usart3_send_char(send_buf[i]); // 发送数据到串口1
-}
-
-void test_send(short roll, short pitch, short yaw, short Cduk)
-{
-	uint8_t tbuf[12];
-	tbuf[0] = (roll >> 8) & 0XFF;
-	tbuf[1] = roll & 0XFF;
-	tbuf[2] = (pitch >> 8) & 0XFF;
-	tbuf[3] = pitch & 0XFF;
-	tbuf[4] = (yaw >> 8) & 0XFF;
-	tbuf[5] = yaw & 0XFF;
-	tbuf[6] = (Cduk >> 8) & 0XFF;
-	tbuf[7] = Cduk & 0XFF;
-
-	usart3_niming_report(0XA1, tbuf, 8); // 自定义帧,0XA1
-}
-
-#endif
