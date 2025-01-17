@@ -49,7 +49,7 @@ void start_task(void *p_arg);
 // 任务优先级
 #define ERROR_TASK_PRIO 4
 // 任务堆栈大小
-#define ERROR_STK_SIZE 2048
+#define ERROR_STK_SIZE 3072
 // 任务控制块
 OS_TCB ErrorTaskTCB;
 // 任务堆栈
@@ -300,7 +300,7 @@ int main(void)
 	temp_draw_ctrl = new_temp_draw_ctrl(realtime_temp_buf, 500, 2000, 500);
 
 	/*默认e型热电偶*/
-	current_Thermocouple = &Thermocouple_Lists[2];
+	current_Thermocouple = &Thermocouple_Lists[0];
 
 	/*------------------------------------------------------硬件层数据对象-----------------------------------------------------------*/
 	/*外设初始化*/
@@ -599,8 +599,8 @@ static bool Temp_up_check(void)
 	TIM_Cmd(TIM1, ENABLE);
 
 	// 重启定时器，固定脉宽pwm输出50ms，检测温升。
-	TIM_SetCompare1(TIM1, 6000);
-	TIM_SetCompare1(TIM4, 6000);
+	TIM_SetCompare1(TIM1, PD_MAX/2);
+	TIM_SetCompare1(TIM4, PD_MAX/2);
 
 	// 加热80ms
 	user_tim_delay(100);
@@ -676,6 +676,7 @@ static bool Thermocouple_reset_callback(uint8_t index)
 		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
 		err_ctrl->err_list[index]->state = false; // 清除错误状态
 		ret = true;
+		NVIC_SystemReset();
 	}
 	else
 	{
@@ -695,6 +696,7 @@ static bool Current_out_of_ctrl_reset_callback(uint8_t index)
 		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
 		err_ctrl->err_list[index]->state = false; // 清除错误状态
 		ret = true;
+		NVIC_SystemReset();
 	}
 	else
 	{
@@ -709,12 +711,14 @@ static bool Temp_up_reset_callback(uint8_t index)
 {
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
 	err_ctrl->err_list[index]->state = false; // 清除错误状态
+	NVIC_SystemReset();
 	return true;
 }
 static bool Temp_down_reset_callback(uint8_t index)
 {
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
 	err_ctrl->err_list[index]->state = false; // 清除错误状态
+	NVIC_SystemReset();
 	return true;
 }
 
@@ -784,26 +788,6 @@ void error_task(void *p_arg)
 			Load_data_from_mem();
 			/*上位机复位*/
 			Host_computer_reset();
-
-			/*检查是否还有其他错误*/
-			if (err_occur(err_ctrl) == false)
-			{
-				err_clear(err_ctrl); // 清除出错标志
-				ERROR1 = 0;			 // 报警信号（模拟量）清除
-				alram_clear(page_param);
-				Page_to(page_param, PARAM_PAGE);
-			}
-			else
-			{
-				/*仍有错误则继续报警*/
-				Page_to(page_param, ALARM_PAGE);
-				page_param->id = ALARM_PAGE;
-				for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
-				{
-					if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
-						err_ctrl->err_list[i]->error_callback(i);
-				}
-			}
 		}
 
 		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err); // 休眠
@@ -944,23 +928,32 @@ static void Thermocouple_err_eliminate()
 	/*检测完成后将设置页面的热电偶更新为对应的值*/
 	// SENSOR_TYPE type;
 	// command_set_comp_val("KEJ", "val", type);
-
-	static uint16_t adc_ch14_init_value = 0;
-	static uint16_t adc_ch15_init_value = 0;
+	uint32_t sum = 0;
+	uint16_t adc_ch7_init_value = 0;
+	uint16_t adc_ch14_init_value = 0;
+	uint16_t adc_ch15_init_value = 0;
 	/*采集两个通道的初始偏置电压，1ms采集一个点*/
+	float adc_ch7_data[SAMPLE_LEN] = {0};
 	float adc_ch14_data[SAMPLE_LEN] = {0};
 	float adc_ch15_data[SAMPLE_LEN] = {0};
 	for (uint16_t i = 0; i < SAMPLE_LEN; i++)
 	{
+		adc_ch7_data[i] = ADC_Value_avg(ADC_Channel_7);
 		adc_ch14_data[i] = ADC_Value_avg(ADC_Channel_14);
 		adc_ch15_data[i] = ADC_Value_avg(ADC_Channel_15);
 		user_tim_delay(1);
 	}
 
 	/*低通滤波*/
+	float adc_ch7_fliter_buf[SAMPLE_LEN] = {0};
 	float adc_ch14_fliter_buf[SAMPLE_LEN] = {0};
 	float adc_ch15_fliter_buf[SAMPLE_LEN] = {0};
 
+	low_pass_Filter((float *)adc_ch7_data,
+					SAMPLE_LEN,
+					(float *)adc_ch7_fliter_buf,
+					1000,
+					1000);
 	low_pass_Filter((float *)adc_ch14_data,
 					SAMPLE_LEN,
 					(float *)adc_ch14_fliter_buf,
@@ -973,7 +966,14 @@ static void Thermocouple_err_eliminate()
 					1000);
 
 	/*均值滤波——计算初始偏置*/
-	uint32_t sum = 0;
+	sum = 0;
+	for (uint16_t i = 0; i < SAMPLE_LEN; i++)
+	{
+		sum += adc_ch7_fliter_buf[i];
+	}
+	adc_ch7_init_value = sum / SAMPLE_LEN;
+
+	sum = 0;
 	for (uint16_t i = 0; i < SAMPLE_LEN; i++)
 	{
 		sum += adc_ch14_fliter_buf[i];
@@ -987,7 +987,7 @@ static void Thermocouple_err_eliminate()
 	}
 	adc_ch15_init_value = sum / SAMPLE_LEN;
 
-	if (adc_ch14_init_value > 500 || adc_ch15_init_value > 500)
+	if (adc_ch7_init_value > 500 || adc_ch14_init_value > 500 || adc_ch15_init_value > 500)
 	{
 		/*偏置过高，异常报警*/
 		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
@@ -998,8 +998,12 @@ static void Thermocouple_err_eliminate()
 	{
 		uint16_t room_temp_voltage = 0; // 常温对应的电压
 
+		room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[0].intercept) / Thermocouple_Lists[0].slope;
+		Thermocouple_Lists[0].Bias = adc_ch7_init_value - room_temp_voltage;
+
 		room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[1].intercept) / Thermocouple_Lists[1].slope;
 		Thermocouple_Lists[1].Bias = adc_ch15_init_value - room_temp_voltage;
+
 		room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[2].intercept) / Thermocouple_Lists[2].slope;
 		Thermocouple_Lists[2].Bias = adc_ch14_init_value - room_temp_voltage;
 
@@ -1488,26 +1492,24 @@ static void page_process(Page_ID id)
 	{
 		OS_ERR err;
 
-		/*...机地址以及波特率修改，同步到上位机...*/
 		/*1、读取界面设定的地址*/
 		command_get_comp_val(setting_page_list, "adress", "val");
 		/*2、读取页面设定的波特率*/
 		command_get_comp_val(setting_page_list, "baudrate", "val");
 		/*3、读取热电偶类型*/
 		command_get_comp_val(setting_page_list, "sensortype", "val");
-		/*订阅热电偶校准信号*/
+		/*4、订阅热电偶校准信号*/
 		OSSemPend(&SENSOR_UPDATE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (OS_ERR_NONE == err)
 		{
-			if (temp_convert(current_Thermocouple) < 35)
-			{
+			// 在室温下才允许校准（10-40°C范围内才允许校准）
+			if (temp_convert(current_Thermocouple) < 2 * ROOM_TEMP && temp_convert(current_Thermocouple) > 0.5 * ROOM_TEMP)
 				Thermocouple_err_eliminate();
-			}
 			else
-			{
 				command_set_comp_val("warning", "aph", 127);
-			}
 		}
+		/*5、显示实时温度*/
+		command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
 	}
 	break;
 
@@ -1890,7 +1892,7 @@ void computer_read_task(void *p_arg)
 			data_sync_from_computer();
 		}
 
-		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err); // 休眠
+		OSTimeDlyHMSM(0, 0, 0, 25, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
 }
 

@@ -294,7 +294,7 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 			{
 			case FIRST_STATE:
 				/*一阶段参数*/
-				/*冷启动模式:冷启动时，第一阶段升温不足，导致第二阶段的起始温度低，进而导致二阶段的温度过冲，因此设定值可以适当拉高*/
+				/*冷启动模式:冷启动防止升温不足，导致二阶段过冲*/
 				if (ctrl->first_step_start_temp < ctrl->weld_temp[0] / 3)
 				{
 					ctrl->first_step_turn = 0.9 * ctrl->weld_temp[0];						 // 刹车点
@@ -328,13 +328,12 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 						ctrl->first_step_set = (0.9 + 0.1 * set_gain) * (double)ctrl->weld_temp[0]; // 第1个设定点(0.85-1)
 					}
 				}
-
 				break;
 			case SECOND_STATE:
 				/*二阶段参数*/
 				/*1、和设定点较近，改进pid，加速升温*/
 				delta_temp = ctrl->weld_temp[1] - ctrl->second_step_start_temp;
-				if (delta_temp < DELTA_COMPENSATE_MAX && delta_temp > DETTA_COMPENSATE_MIN)
+				if (delta_temp < 0.8 * DELTA_COMPENSATE_MAX && delta_temp > DETTA_COMPENSATE_MIN)
 				{
 					ctrl->second_step_turn = 0.9 * ctrl->weld_temp[1];								   // 刹车点
 					ctrl->second_step_set = ctrl->second_step_start_temp + DELTA_COMPENSATE_MAX * 0.8; // 第1个阶跃目标（设大，为了快速性）
@@ -354,8 +353,8 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 					weld_controller->temp_gain2 = set_gain;
 					get_comp(temp_page_list, "GAIN2")->val = set_gain * 100;
 
-					ctrl->second_step_turn = 0.9 * ctrl->weld_temp[1];							 // 刹车点
-					ctrl->second_step_set = (0.9 + 0.1 * set_gain) * (double)ctrl->weld_temp[1]; // 第1个阶跃目标(0.85-1)
+					ctrl->second_step_turn = 0.9 * ctrl->weld_temp[1];											// 刹车点
+					ctrl->second_step_set = (set_gain * 0.1 + 0.9) * (double)(ctrl->weld_temp[1] + STABLE_ERR); // 阶跃目标
 				}
 				break;
 

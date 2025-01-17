@@ -293,10 +293,10 @@ void EXTI0_Currunt_Protect_IT(void)
 #endif
 	if (EXTI_GetITStatus(EXTI_Line0) != RESET)
 	{
-		err_get_type(err_ctrl, CURRENT_OUT_OT_CTRL)->state = true;
-		OS_ERR err;
-		/*唤醒错误处理线程*/
-		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		// err_get_type(err_ctrl, CURRENT_OUT_OT_CTRL)->state = true;
+		// OS_ERR err;
+		// /*唤醒错误处理线程*/
+		// OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 	}
 	EXTI_ClearITPendingBit(EXTI_Line0);
 #if SYSTEM_SUPPORT_OS
@@ -315,10 +315,10 @@ void EXTI9_Temperature_Protect_IT(void)
 #endif
 	if (EXTI_GetITStatus(EXTI_Line9) != RESET)
 	{
-		err_get_type(err_ctrl, MCU_OVER_HEAT)->state = true;
-		OS_ERR err;
-		/*唤醒错误处理线程*/
-		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		// err_get_type(err_ctrl, MCU_OVER_HEAT)->state = true;
+		// OS_ERR err;
+		// /*唤醒错误处理线程*/
+		// OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 	}
 	EXTI_ClearITPendingBit(EXTI_Line9);
 #if SYSTEM_SUPPORT_OS
@@ -337,10 +337,10 @@ void EXTI10_Temperature_Protect_IT(void)
 #endif
 	if (EXTI_GetITStatus(EXTI_Line10) != RESET)
 	{
-		err_get_type(err_ctrl, TRANSFORMER_OVER_HEAT)->state = true;
-		OS_ERR err;
-		/*唤醒错误处理线程*/
-		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		// err_get_type(err_ctrl, TRANSFORMER_OVER_HEAT)->state = true;
+		// OS_ERR err;
+		// /*唤醒错误处理线程*/
+		// OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 	}
 	EXTI_ClearITPendingBit(EXTI_Line10);
 #if SYSTEM_SUPPORT_OS

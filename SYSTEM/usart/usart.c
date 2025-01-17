@@ -64,6 +64,7 @@ extern OS_SEM COMP_STR_GET_SEM;
 extern OS_SEM ALARM_RESET_SEM;
 extern OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
 extern OS_SEM HOST_WELD_CTRL_SEM;	 // 上位机开启焊接信号
+extern OS_SEM SENSOR_UPDATE_SEM;	 // 热电偶校准信号
 
 /*焊接控制器*/
 extern weld_ctrl *weld_controller;
@@ -188,6 +189,7 @@ void UART4_IRQHandler(void)
 				OSSemPost(&COMP_STR_GET_SEM, OS_OPT_POST_ALL, &err);
 				break;
 			case CMD_SENSOR_UPDATE:
+				OSSemPost(&SENSOR_UPDATE_SEM, OS_OPT_POST_ALL, &err);
 				break;
 
 			case CMD_DATA_TRANSFER_READY:
@@ -224,12 +226,6 @@ void UART4_IRQHandler(void)
 /*---------------------------------------------------------------------------------上位机通信---------------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-/**
- * @description: 串口3初始化，用于触摸屏通讯处理
- * 				用到GPIOB10  GPIOB11 以及 PG9做使能
- * @param {u32} bound 波特率设置
- * @return {*}
- */
 void usart3_init(u32 bound)
 {
 
