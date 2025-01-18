@@ -487,6 +487,9 @@ static void Preload()
 	TIM_Cmd(TIM5, DISABLE);
 	weld_controller->state = IDEAL_STATE;
 	weld_controller->step_time_tick = 0;
+
+	/*添加预热阶段*/
+	/*...*/
 }
 
 /**
