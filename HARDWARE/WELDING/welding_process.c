@@ -476,7 +476,7 @@ static void stop_weld(void)
 static void Preload()
 {
 
-	// 焊接周期第一段，预压(预热)
+	/*焊接周期第一段，预压*/
 	weld_controller->state = PRE_STATE;
 	TIM_Cmd(TIM5, ENABLE);
 	while (weld_controller->step_time_tick < weld_controller->weld_time[0] + 1)
@@ -485,26 +485,36 @@ static void Preload()
 		__nop();
 	}
 	TIM_Cmd(TIM5, DISABLE);
+	TIM5->CNT = 0;
 	weld_controller->state = IDEAL_STATE;
 	weld_controller->step_time_tick = 0;
 
-	/*!!!!!!!!!!!!!!添加预热阶段!!!!!!!!!!!!*/
-	u16 pre_heat_time = weld_controller->weld_time[0];
-	if (pre_heat_time >= 100)
-		pre_heat_time = 100;
-	if (pre_heat_time <= 10)
-		pre_heat_time = 10;
-
-	weld_controller->state = PRE_STATE;
-	TIM_Cmd(TIM5, ENABLE);
-	while (weld_controller->step_time_tick < pre_heat_time)
+	/*预热阶段——加热到基值温度，改善超调*/
+	u16 current_temp = temp_convert(current_Thermocouple);
+	if (current_temp < BASE_TEMP)
 	{
-		TIM_SetCompare1(TIM1, PD_MAX * 0.9);
-		TIM_SetCompare1(TIM4, PD_MAX * 0.9);
+		/*根据起始温度设定加热时长到基值温度(线性映射)20：250 150：0*/
+		u16 pre_heat_time = -1.9231 * (float)current_temp + 288.46;
+		if (pre_heat_time >= PRE_HEAT_MAX_TIME)
+			pre_heat_time = PRE_HEAT_MAX_TIME;
+		if (pre_heat_time <= PRE_HEAT_MIN_TIME)
+			pre_heat_time = PRE_HEAT_MIN_TIME;
+
+		weld_controller->state = PRE_STATE;
+		TIM_Cmd(TIM5, ENABLE);
+		while (weld_controller->step_time_tick < pre_heat_time)
+		{
+			TIM_SetCompare1(TIM1, PD_MAX);
+			TIM_SetCompare1(TIM4, PD_MAX);
+			/*实时温度显示*/
+			if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
+				draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
+		}
+		TIM_Cmd(TIM5, DISABLE);
+		TIM5->CNT = 0;
+		weld_controller->state = IDEAL_STATE;
+		weld_controller->step_time_tick = 0;
 	}
-	TIM_Cmd(TIM5, DISABLE);
-	weld_controller->state = IDEAL_STATE;
-	weld_controller->step_time_tick = 0;
 }
 
 /**
