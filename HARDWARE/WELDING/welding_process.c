@@ -488,8 +488,23 @@ static void Preload()
 	weld_controller->state = IDEAL_STATE;
 	weld_controller->step_time_tick = 0;
 
-	/*添加预热阶段*/
-	/*...*/
+	/*!!!!!!!!!!!!!!添加预热阶段!!!!!!!!!!!!*/
+	u16 pre_heat_time = weld_controller->weld_time[0];
+	if (pre_heat_time >= 100)
+		pre_heat_time = 100;
+	if (pre_heat_time <= 10)
+		pre_heat_time = 10;
+
+	weld_controller->state = PRE_STATE;
+	TIM_Cmd(TIM5, ENABLE);
+	while (weld_controller->step_time_tick < pre_heat_time)
+	{
+		TIM_SetCompare1(TIM1, PD_MAX * 0.9);
+		TIM_SetCompare1(TIM4, PD_MAX * 0.9);
+	}
+	TIM_Cmd(TIM5, DISABLE);
+	weld_controller->state = IDEAL_STATE;
+	weld_controller->step_time_tick = 0;
 }
 
 /**
