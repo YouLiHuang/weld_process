@@ -305,7 +305,7 @@ void TIM5_IRQHandler(void)
 			if (current_temp_comp < weld_controller->first_step_start_temp && weld_controller->step_time_tick > weld_controller->weld_time[1] * 0.5)
 			{
 #if PROTECT_ON == 1
-				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+				err_get_type(err_ctrl, TEMP_DOWN)->state = true;
 				OS_ERR err;
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 #endif
@@ -343,7 +343,7 @@ void TIM5_IRQHandler(void)
 			else
 			{
 				// 第二个设定点
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR, // 动态补偿（后续线性补偿）
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
 															 current_temp_comp,
 															 weld_controller->Duty_Cycle,
 															 weld_controller->pid_ctrl);
@@ -357,7 +357,7 @@ void TIM5_IRQHandler(void)
 			if (current_temp_comp < weld_controller->second_step_start_temp && weld_controller->step_time_tick > weld_controller->weld_time[2] * 0.1)
 			{
 #if PROTECT_ON == 1
-				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+				err_get_type(err_ctrl, TEMP_DOWN)->state = true;
 				OS_ERR err;
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 #endif

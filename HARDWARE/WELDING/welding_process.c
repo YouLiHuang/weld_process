@@ -39,7 +39,7 @@ Kalman kfp;
 dynamical_comp dynam_comp;		 // 动态补偿
 extern last_temp_sotre lasttemp; // 过往温度记录
 /*--------------------------------------------------------绘图---------------------------------------------------------*/
-extern OS_SEM TEMP_DRAW_SEM;						 // 绘图事件信号
+extern OS_SEM TEMP_DISPLAY_SEM;						 // 绘图事件信号
 extern Temp_draw_ctrl *temp_draw_ctrl;				 // 绘图控制器
 extern Page_Param *page_param;						 // 实时页面参数
 extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN]; // 温度保存缓冲区
@@ -204,6 +204,8 @@ void user_value_convert_to_string(char *buffer, const uint8_t buf_len, const uin
 /*--------------------------------------------------------------------------------------------------------------------*/
 /*													 过程控制API                                                       */
 /*--------------------------------------------------------------------------------------------------------------------*/
+
+static void down_temp_line(void);
 /**
  * @description: load data from eeprom
  * @return {*}
@@ -504,8 +506,8 @@ static void Preload()
 		TIM_Cmd(TIM5, ENABLE);
 		while (weld_controller->step_time_tick < pre_heat_time)
 		{
-			TIM_SetCompare1(TIM1, PD_MAX);
-			TIM_SetCompare1(TIM4, PD_MAX);
+			TIM_SetCompare1(TIM1, PD_MAX * 0.8);
+			TIM_SetCompare1(TIM4, PD_MAX * 0.8);
 			/*实时温度显示*/
 			if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
 				draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
@@ -885,6 +887,9 @@ void welding_process(void)
 		/*不松开脚踏就进入持续焊接模式*/
 		while (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
 		{
+			if (true == err_occur(err_ctrl))
+				break;
+
 			/*焊前擦除上次温度显示*/
 			if (page_param->id == WAVE_PAGE)
 			{
@@ -899,16 +904,18 @@ void welding_process(void)
 
 			/*实时焊接控制*/
 			weld_real_time_ctrl();
-			if (true == err_occur(err_ctrl))
-				break;
-			/*每一轮焊接都清空绘图缓存*/
-			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
-			/*三段温度显示&计数值更新*/
-			OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
 
+			/*绘制降温曲线*/
+			down_temp_line();
+
+			/*三段温度显示&计数值更新*/
+			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
+
+			/*焊接间隔*/
 			OVER = 0;
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 
+			/*循环焊接*/
 			key = new_key_scan();
 			if (!(key == KEY_PC1_PRES || key == KEY_PC0_PRES))
 				break;
@@ -927,7 +934,7 @@ void welding_process(void)
 			/*设置连续焊接间隔——同时也腾出时间片*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 			/*三段温度显示&计数值更新*/
-			OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
+			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
 
 			key = new_key_scan();
 			if (!(key == KEY_PC1_PRES || key == KEY_PC0_PRES))
@@ -959,8 +966,12 @@ void welding_process(void)
 
 			/*实时焊接控制*/
 			weld_real_time_ctrl();
+
+			/*绘制降温曲线*/
+			down_temp_line();
+
 			/*三段温度显示&计数值更新*/
-			OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
+			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
 
 			OVER = 0;
 			/*设置焊接间隔*/
@@ -996,8 +1007,12 @@ void welding_process(void)
 
 			/*实时焊接控制*/
 			weld_real_time_ctrl();
+
+			/*绘制降温曲线*/
+			down_temp_line();
+
 			/*三段温度显示&计数值更新*/
-			OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
+			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
 
 			OVER = 0;
 			/*设置焊接间隔*/
@@ -1019,10 +1034,41 @@ void welding_process(void)
 			/*设置连续焊接间隔——同时也腾出时间片*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 			/*三段温度显示&计数值更新*/
-			OSSemPost(&TEMP_DRAW_SEM, OS_OPT_POST_ALL, &err);
+			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
 			OVER = 0;
 			/*设置焊接间隔*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 		}
+	}
+}
+
+static void down_temp_line()
+{
+	uint16_t index = 0;
+	uint16_t weld_win_width = 0;
+	uint16_t win_width = 0;
+	uint16_t total_time = 0;
+	uint16_t temp = 0;
+	uint8_t temp_display = 0;
+
+	for (uint8_t i = 0; i < 5; i++)
+		total_time += weld_controller->weld_time[i];
+
+	weld_win_width = total_time / (temp_draw_ctrl->delta_tick - 1); // 转换计算(参见读写线程的坐标绘制)：焊接周期绘图区域大小
+	win_width = WIN_WIDTH - weld_win_width - DRAW_RESERVE;			// 温降曲线绘图区域大小（留一个余量）
+	if (win_width >= WIN_WIDTH / 2)
+		win_width = WIN_WIDTH / 2;
+	while (index < win_width)
+	{
+		if (get_weld_flag() == BUSY_MODE) // 非焊接状态才进行绘制
+			break;
+		temp = temp_convert(current_Thermocouple); // 温度采样
+		if (temp > MAX_TEMP_DISPLAY)			   // 限幅
+			temp = MAX_TEMP_DISPLAY;
+		temp_display = temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY; // 坐标放缩
+		draw_point(temp_display);								 // 绘图
+		command_set_comp_val("temp33", "val", temp);			 // 显示实时温度数值
+		user_tim_delay(temp_draw_ctrl->delta_tick);				 // 采样间隔
+		index++;
 	}
 }

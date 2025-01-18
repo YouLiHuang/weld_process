@@ -89,17 +89,6 @@ CPU_STK COMPUTER_TASK_STK[COMPUTER_STK_SIZE];
 // 任务函数
 void computer_read_task(void *p_arg);
 
-// 任务优先级
-#define DRAW_TASK_PRIO 7
-// 任务堆栈大小
-#define DRAW_STK_SIZE 256
-// 任务控制块
-OS_TCB DRAW_TaskTCB;
-// 任务堆栈
-CPU_STK DRAW_TASK_STK[DRAW_STK_SIZE];
-// 任务函数
-void draw_task(void *p_arg);
-
 /*--------------------------------------------------------新触摸屏界面部分------------------------------------------------------------------*/
 ////////////////////////RS485的消息队列/////////////////////////////////////////
 extern uint32_t baud_list[11];
@@ -119,9 +108,9 @@ OS_SEM SENSOR_UPDATE_SEM; // 热电偶校准信号
 OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
 OS_SEM HOST_WELD_CTRL_SEM;	  // 上位机开启焊接信号
 /*主线程使用*/
-OS_SEM ERROR_HANDLE_SEM;   // 错误信号
-OS_SEM TEMP_DRAW_SEM;	   // 绘图信号
-OS_SEM TEMP_DOWN_LINE_SEM; // 降温曲线绘制信号
+OS_SEM ERROR_HANDLE_SEM; // 错误信号
+OS_SEM TEMP_DISPLAY_SEM; // 绘图信号
+
 ////////////////////////新界面组件列表///////////////////////////////////////////
 Page_Param *page_param = NULL;			   // 记录当前所在界面id及RDY三个按钮的状态
 Component_Queue *param_page_list = NULL;   // 参数设定界面的组件列表
@@ -320,8 +309,8 @@ int main(void)
 	TIM5_Int_Init();
 
 	/*硬件保护初始化*/
-	TestCurrent_GPIO_Config();
-	PROTECT_Init();
+	Current_Check_IO_Config(); // 电流失控IO配置
+	// PROTECT_Init();			   // MCU 过热外部中断/变压器过热外部中断
 
 	/*串口屏复位*/
 	Touchscreen_init();
@@ -455,15 +444,7 @@ void start_task(void *p_arg)
 	}
 
 	// 创建绘图信号
-	OSSemCreate(&TEMP_DRAW_SEM, "temp draw sem", 0, &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
-
-	// 降温曲线采集信号
-	OSSemCreate(&TEMP_DOWN_LINE_SEM, "temp down sample sem", 0, &err);
+	OSSemCreate(&TEMP_DISPLAY_SEM, "temp draw sem", 0, &err);
 	if (err != OS_ERR_NONE)
 	{
 		;
@@ -541,22 +522,6 @@ void start_task(void *p_arg)
 				 (CPU_STK_SIZE)COMPUTER_STK_SIZE,
 				 (OS_MSG_QTY)0,
 				 (OS_TICK)10,
-				 (void *)0,
-				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
-				 (OS_ERR *)&err);
-
-	// 绘图任务
-	// 优先级：7
-	OSTaskCreate((OS_TCB *)&DRAW_TaskTCB,
-				 (CPU_CHAR *)"draw task",
-				 (OS_TASK_PTR)draw_task,
-				 (void *)0,
-				 (OS_PRIO)DRAW_TASK_PRIO,
-				 (CPU_STK *)&DRAW_TASK_STK[0],
-				 (CPU_STK_SIZE)DRAW_STK_SIZE / 10,
-				 (CPU_STK_SIZE)DRAW_STK_SIZE,
-				 (OS_MSG_QTY)0,
-				 (OS_TICK)20,
 				 (void *)0,
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
@@ -797,6 +762,20 @@ void error_task(void *p_arg)
 /*-------------------------------------------------------------------------------------------------------------------------*/
 /*----------------------------------------------------------主线程---------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
+static bool current_out_of_ctrl(void)
+{
+	OS_ERR err;
+	if (CURRENT_CHECK == 0)
+	{
+		OSTimeDly(15, OS_OPT_TIME_DLY, &err); // 消抖
+		if (CURRENT_CHECK == 0)
+			return true;
+		else
+			return false;
+	}
+	return false;
+}
+
 static void Power_on_check(void)
 {
 
@@ -892,10 +871,19 @@ void main_task(void *p_arg)
 
 	OS_ERR err;
 	KEYin_Init();
-	/*part1：开机自检*/
+	/*开机自检*/
 	Power_on_check();
 	while (1)
 	{
+
+		/*part1：电流失控检测*/
+		if (current_out_of_ctrl() == true)
+		{
+			err_get_type(err_ctrl, CURRENT_OUT_OT_CTRL)->state = true;
+			OS_ERR err;
+			/*唤醒错误处理线程*/
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		}
 
 		/*part2：主焊接任务*/
 		welding_process();
@@ -1352,7 +1340,7 @@ static void page_process(Page_ID id)
 #endif
 
 		/*4、焊接结束后显示三段温度&计数值*/
-		OSSemPend(&TEMP_DRAW_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+		OSSemPend(&TEMP_DISPLAY_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
 			uint16_t temp_display[3] = {0};
@@ -1450,7 +1438,7 @@ static void page_process(Page_ID id)
 			command_set_comp_val(tick_name[i], "val", (1 + i) * delta_tick);
 
 		/*焊接接收后显示三段温度*/
-		OSSemPend(&TEMP_DRAW_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+		OSSemPend(&TEMP_DISPLAY_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
 			uint16_t temp_display[3] = {0};
@@ -1469,9 +1457,6 @@ static void page_process(Page_ID id)
 			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
 			/*绘图结束清空缓存*/
 			memset(temp_draw_ctrl->temp_buf, 0, sizeof(temp_draw_ctrl->temp_buf) / sizeof(uint16_t));
-
-			/*绘制降温曲线*/
-			OSSemPost(&TEMP_DOWN_LINE_SEM, OS_OPT_POST_ALL, &err);
 		}
 #endif
 	}
@@ -1893,54 +1878,5 @@ void computer_read_task(void *p_arg)
 		}
 
 		OSTimeDlyHMSM(0, 0, 0, 25, OS_OPT_TIME_PERIODIC, &err); // 休眠
-	}
-}
-
-/*-------------------------------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------------绘图线程--------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------------------------------*/
-void draw_task(void *p_arg)
-{
-	OS_ERR err;
-	uint16_t index;
-	uint16_t weld_win_width;
-	uint16_t win_width;
-	uint16_t total_time;
-	uint16_t temp = 0;
-	uint8_t temp_display = 0;
-	while (1)
-	{
-		index = 0;
-		temp = 0;
-		temp_display = 0;
-		OSSemPend(&TEMP_DOWN_LINE_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
-		if (err == OS_ERR_NONE)
-		{
-			index = 0;
-			temp = 0;
-			temp_display = 0;
-			total_time = 0; // 焊接总时长
-			for (uint8_t i = 0; i < 5; i++)
-				total_time += weld_controller->weld_time[i];
-
-			weld_win_width = total_time / (temp_draw_ctrl->delta_tick - 1); // 转换计算(参见读写线程的坐标绘制)：焊接周期绘图区域大小
-			win_width = WIN_WIDTH - weld_win_width - DRAW_RESERVE;			// 温降曲线绘图区域大小（留一个余量）
-			if (win_width >= WIN_WIDTH / 2)
-				win_width = WIN_WIDTH / 2;
-			while (index < win_width)
-			{
-				if (get_weld_flag() == BUSY_MODE) // 非焊接状态才进行绘制
-					break;
-				temp = temp_convert(current_Thermocouple); // 温度采样
-				if (temp > MAX_TEMP_DISPLAY)			   // 限幅
-					temp = MAX_TEMP_DISPLAY;
-				temp_display = temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY;
-				draw_point(temp_display);					// 绘图
-				user_tim_delay(temp_draw_ctrl->delta_tick); // 采样间隔
-				index++;
-			}
-		}
-
-		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
 }

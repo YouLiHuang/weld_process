@@ -90,7 +90,7 @@ void err_clear(Error_ctrl *ctrl);
 void err_cnt_clear(Error_ctrl *ctrl);
 
 /*hardword config*/
-void TestCurrent_GPIO_Config(void);
+void Current_Check_IO_Config(void);
 void PROTECT_Init(void);
 void TIM_P_Protect_IT(void);
 void ADC_V_Protect_IT(void);

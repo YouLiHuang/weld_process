@@ -8,7 +8,7 @@
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
  */
 
-#define FAST_MODE 0
+#define FAST_MODE 1
 #include "touchscreen.h"
 #include "welding_process.h"
 #include "usart.h"

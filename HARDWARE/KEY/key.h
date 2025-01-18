@@ -12,18 +12,17 @@
 #include "sys.h"
 #include "includes.h"
 
-#define KEY_PC0 PCin(0) // 启动1
-#define KEY_PC1 PCin(1) // 启动2	PC1
-#define KEY_PC2 PCin(2) // 启动3	PC2
-#define KEY_PC3 PCin(3) // 启动4	PC3
-// #define KEY_In1 PCin(4)   // 输入1
-// #define KEY_In2 PCin(5)   // 输入2
-#define KEY_In3 PAin(6)   // 输入3
-#define KEY_In4 PCin(7)   // 输入4
-#define KEY_Res PCin(8)   // 复位按键
-#define KEY_Ttem PCin(9)  // 整流管温度监测IO
-#define KEY_Stem PCin(10) // 散热器监测IO
-#define KEY_Wat PCin(11)  // 冷却水IO
+#define CURRENT_CHECK PBin(0) // 电流失控检测IO
+#define KEY_PC0 PCin(0)       // 启动1
+#define KEY_PC1 PCin(1)       // 启动2	PC1
+#define KEY_PC2 PCin(2)       // 启动3	PC2
+#define KEY_PC3 PCin(3)       // 启动4	PC3
+#define KEY_In3 PAin(6)       // 输入3
+#define KEY_In4 PCin(7)       // 输入4
+#define KEY_Res PCin(8)       // 复位按键
+#define KEY_Ttem PCin(9)      // 整流管温度监测IO
+#define KEY_Stem PCin(10)     // 散热器监测IO
+#define KEY_Wat PCin(11)      // 冷却水IO
 
 #define KEY_PC0_PRES 1
 #define KEY_PC1_PRES 2

@@ -18,6 +18,7 @@
 #define PROTECT_CHECK 0
 extern Page_Param *page_param;
 extern Error_ctrl *err_ctrl;
+extern OS_SEM ERROR_HANDLE_SEM;
 /**
  * @description: create new error handle
  * @param {char} *msg
@@ -137,41 +138,24 @@ void err_cnt_clear(Error_ctrl *ctrl)
 	ctrl->temp_low_cnt = 0;
 }
 
+/*--------------------------------------------------------------------------------------------------------------------------------------*/
+/*----------------------------------------------------------------硬件配置---------------------------------------------------------------*/
+/*--------------------------------------------------------------------------------------------------------------------------------------*/
+
 /**
  * @description: current check IO config
  * @return {*}
  */
-void TestCurrent_GPIO_Config(void)
+void Current_Check_IO_Config(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
-	EXTI_InitTypeDef EXTI_InitStructure;
-	NVIC_InitTypeDef NVIC_InitStructure;
-
-	// 设置中断优先级分组2
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
-
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE); // 使能 SYSCFG 时钟
 
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
-
-	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB, EXTI_PinSource0); // PB0 连接线 0
-
-	EXTI_InitStructure.EXTI_Line = EXTI_Line0;
-	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
-	EXTI_Init(&EXTI_InitStructure);
-
-	NVIC_InitStructure.NVIC_IRQChannel = EXTI0_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
 }
 
 /**
@@ -188,78 +172,71 @@ static void TIM_PROTECT_Mode_Config(void)
 	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseInit(TIM7, &TIM_TimeBaseStructure);
-
-	// 使能定时器7
 	TIM_Cmd(TIM7, DISABLE);
-
 	// 开启定时器7中断
 	TIM_ITConfig(TIM7, TIM_IT_Update, ENABLE);
 }
 
 /**
- * @description: sensor protect config
+ * @description: 变压器过热/MCU过热外部中断
  * @return {*}
  */
-static void EXTI_PROTECT_Config(void)
-{
-	GPIO_InitTypeDef GPIO_InitStructure;
-	EXTI_InitTypeDef EXTI_InitStructure;
+// static void EXTI_PROTECT_Config(void)
+// {
+// 	GPIO_InitTypeDef GPIO_InitStructure;
+// 	EXTI_InitTypeDef EXTI_InitStructure;
 
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE); // 使能 SYSCFG 时钟
+// 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+// 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE); // 使能 SYSCFG 时钟
 
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
+// 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10;
+// 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+// 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+// 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+// 	GPIO_Init(GPIOC, &GPIO_InitStructure);
+// 	// 连线
+// 	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC, EXTI_PinSource9);
+// 	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC, EXTI_PinSource10);
+// 	// 配置 EXTI_Line9 10
+// 	EXTI_InitStructure.EXTI_Line = EXTI_Line9 | EXTI_Line10;
+// 	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+// 	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+// 	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+// 	EXTI_Init(&EXTI_InitStructure);
+// }
 
-	// 连线
-	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC, EXTI_PinSource9);
-	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC, EXTI_PinSource10);
+// static void PROTECT_NVIC_Config(void)
+// {
+// 	NVIC_InitTypeDef NVIC_InitStructure;
 
-	// 配置 EXTI_Line9，10
-	EXTI_InitStructure.EXTI_Line = EXTI_Line9 | EXTI_Line10;
-	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
-	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-	EXTI_Init(&EXTI_InitStructure);
-}
+// 	// IO10-15中断
+// 	NVIC_InitStructure.NVIC_IRQChannel = EXTI15_10_IRQn;
+// 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
+// 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
+// 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+// 	NVIC_Init(&NVIC_InitStructure);
 
-static void PROTECT_NVIC_Config(void)
-{
-	NVIC_InitTypeDef NVIC_InitStructure;
+// 	// IO5-9中断
+// 	NVIC_InitStructure.NVIC_IRQChannel = EXTI9_5_IRQn;
+// 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
+// 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x02;
+// 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+// 	NVIC_Init(&NVIC_InitStructure);
 
-	// IO10-15中断
-	NVIC_InitStructure.NVIC_IRQChannel = EXTI15_10_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
-
-	// IO5-9中断
-	NVIC_InitStructure.NVIC_IRQChannel = EXTI9_5_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x02;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
-
-	// TIM7
-	NVIC_InitStructure.NVIC_IRQChannel = TIM7_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
-}
+// 	// TIM7
+// 	NVIC_InitStructure.NVIC_IRQChannel = TIM7_IRQn;
+// 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;
+// 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
+// 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+// 	NVIC_Init(&NVIC_InitStructure);
+// }
 
 void PROTECT_Init(void)
 {
 	TIM_PROTECT_Mode_Config();
-	EXTI_PROTECT_Config();
-	PROTECT_NVIC_Config();
+	// EXTI_PROTECT_Config();
+	// PROTECT_NVIC_Config();
 }
-
-extern OS_SEM ERROR_HANDLE_SEM;
 
 /**
  * @description: Interrupt callback of timer 7
@@ -283,67 +260,45 @@ void TIM_P_Protect_IT(void)
 }
 
 /**
- * @description: External interrupt triggered by runaway current
- * @return {*}
- */
-void EXTI0_Currunt_Protect_IT(void)
-{
-#if SYSTEM_SUPPORT_OS
-	OSIntEnter();
-#endif
-	if (EXTI_GetITStatus(EXTI_Line0) != RESET)
-	{
-		// err_get_type(err_ctrl, CURRENT_OUT_OT_CTRL)->state = true;
-		// OS_ERR err;
-		// /*唤醒错误处理线程*/
-		// OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-	}
-	EXTI_ClearITPendingBit(EXTI_Line0);
-#if SYSTEM_SUPPORT_OS
-	OSIntExit();
-#endif
-}
-
-/**
  * @description: External interrupt triggered by over temperature
  * @return {*}
  */
-void EXTI9_Temperature_Protect_IT(void)
-{
-#if SYSTEM_SUPPORT_OS
-	OSIntEnter();
-#endif
-	if (EXTI_GetITStatus(EXTI_Line9) != RESET)
-	{
-		// err_get_type(err_ctrl, MCU_OVER_HEAT)->state = true;
-		// OS_ERR err;
-		// /*唤醒错误处理线程*/
-		// OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-	}
-	EXTI_ClearITPendingBit(EXTI_Line9);
-#if SYSTEM_SUPPORT_OS
-	OSIntExit();
-#endif
-}
+// void EXTI9_Temperature_Protect_IT(void)
+// {
+// #if SYSTEM_SUPPORT_OS
+// 	OSIntEnter();
+// #endif
+// 	if (EXTI_GetITStatus(EXTI_Line9) != RESET)
+// 	{
+// 		err_get_type(err_ctrl, MCU_OVER_HEAT)->state = true;
+// 		OS_ERR err;
+// 		/*唤醒错误处理线程*/
+// 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+// 	}
+// 	EXTI_ClearITPendingBit(EXTI_Line9);
+// #if SYSTEM_SUPPORT_OS
+// 	OSIntExit();
+// #endif
+// }
 
 /**
  * @description: Transformer overheating interrupt
  * @return {*}
  */
-void EXTI10_Temperature_Protect_IT(void)
-{
-#if SYSTEM_SUPPORT_OS
-	OSIntEnter();
-#endif
-	if (EXTI_GetITStatus(EXTI_Line10) != RESET)
-	{
-		// err_get_type(err_ctrl, TRANSFORMER_OVER_HEAT)->state = true;
-		// OS_ERR err;
-		// /*唤醒错误处理线程*/
-		// OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-	}
-	EXTI_ClearITPendingBit(EXTI_Line10);
-#if SYSTEM_SUPPORT_OS
-	OSIntExit();
-#endif
-}
+// void EXTI10_Temperature_Protect_IT(void)
+// {
+// #if SYSTEM_SUPPORT_OS
+// 	OSIntEnter();
+// #endif
+// 	if (EXTI_GetITStatus(EXTI_Line10) != RESET)
+// 	{
+// 		err_get_type(err_ctrl, TRANSFORMER_OVER_HEAT)->state = true;
+// 		OS_ERR err;
+// 		/*唤醒错误处理线程*/
+// 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+// 	}
+// 	EXTI_ClearITPendingBit(EXTI_Line10);
+// #if SYSTEM_SUPPORT_OS
+// 	OSIntExit();
+// #endif
+// }

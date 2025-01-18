@@ -201,7 +201,7 @@ void DebugMon_Handler(void)
 /******************************************************************************/
 
 
-/*-----------------------------------------------����---------------------------------------*/
+
 
 void TIM7_IRQHandler(void)
 {
@@ -209,28 +209,21 @@ void TIM7_IRQHandler(void)
 }
 
 
-
-
 void EXTI9_5_IRQHandler(void)
 {
-	EXTI9_Temperature_Protect_IT();
+	//EXTI9_Temperature_Protect_IT();
 }
 
 void EXTI15_10_IRQHandler(void)
 {
-	EXTI10_Temperature_Protect_IT();
+	//EXTI10_Temperature_Protect_IT();
 }
 
 void EXTI0_IRQHandler(void)
 {
-	EXTI0_Currunt_Protect_IT();
+	// EXTI0_Currunt_Protect_IT();
 }
-/*
-void DMA2_Stream3_IRQHandler(void)
-{
-	ADC_V_Protect_IT();
-}
-*/
+
 
 /**
   * @brief  This function handles PPP interrupt request.
