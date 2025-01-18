@@ -834,15 +834,14 @@ static void Timer_Pre_Init()
  */
 void welding_process(void)
 {
+	/*向下计数模式到底，停止焊接*/
+	if (weld_controller->weld_count == 0 && get_comp(param_page_list, "UP_DOWN")->val == DOWN_CNT)
+		return;
 
 	/*定时器配置PWM 5KHz*/
 	Timer_Pre_Init();
 	/*扫描按键，根据不同按键加载不同参数组别*/
 	Load_Data();
-
-	/*向下计数模式到底，停止焊接*/
-	if (get_comp(param_page_list, "count")->val == 0 && get_comp(param_page_list, "UP_DOWN")->val == DOWN_CNT)
-		return;
 
 	/*----------------------------------------------------------------------------------------------------------------------------------------------*/
 	/*----------------------------------------------------------------焊接实时控制部分---------------------------------------------------------------*/
@@ -938,9 +937,19 @@ void welding_process(void)
 			OVER = 0;
 			/*设置焊接间隔*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
+
+			/*等待释放按钮*/
+			while (1)
+			{
+				key = new_key_scan();
+				if (key != KEY_PC1_PRES && key != KEY_PC0_PRES)
+					break;
+				OSTimeDly(10, OS_OPT_TIME_DLY, &err);
+			}
 		}
 
 #if HOST_WELD_CTRL == 1
+		/*485启动模式*/
 		OSSemPend(&HOST_WELD_CTRL_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
