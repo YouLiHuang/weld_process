@@ -38,6 +38,7 @@ extern Error_ctrl *err_ctrl;	// 错误管理器
 Kalman kfp;
 dynamical_comp dynam_comp;		 // 动态补偿
 extern last_temp_sotre lasttemp; // 过往温度记录
+
 /*--------------------------------------------------------绘图---------------------------------------------------------*/
 extern OS_SEM TEMP_DISPLAY_SEM;						 // 绘图事件信号
 extern Temp_draw_ctrl *temp_draw_ctrl;				 // 绘图控制器
