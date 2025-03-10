@@ -338,7 +338,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F40_41xxx,USE_STDPERIPH_DRIVER,__FPU_USED=1</Define>
               <Undefine></Undefine>
-              <IncludePath>..\CORE;..\SYSTEM\delay;..\SYSTEM\sys;..\FWLIB\STM32F4xx_StdPeriph_Driver\inc;..\USER;..\UCOSIII\uC-CPU;..\UCOSIII\uC-LIB;..\UCOSIII\uCOS-III;..\UCOSIII\UCOS_BSP;..\UCOSIII\uCOS_CONFIG;..\UCOSIII\uCOS-III\Source;..\UCOSIII\uC-CPU\ARM-Cortex-M4\RealView;..\UCOSIII\uC-LIB\Ports\ARM-Cortex-M4\RealView;..\UCOSIII\uCOS-III\Ports\ARM-Cortex-M4\Generic\RealView;..\HARDWARE\HCSR04;..\HARDWARE\CRC16;..\HARDWARE\ADC;..\HARDWARE\PID;..\HARDWARE\PWM;..\HARDWARE\SPI;..\HARDWARE\TIMEC;..\HARDWARE\WELDING;..\HARDWARE\PROTECT;..\HARDWARE\Kalman;..\HARDWARE\KEY;..\HARDWARE\TEMPCOMPA;..\SYSTEM\usart;..\HARDWARE\TOUCH_SCREEN;..\HARDWARE\FILTER</IncludePath>
+              <IncludePath>..\CORE;..\SYSTEM\delay;..\SYSTEM\sys;..\FWLIB\STM32F4xx_StdPeriph_Driver\inc;..\USER;..\UCOSIII\uC-CPU;..\UCOSIII\uC-LIB;..\UCOSIII\uCOS-III;..\UCOSIII\UCOS_BSP;..\UCOSIII\uCOS_CONFIG;..\UCOSIII\uCOS-III\Source;..\UCOSIII\uC-CPU\ARM-Cortex-M4\RealView;..\UCOSIII\uC-LIB\Ports\ARM-Cortex-M4\RealView;..\UCOSIII\uCOS-III\Ports\ARM-Cortex-M4\Generic\RealView;..\HARDWARE\HCSR04;..\HARDWARE\CRC16;..\HARDWARE\ADC;..\HARDWARE\PID;..\HARDWARE\PWM;..\HARDWARE\SPI;..\HARDWARE\TIMEC;..\HARDWARE\WELDING;..\HARDWARE\PROTECT;..\HARDWARE\Kalman;..\HARDWARE\KEY;..\HARDWARE\TEMPCOMPA;..\SYSTEM\usart;..\HARDWARE\TOUCH_SCREEN;..\HARDWARE\FILTER;..\HARDWARE\PINCTRL</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -466,6 +466,11 @@
               <FileName>touchscreen.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\TOUCH_SCREEN\touchscreen.c</FilePath>
+            </File>
+            <File>
+              <FileName>ThermocoupleIO.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\PINCTRL\ThermocoupleIO.c</FilePath>
             </File>
           </Files>
         </Group>

@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-16 15:21:13
+ * @LastEditTime: 2025-03-10 11:09:50
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -25,6 +25,7 @@
 #include "touchscreen.h"
 #include "PID.h"
 #include "filter.h"
+#include "ThermocoupleIO.h"
 
 /*调试接口*/
 #define TEMP_ADJUST 0	 // 温度校准
@@ -297,9 +298,9 @@ int main(void)
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); // 中断分组配置
 	uart_init(115200);								// 触摸屏通讯接口初始化——波特率：115200
 	usart3_init(115200);							// 上位机通信接口初始化
-	RNG_Init();										// 随机数初始化
 	KEYin_Init();									// 按键输入初始化
 	OUT_Init();										// 输出初始化
+	// ThermocoupleCheckIO();
 	SPI1_Init();
 	ADC_DMA_INIT();
 
@@ -762,6 +763,9 @@ void error_task(void *p_arg)
 /*-------------------------------------------------------------------------------------------------------------------------*/
 /*----------------------------------------------------------主线程---------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
+static void voltage_check(void);
+static void Thermocouple_check(void);
+static bool current_out_of_ctrl(void);
 static bool current_out_of_ctrl(void)
 {
 	OS_ERR err;
@@ -778,16 +782,9 @@ static bool current_out_of_ctrl(void)
 
 static void Power_on_check(void)
 {
-
 #if POWER_ON_CHECK == 1
 	// 热电偶开机自检标志位——上电只进行一次检查
-	if (false == Temp_up_check())
-	{
-		OS_ERR err;
-		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-		/*唤醒错误处理线程*/
-		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-	}
+	Thermocouple_check();
 #endif
 }
 
@@ -802,9 +799,7 @@ static void Temp_updata_realtime()
 	// voltage_test[3] = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10;
 	// voltage_test[4] = (ADC_Value_avg(ADC_Channel_14) * 825) >> 10;
 	// voltage_test[5] = (ADC_Value_avg(ADC_Channel_15) * 825) >> 10;
-
 	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
-
 #if TEMP_ADJUST == 1
 	command_set_comp_val("temp22", "val", voltage);
 	command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
@@ -814,21 +809,60 @@ static void Temp_updata_realtime()
 static void Thermocouple_check(void)
 {
 	OS_ERR err;
-	int adc_refer1 = 0; // 记录一次采集温度
-	int adc_refer2 = 0; // 记录下一次采集温度
+	// int adc_refer1 = 0; // 记录一次采集温度
+	// int adc_refer2 = 0; // 记录下一次采集温度
 
-	// 可加入滤波算法...
-	adc_refer1 = ADC_Value_avg(ADC_Channel_7);
-	OSTimeDly(100, OS_OPT_TIME_DLY, &err);
-	adc_refer2 = ADC_Value_avg(ADC_Channel_7);
+	// // 可加入滤波算法...
+	// adc_refer1 = ADC_Value_avg(ADC_Channel_7);
+	// OSTimeDly(100, OS_OPT_TIME_DLY, &err);
+	// adc_refer2 = ADC_Value_avg(ADC_Channel_7);
+	// /*插拔过程导致电压突变*/
+	// if (abs(adc_refer1 - adc_refer2) > VOLTAGE_FLOW)
+	// {
+	// 	// 热电偶依旧异常，报警
+	// 	err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+	// 	/*唤醒错误处理线程*/
+	// 	OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+	// }
 
-	/*插拔过程导致电压突变*/
-	if (abs(adc_refer1 - adc_refer2) > VOLTAGE_FLOW)
+	// stop adc...
+	switch (current_Thermocouple->type)
 	{
-		// 热电偶依旧异常，报警
-		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-		/*唤醒错误处理线程*/
-		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+	case K_TYPE:
+		GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
+		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
+		if (GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E) != 0)
+		{
+			// 热电偶依旧异常，报警
+			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+			/*唤醒错误处理线程*/
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		}
+		break;
+
+	case J_TYPE:
+		GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
+		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
+		if (GPIO_ReadInputDataBit(CHECK_GPIO_J, CHECKIN_PIN_J) != 0)
+		{
+			// 热电偶依旧异常，报警
+			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+			/*唤醒错误处理线程*/
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		}
+		break;
+
+	case E_TYPE:
+		GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_J);
+		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
+		if (GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E) != 0)
+		{
+			// 热电偶依旧异常，报警
+			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+			/*唤醒错误处理线程*/
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		}
+		break;
 	}
 }
 
@@ -891,7 +925,7 @@ void main_task(void *p_arg)
 		Thermocouple_check();
 		/*part4:空闲时过欠压监测*/
 		voltage_check();
-		/*part5：空闲温度采集*/
+		/*part5：空闲温度显示*/
 		Temp_updata_realtime();
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err); // 休眠
@@ -1606,8 +1640,6 @@ void read_task(void *p_arg)
 {
 
 	OS_ERR err;
-	/*消除热电偶静态偏置*/
-	// Thermocouple_err_eliminate();
 	while (1)
 	{
 		/*处理页面逻辑*/

@@ -31,7 +31,27 @@
         "pid.h": "c",
         "tempcomp.h": "c",
         "string.h": "c",
-        "kalman.h": "c"
+        "kalman.h": "c",
+        "thermocoupleio.h": "c",
+        "deque": "c",
+        "exception": "c",
+        "fstream": "c",
+        "ios": "c",
+        "iosfwd": "c",
+        "limits": "c",
+        "ostream": "c",
+        "streambuf": "c",
+        "vector": "c",
+        "atomic": "c",
+        "cmath": "c",
+        "cstddef": "c",
+        "unordered_map": "c",
+        "iterator": "c",
+        "memory_resource": "c",
+        "optional": "c",
+        "system_error": "c",
+        "type_traits": "c",
+        "sstream": "c"
     },
     // 头部注释
     "fileheader.customMade": {
