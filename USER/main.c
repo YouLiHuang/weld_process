@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-10 11:09:50
+ * @LastEditTime: 2025-03-10 11:26:52
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -248,35 +248,37 @@ extern int RDY_SCH;
 int main(void)
 {
 
-	/*------------------------------------------------------用户层数据对象-----------------------------------------------------------*/
-	/*pid控制器*/
+	/*------------------------------------------------------User layer data objects-----------------------------------------------------------*/
+	/*pid controller*/
 	pid_ctrl = new_pid_forword_ctrl(0, 12, 0.1, 6);
-	/*焊接控制器*/
+	/*Welding controller*/
 	weld_controller = new_weld_ctrl(pid_ctrl);
-	/*新的界面组件列表初始化*/
+	/*New interface component list initialization*/
 	page_param = new_page_param();
-	/*参数页面*/
+	/*param page*/
 	param_page_list = newList(PARAM_PAGE);
 	page_list_init(param_page_list,
 				   param_page_name_list,
 				   sizeof(param_page_name_list) / sizeof(char *));
-	/*温度限制页面*/
+
+	/*Temperature Limit Page*/
 	temp_page_list = newList(TEMP_PAGE);
 	page_list_init(temp_page_list,
 				   temp_page_name_list,
 				   sizeof(temp_page_name_list) / sizeof(char *));
 	component_insert(temp_page_list, newComponet("switch", 1)); // 添加开关组件
 
-	/*设置页面*/
+	/*setting page*/
 	setting_page_list = newList(UART_PAGE);
 	page_list_init(setting_page_list,
 				   setting_page_name_list,
 				   sizeof(setting_page_name_list) / sizeof(char *));
 
-	/*...用户可自行根据需要创建自己页面的队列...*/
-	/*错误类型注册表*/
+	/*...Users can create their own page queues as needed...*/
+
+	/*Error Registry*/
 	err_ctrl = new_error_ctrl();
-	/*注册错误类型*/
+	/*Wrong type registration*/
 	for (uint8_t i = 0; i < sizeof(match_list) / sizeof(error_match_list); i++)
 	{
 		error_handle *handle = new_error_handle(match_list[i].type,
@@ -292,15 +294,15 @@ int main(void)
 	/*默认e型热电偶*/
 	current_Thermocouple = &Thermocouple_Lists[0];
 
-	/*------------------------------------------------------硬件层数据对象-----------------------------------------------------------*/
-	/*外设初始化*/
-	delay_init(168);								// 时钟初始化
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); // 中断分组配置
-	uart_init(115200);								// 触摸屏通讯接口初始化——波特率：115200
-	usart3_init(115200);							// 上位机通信接口初始化
-	KEYin_Init();									// 按键输入初始化
-	OUT_Init();										// 输出初始化
-	// ThermocoupleCheckIO();
+	/*------------------------------------------------------Hardware layer data initialization-----------------------------------------------------------*/
+	/*Peripheral initialization*/
+	delay_init(168);								// clock init
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); // Interrupt Group Configuration
+	uart_init(115200);								// Touch screen communication interface initialization
+	usart3_init(115200);							// Host computer communication initialization
+	KEYin_Init();									// key io init
+	OUT_Init();										// output pin init
+	Check_IO_init();								// Thermocouple detection io initialization
 	SPI1_Init();
 	ADC_DMA_INIT();
 
@@ -310,47 +312,44 @@ int main(void)
 	TIM5_Int_Init();
 
 	/*硬件保护初始化*/
-	Current_Check_IO_Config(); // 电流失控IO配置
+	Current_Check_IO_Config(); // Current detection io configuration
 	// PROTECT_Init();			   // MCU 过热外部中断/变压器过热外部中断
 
-	/*串口屏复位*/
 	Touchscreen_init();
-	/*数据加载*/
 	Load_data_from_mem();
-	/*上位机复位*/
 	Host_computer_reset();
 
 	/*硬件测试代码段*/
 	/*...*/
 
-	/*------------------------------------------------------系统层数据对象-----------------------------------------------------------*/
-	/*初始化UCOSIII*/
+	/*------------------------------------------------------System level data objects-----------------------------------------------------------*/
+	/*UCOSIII init*/
 	OS_ERR err;
 	CPU_SR_ALLOC();
 	OSInit(&err);
-	OS_CRITICAL_ENTER(); // 进入临界区
-	// 创建开始任务
-	OSTaskCreate((OS_TCB *)&StartTaskTCB,							// 任务控制块
-				 (CPU_CHAR *)"start task",							// 任务名字
-				 (OS_TASK_PTR)start_task,							// 任务函数
-				 (void *)0,											// 传递给任务函数的参数
-				 (OS_PRIO)START_TASK_PRIO,							// 任务优先级
-				 (CPU_STK *)&START_TASK_STK[0],						// 任务堆栈基地址
-				 (CPU_STK_SIZE)START_STK_SIZE / 10,					// 任务堆栈深度限位
-				 (CPU_STK_SIZE)START_STK_SIZE,						// 任务堆栈大小
-				 (OS_MSG_QTY)0,										// 任务内部消息队列能够接收的最大消息数目,为0时禁止接收消息
-				 (OS_TICK)0,										// 当使能时间片轮转时的时间片长度，为0时为默认长度，
-				 (void *)0,											// 用户补充的存储区
-				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR, // 任务选项
-				 (OS_ERR *)&err);									// 存放该函数错误时的返回值
+	OS_CRITICAL_ENTER();
 
-	OS_CRITICAL_EXIT(); // 退出临界区
-	/*开启UCOSIII*/
+	OSTaskCreate((OS_TCB *)&StartTaskTCB,							// TCB
+				 (CPU_CHAR *)"start task",							// task name
+				 (OS_TASK_PTR)start_task,							// tack function
+				 (void *)0,											// Parameters passed to the task function
+				 (OS_PRIO)START_TASK_PRIO,							// Task Priority
+				 (CPU_STK *)&START_TASK_STK[0],						// stack base adress
+				 (CPU_STK_SIZE)START_STK_SIZE / 10,					// Task stack depth limit
+				 (CPU_STK_SIZE)START_STK_SIZE,						// task stack size
+				 (OS_MSG_QTY)0,										// The maximum number of messages that the task's internal message queue can receive(0:disable)
+				 (OS_TICK)0,										// When the time slice rotation is enabled, the time slice length is 0, which is the default length.
+				 (void *)0,											// User-supplemented storage area
+				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR, // task option
+				 (OS_ERR *)&err);									// Store the return value of this function when an error occurs
+
+	OS_CRITICAL_EXIT(); 
+	/*start UCOSIII*/
 	OSStart(&err);
 }
 
 /*-------------------------------------------------------------------------------------------------------------------------*/
-/*--------------------------------------------------------初始化线程--------------------------------------------------------*/
+/*--------------------------------------------------------Initialize Thread--------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
 void start_task(void *p_arg)
 {
@@ -367,8 +366,7 @@ void start_task(void *p_arg)
 	CPU_IntDisMeasMaxCurReset();
 #endif
 
-#if OS_CFG_SCHED_ROUND_ROBIN_EN // 当使用时间片轮转的时候
-	// 使能时间片轮转调度功能,时间片长度为1个系统时钟节拍,1ms
+#if OS_CFG_SCHED_ROUND_ROBIN_EN // 当使用时间片轮转的时候,使能时间片轮转调度功能,时间片长度为1个系统时钟节拍,1ms
 	OSSchedRoundRobinCfg(DEF_ENABLED, 1, &err);
 #endif
 
