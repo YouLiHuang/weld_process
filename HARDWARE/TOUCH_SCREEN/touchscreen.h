@@ -117,6 +117,7 @@ typedef enum SENSOR_TYPE
     J_TYPE
 } SENSOR_TYPE;
 
+
 /*-------------------------实时页面参数-------------------------*/
 typedef struct page_param
 {

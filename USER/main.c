@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-12 20:23:56
+ * @LastEditTime: 2025-03-12 20:47:14
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -32,10 +32,9 @@
 #define SAMPLE_LEN 100 // 采样深度
 
 /*debug option*/
-#define TEMP_ADJUST 1	 // 温度校准
-#define VOLTAGE_CHECK 1	 // 过欠压报警
-#define POWER_ON_CHECK 1 // 开机自检报警（开机后完成一次热点电偶检测）
-#define JK_TEMP_SHOW 0	 // JK热电偶显示
+#define TEMP_ADJUST 1	// 温度校准
+#define VOLTAGE_CHECK 1 // 过欠压报警
+#define JK_TEMP_SHOW 0	// JK热电偶显示
 
 // 任务优先级
 #define START_TASK_PRIO 3
@@ -767,15 +766,43 @@ static bool current_out_of_ctrl(void)
 
 static void Power_on_check(void)
 {
+	OS_ERR err;
+	/*1、开机自检需要检测当前是哪一路热电偶*/
+	GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
+	GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
+	GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
 
-	/*1、开机自检需要检测当前是哪一路热电偶，如果是KJ热电偶*/
+	OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
+
+	if (GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E) != 0)
+	{
+		for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
+		{
+			if (Thermocouple_Lists[i].type == E_TYPE)
+				current_Thermocouple = &Thermocouple_Lists[i];
+		}
+	}
+
+	if (GPIO_ReadInputDataBit(CHECK_GPIO_K, CHECKIN_PIN_K) != 0)
+	{
+		for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
+		{
+			if (Thermocouple_Lists[i].type == K_TYPE)
+				current_Thermocouple = &Thermocouple_Lists[i];
+		}
+	}
+
+	if (GPIO_ReadInputDataBit(CHECK_GPIO_J, CHECKIN_PIN_J) != 0)
+	{
+		for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
+		{
+			if (Thermocouple_Lists[i].type == J_TYPE)
+				current_Thermocouple = &Thermocouple_Lists[i];
+		}
+	}
 
 	/*2、同时需要适配存储接口，读取出上次保存的热电偶校准值*/
-
-#if POWER_ON_CHECK == 1
-	// 热电偶开机自检标志位——上电只进行一次检查
-	Thermocouple_check();
-#endif
+	/* ... */
 }
 
 float voltage_test[6] = {0};
@@ -933,13 +960,81 @@ void main_task(void *p_arg)
 static void Thermocouple_err_eliminate()
 {
 
+	uint32_t Sum = 0;
+	uint16_t ADC_channel_init_val = 0;
+	float adc_channel_data[SAMPLE_LEN] = {0};
+	float adc_channel_fliter_buf[SAMPLE_LEN] = {0};
+	/*根据当前热电偶类型采样对应的电压值*/
+	switch (current_Thermocouple->type)
+	{
+	case E_TYPE:
+		for (uint16_t i = 0; i < SAMPLE_LEN; i++)
+		{
+			adc_channel_data[i] = ADC_Value_avg(THERMOCOUPLE_CHANNEL_E);
+			user_tim_delay(1);
+		}
+
+		break;
+
+	case K_TYPE:
+		for (uint16_t i = 0; i < SAMPLE_LEN; i++)
+		{
+			adc_channel_data[i] = ADC_Value_avg(THERMOCOUPLE_CHANNEL_K);
+			user_tim_delay(1);
+		}
+		break;
+
+	case J_TYPE:
+		for (uint16_t i = 0; i < SAMPLE_LEN; i++)
+		{
+			adc_channel_data[i] = ADC_Value_avg(THERMOCOUPLE_CHANNEL_J);
+			user_tim_delay(1);
+		}
+		break;
+	}
+	// 低通滤波
+	low_pass_Filter((float *)adc_channel_data,
+					SAMPLE_LEN,
+					(float *)adc_channel_fliter_buf,
+					1000,
+					1000);
+
+	/*均值滤波——计算初始偏置*/
+	Sum = 0;
+	for (uint16_t i = 0; i < SAMPLE_LEN; i++)
+	{
+		Sum += adc_channel_fliter_buf[i];
+	}
+	ADC_channel_init_val = Sum / SAMPLE_LEN;
+
+	if (ADC_channel_init_val > 650)
+	{
+		/*偏置过高，异常报警*/
+		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+		OS_ERR err;
+		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+	}
+	else
+	{
+		// 常温对应的电压
+		uint16_t room_temp_voltage = 0;
+
+		// 更新对应的热电偶参数值
+		for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
+		{
+			if (current_Thermocouple->type == Thermocouple_Lists[i].type)
+			{
+				room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[i].intercept) / Thermocouple_Lists[i].slope;
+				Thermocouple_Lists[i].Bias = ADC_channel_init_val - room_temp_voltage;
+			}
+		}
+
+		/*校准完成，开启进度条动画*/
+		command_set_comp_val("tm0", "en", 1);
+	}
+
+#if 0
 	/*检测此时接入的是哪种热点偶*/
-
-	/*6个IO...*/
-
-	/*检测完成后将设置页面的热电偶更新为对应的值*/
-	// SENSOR_TYPE type;
-	// command_set_comp_val("KEJ", "val", type);
 	uint32_t sum = 0;
 	uint16_t adc_ch7_init_value = 0;
 	uint16_t adc_ch14_init_value = 0;
@@ -1025,6 +1120,8 @@ static void Thermocouple_err_eliminate()
 		/*校准完成，开启进度条动画*/
 		command_set_comp_val("tm0", "en", 1);
 	}
+
+#endif
 }
 
 /*通信任务API*/
