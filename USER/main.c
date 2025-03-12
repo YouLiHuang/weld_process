@@ -343,7 +343,7 @@ int main(void)
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR, // task option
 				 (OS_ERR *)&err);									// Store the return value of this function when an error occurs
 
-	OS_CRITICAL_EXIT(); 
+	OS_CRITICAL_EXIT();
 	/*start UCOSIII*/
 	OSStart(&err);
 }
@@ -824,12 +824,17 @@ static void Thermocouple_check(void)
 	// }
 
 	// stop adc...
+	static uint8_t IO_val;
+
 	switch (current_Thermocouple->type)
 	{
-	case K_TYPE:
-		GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
+
+	case J_TYPE:
+		IO_val = 0;
+		GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
 		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
-		if (GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E) != 0)
+		IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_J, CHECKIN_PIN_J);
+		if (IO_val == 0)
 		{
 			// 热电偶依旧异常，报警
 			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
@@ -838,10 +843,12 @@ static void Thermocouple_check(void)
 		}
 		break;
 
-	case J_TYPE:
-		GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
+	case K_TYPE:
+		IO_val = 0;
+		GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
 		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
-		if (GPIO_ReadInputDataBit(CHECK_GPIO_J, CHECKIN_PIN_J) != 0)
+		IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_K, CHECKIN_PIN_K);
+		if (IO_val == 0)
 		{
 			// 热电偶依旧异常，报警
 			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
@@ -851,9 +858,12 @@ static void Thermocouple_check(void)
 		break;
 
 	case E_TYPE:
-		GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_J);
+		IO_val = 0;
+		GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
 		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
-		if (GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E) != 0)
+		uint8_t IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E);
+		// 断路报警
+		if (IO_val == 0)
 		{
 			// 热电偶依旧异常，报警
 			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
