@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-12 20:51:51
+ * @LastEditTime: 2025-03-12 20:53:20
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -955,7 +955,7 @@ void main_task(void *p_arg)
 /*-------------------------------------------------------------------------------------------------------------------------*/
 
 /**
- * @description: 消除E/J两个热电偶地误差
+ * @description: 消除热电偶偏置
  * @return {*}
  */
 static void Thermocouple_err_eliminate()
@@ -1025,7 +1025,9 @@ static void Thermocouple_err_eliminate()
 		{
 			if (current_Thermocouple->type == Thermocouple_Lists[i].type)
 			{
+				// 常温下热点偶曲线计算出的理论电压值
 				room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[i].intercept) / Thermocouple_Lists[i].slope;
+				// 曲线修正
 				Thermocouple_Lists[i].Bias = ADC_channel_init_val - room_temp_voltage;
 			}
 		}
