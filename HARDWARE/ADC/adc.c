@@ -194,13 +194,13 @@ uint16_t temp_convert(Thermocouple *thermocouple)
 	switch (thermocouple->type)
 	{
 	case E_TYPE:
-		temp = thermocouple->slope * (ADC_Value_avg(ADC_Channel_7) - thermocouple->Bias) + thermocouple->intercept;
-		break;
-	case J_TYPE:
 		temp = thermocouple->slope * (ADC_Value_avg(ADC_Channel_14) - thermocouple->Bias) + thermocouple->intercept;
 		break;
-	case K_TYPE:
+	case J_TYPE:
 		temp = thermocouple->slope * (ADC_Value_avg(ADC_Channel_15) - thermocouple->Bias) + thermocouple->intercept;
+		break;
+	case K_TYPE:
+		temp = thermocouple->slope * (ADC_Value_avg(ADC_Channel_7) - thermocouple->Bias) + thermocouple->intercept;
 		break;
 	}
 	return temp;
