@@ -349,7 +349,7 @@ int main(void)
 }
 
 /*-------------------------------------------------------------------------------------------------------------------------*/
-/*--------------------------------------------------------Initialize Thread--------------------------------------------------------*/
+/*--------------------------------------------------------Initialize Thread------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
 void start_task(void *p_arg)
 {
@@ -807,23 +807,8 @@ static void Temp_updata_realtime()
 static void Thermocouple_check(void)
 {
 	OS_ERR err;
-	// int adc_refer1 = 0; // 记录一次采集温度
-	// int adc_refer2 = 0; // 记录下一次采集温度
 
-	// // 可加入滤波算法...
-	// adc_refer1 = ADC_Value_avg(ADC_Channel_7);
-	// OSTimeDly(100, OS_OPT_TIME_DLY, &err);
-	// adc_refer2 = ADC_Value_avg(ADC_Channel_7);
-	// /*插拔过程导致电压突变*/
-	// if (abs(adc_refer1 - adc_refer2) > VOLTAGE_FLOW)
-	// {
-	// 	// 热电偶依旧异常，报警
-	// 	err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-	// 	/*唤醒错误处理线程*/
-	// 	OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-	// }
-
-	// stop adc...
+	// stop adc to avoid temp display change
 	static uint8_t IO_val;
 
 	switch (current_Thermocouple->type)
@@ -1046,7 +1031,6 @@ static void Thermocouple_err_eliminate()
 static void key_action_callback_param(Component_Queue *page_list);
 static void key_action_callback_temp(Component_Queue *page_list);
 static void parse_key_action(Page_ID id);
-
 static void key_action_callback_param(Component_Queue *page_list)
 {
 
@@ -1165,7 +1149,6 @@ static void key_action_callback_param(Component_Queue *page_list)
 	page_param->key2 = (ION_OFF_STATE)get_comp(page_list, "ION_OFF")->val;
 	page_param->key3 = (SGW_CTW_STATE)get_comp(page_list, "SGW_CTW")->val;
 }
-
 static void key_action_callback_temp(Component_Queue *page_list)
 {
 
@@ -1282,7 +1265,6 @@ static void key_action_callback_temp(Component_Queue *page_list)
 	page_param->key2 = (ION_OFF_STATE)get_comp(page_list, "ION_OFF")->val;
 	page_param->key3 = (SGW_CTW_STATE)get_comp(page_list, "SGW_CTW")->val;
 }
-
 static void parse_key_action(Page_ID id)
 {
 	switch (id)
@@ -1306,7 +1288,6 @@ static void parse_key_action(Page_ID id)
 		break;
 	}
 }
-
 #if PID_DEBUG == 1
 static bool pid_param_get(uint16_t *pid_raw_param)
 {
@@ -1355,7 +1336,6 @@ static bool pid_param_get(uint16_t *pid_raw_param)
 		return false;
 }
 #endif
-
 static void page_process(Page_ID id)
 {
 	const char *tick_name[] = {"tick1", "tick2", "tick3", "tick4", "tick5"};
@@ -1545,7 +1525,6 @@ static void page_process(Page_ID id)
 		break;
 	}
 }
-
 static bool data_syn(Page_ID id)
 {
 	/*1、按键状态同步*/
