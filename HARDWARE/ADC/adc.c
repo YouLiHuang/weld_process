@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-16 10:55:50
+ * @LastEditTime: 2025-03-12 20:18:54
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -13,12 +13,10 @@
 #include "includes.h"
 #include "protect.h"
 
-// PA4采样一次侧/二次测电流
-// PA5采样二次测输出电压
-// PA6采样初级电压
-// PA7采样温度变送器
-#define ADC_SAMPLE_PNUM 15													// AD 采样点数数
-#define ADC_SAMPLE_CNUM 6													// AD 采样通道数
+// PA4-Irms
+// PA5-Vrms(load)
+// PA6-Transformer primary voltage
+// PA7-The thermocouple outputs a feedback voltage
 volatile unsigned short m_ADCValue[ADC_SAMPLE_PNUM][ADC_SAMPLE_CNUM] = {0}; // 列向量
 
 /**
@@ -106,7 +104,7 @@ void ADC_DMA_INIT(void)
 }
 
 /**
- * @description:
+ * @description:ADC sampling mean calculation
  * @param {uint16_t} channel
  * @return {*}
  */
@@ -170,6 +168,13 @@ uint16_t ADC_Value_avg(uint16_t channel)
 	return (uint16_t)value;
 }
 
+/**
+ * @description: Create a new thermocouple object
+ * @param {SENSOR_TYPE} type
+ * @param {float} slope
+ * @param {float} intercept
+ * @return {*}
+ */
 Thermocouple *newThermocouple(SENSOR_TYPE type, float slope, float intercept)
 {
 	Thermocouple *thermocouple = (Thermocouple *)malloc(sizeof(Thermocouple));
@@ -188,19 +193,24 @@ Thermocouple *newThermocouple(SENSOR_TYPE type, float slope, float intercept)
 	}
 }
 
+/**
+ * @description: Temperature conversion function
+ * @param {Thermocouple} Thermocouple objects
+ * @return {*}
+ */
 uint16_t temp_convert(Thermocouple *thermocouple)
 {
 	uint16_t temp = 0;
 	switch (thermocouple->type)
 	{
 	case E_TYPE:
-		temp = thermocouple->slope * (ADC_Value_avg(ADC_Channel_14) - thermocouple->Bias) + thermocouple->intercept;
+		temp = thermocouple->slope * (ADC_Value_avg(THERMOCOUPLE_CHANNEL_E) - thermocouple->Bias) + thermocouple->intercept;
 		break;
 	case J_TYPE:
-		temp = thermocouple->slope * (ADC_Value_avg(ADC_Channel_15) - thermocouple->Bias) + thermocouple->intercept;
+		temp = thermocouple->slope * (ADC_Value_avg(THERMOCOUPLE_CHANNEL_J) - thermocouple->Bias) + thermocouple->intercept;
 		break;
 	case K_TYPE:
-		temp = thermocouple->slope * (ADC_Value_avg(ADC_Channel_7) - thermocouple->Bias) + thermocouple->intercept;
+		temp = thermocouple->slope * (ADC_Value_avg(THERMOCOUPLE_CHANNEL_K) - thermocouple->Bias) + thermocouple->intercept;
 		break;
 	}
 	return temp;

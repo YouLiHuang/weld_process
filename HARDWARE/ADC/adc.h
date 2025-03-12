@@ -1,17 +1,25 @@
-/***
+/*** 
  * @Author: huangyouli.scut@gmail.com
- * @Date: 2025-01-11 15:47:16
+ * @Date: 2025-03-12 19:48:36
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-12 17:36:21
- * @Description:
+ * @LastEditTime: 2025-03-12 19:59:45
+ * @Description: 
  * @
- * @Copyright (c) 2025 by huangyouli, All Rights Reserved.
+ * @Copyright (c) 2025 by huangyouli, All Rights Reserved. 
  */
+
 
 #ifndef __ADC_H
 #define __ADC_H
 #include "sys.h"
 #include "touchscreen.h"
+
+#define ADC_SAMPLE_PNUM 15													// AD 采样点数数
+#define ADC_SAMPLE_CNUM 6													// AD 采样通道数
+
+#define THERMOCOUPLE_CHANNEL_E ADC_Channel_14
+#define THERMOCOUPLE_CHANNEL_J ADC_Channel_15
+#define THERMOCOUPLE_CHANNEL_K ADC_Channel_7
 
 #define TEMP_GAIN1 0.17
 #define TEMP_GAIN2 0
@@ -28,6 +36,7 @@ typedef struct Thermocouple
 Thermocouple *newThermocouple(SENSOR_TYPE type, float slope, float intercept);
 
 /*NEW API*/
+void Sample_Buffer_clear(void);
 void ADC_DMA_INIT(void);
 uint16_t ADC_Value_avg(uint16_t channel);
 uint16_t temp_convert(Thermocouple *thermocouple);

@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-10 11:26:52
+ * @LastEditTime: 2025-03-12 20:23:56
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -27,13 +27,14 @@
 #include "filter.h"
 #include "ThermocoupleIO.h"
 
-/*调试接口*/
+/*user config*/
+#define ROOM_TEMP 20   // 默认室温
+#define SAMPLE_LEN 100 // 采样深度
+
+/*debug option*/
 #define TEMP_ADJUST 1	 // 温度校准
-#define REALTIME_TEMP 1	 // 实时温度显示使能
 #define VOLTAGE_CHECK 1	 // 过欠压报警
 #define POWER_ON_CHECK 1 // 开机自检报警（开机后完成一次热点电偶检测）
-#define ROOM_TEMP 20	 // 默认室温
-#define SAMPLE_LEN 100	 // 采样深度
 #define JK_TEMP_SHOW 0	 // JK热电偶显示
 
 // 任务优先级
@@ -113,7 +114,7 @@ OS_SEM ERROR_HANDLE_SEM; // 错误信号
 OS_SEM TEMP_DISPLAY_SEM; // 绘图信号
 
 ////////////////////////新界面组件列表///////////////////////////////////////////
-Page_Param *page_param = NULL;			   // 记录当前所在界面id及RDY三个按钮的状态
+Page_Param *page_param = NULL;			   // 记录当前所在界面id及三个按钮的状态
 Component_Queue *param_page_list = NULL;   // 参数设定界面的组件列表
 Component_Queue *temp_page_list = NULL;	   // 温度限制界面的组件列表
 Component_Queue *setting_page_list = NULL; // 通讯界面组件列表
@@ -138,13 +139,14 @@ static bool Current_out_of_ctrl_reset_callback(uint8_t index);
 static bool Temp_up_reset_callback(uint8_t index);
 static bool Temp_down_reset_callback(uint8_t index);
 
-/*采用硬件校准模式，不同的热电偶的板级放大系数不同，需要单独进行校准，但是软件层是一致的*/
+/*采用硬件校准模式，不同的热电偶的板级放大系数不同，
+需要单独进行校准，但是软件层是一致的*/
 // E：0.222*3300/4096=0.1788
 // J：0.2189*3300/4096=0.1763
 // K：0.218*3300/4096=0.1756
 static Thermocouple Thermocouple_Lists[] = {
 	{E_TYPE, 0.17, 0, 320},
-	{K_TYPE, 0.17, 0, 0}, // 实际上校准成了E
+	{K_TYPE, 0.17, 0, 0}, // 主控板上的热电偶检测通道，实际上校准成了E
 	{J_TYPE, 0.17, 0, 260},
 };
 
@@ -528,14 +530,14 @@ void start_task(void *p_arg)
 	OS_CRITICAL_EXIT();			  // 退出临界区
 	OSTaskDel((OS_TCB *)0, &err); // 删除start_task任务自身
 }
-
+#if 0
 /**
  * @description: Temperature rise monitoring API
  * @return {*}
  */
 static bool Temp_up_check(void)
 {
-#if 0
+
 	uint16_t Init_Temperature = 0;
 	uint16_t New_Temperature = 0;
 
@@ -563,8 +565,8 @@ static bool Temp_up_check(void)
 	TIM_Cmd(TIM1, ENABLE);
 
 	// 重启定时器，固定脉宽pwm输出50ms，检测温升。
-	TIM_SetCompare1(TIM1, PD_MAX/2);
-	TIM_SetCompare1(TIM4, PD_MAX/2);
+	TIM_SetCompare1(TIM1, PD_MAX / 2);
+	TIM_SetCompare1(TIM4, PD_MAX / 2);
 
 	// 加热80ms
 	user_tim_delay(100);
@@ -589,15 +591,9 @@ static bool Temp_up_check(void)
 	{
 		return true;
 	}
-
-#endif
-
-	/*1、开机自检需要检测当前是哪一路热电偶，如果是KJ热电偶*/
-
-	/*2、同时需要适配存储接口，读取出上次保存的热电偶校准值*/
-
 	return true;
 }
+#endif
 
 /*---------------------------------------------------------------------------------------*/
 /*--------------------------------------错误回调API--------------------------------------*/
@@ -630,25 +626,17 @@ static bool Thermocouple_recheck_callback(uint8_t index)
 /*---------------------------------------------------------------------------------------*/
 /*--------------------------------------复位回调API--------------------------------------*/
 /*---------------------------------------------------------------------------------------*/
+static void Thermocouple_check(void);
 
 static bool Thermocouple_reset_callback(uint8_t index)
 {
 	bool ret;
-	if (true == Temp_up_check())
-	{
-		/*热电偶恢复正常,复位*/
-		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
-		err_ctrl->err_list[index]->state = false; // 清除错误状态
-		ret = true;
-		NVIC_SystemReset();
-	}
-	else
-	{
-		/*热点偶仍旧异常*/
-		Page_to(page_param, ALARM_PAGE);
-		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
-		ret = false;
-	}
+	/*热电偶恢复正常,复位*/
+	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
+	err_ctrl->err_list[index]->state = false; // 清除错误状态
+	ret = true;
+	/*再次检测热点偶是否正常*/
+	Thermocouple_check();
 	return ret;
 }
 static bool Current_out_of_ctrl_reset_callback(uint8_t index)
@@ -660,7 +648,7 @@ static bool Current_out_of_ctrl_reset_callback(uint8_t index)
 		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
 		err_ctrl->err_list[index]->state = false; // 清除错误状态
 		ret = true;
-		NVIC_SystemReset();
+		// NVIC_SystemReset();
 	}
 	else
 	{
@@ -675,14 +663,14 @@ static bool Temp_up_reset_callback(uint8_t index)
 {
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
 	err_ctrl->err_list[index]->state = false; // 清除错误状态
-	NVIC_SystemReset();
+	// NVIC_SystemReset();
 	return true;
 }
 static bool Temp_down_reset_callback(uint8_t index)
 {
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
 	err_ctrl->err_list[index]->state = false; // 清除错误状态
-	NVIC_SystemReset();
+	// NVIC_SystemReset();
 	return true;
 }
 
@@ -762,7 +750,6 @@ void error_task(void *p_arg)
 /*----------------------------------------------------------主线程---------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
 static void voltage_check(void);
-static void Thermocouple_check(void);
 static bool current_out_of_ctrl(void);
 static bool current_out_of_ctrl(void)
 {
@@ -780,6 +767,11 @@ static bool current_out_of_ctrl(void)
 
 static void Power_on_check(void)
 {
+
+	/*1、开机自检需要检测当前是哪一路热电偶，如果是KJ热电偶*/
+
+	/*2、同时需要适配存储接口，读取出上次保存的热电偶校准值*/
+
 #if POWER_ON_CHECK == 1
 	// 热电偶开机自检标志位——上电只进行一次检查
 	Thermocouple_check();
@@ -790,26 +782,24 @@ float voltage_test[6] = {0};
 
 static void Temp_updata_realtime()
 {
-
-	// voltage_test[0] = (ADC_Value_avg(ADC_Channel_4) * 825) >> 10;
-	// voltage_test[1] = (ADC_Value_avg(ADC_Channel_5) * 825) >> 10;
-	// voltage_test[2] = (ADC_Value_avg(ADC_Channel_6) * 825) >> 10;
 	// voltage_test[3] = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10;
 	// voltage_test[4] = (ADC_Value_avg(ADC_Channel_14) * 825) >> 10;
 	// voltage_test[5] = (ADC_Value_avg(ADC_Channel_15) * 825) >> 10;
-	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 #if TEMP_ADJUST == 1
+	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 	command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
 #endif
 }
 
 static void Thermocouple_check(void)
 {
+
 	OS_ERR err;
-
 	// stop adc to avoid temp display change
-	static uint8_t IO_val;
+	ADC_DMACmd(ADC1, DISABLE);
+	ADC_Cmd(ADC1, DISABLE);
 
+	static uint8_t IO_val;
 	switch (current_Thermocouple->type)
 	{
 
@@ -828,22 +818,21 @@ static void Thermocouple_check(void)
 		GPIO_ResetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
 		break;
 
-
-	// 现在的版本主板接线不方便，因此暂时不检测主板的热电偶
-	// case K_TYPE:
-	// 	IO_val = 0;
-	// 	GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
-	// 	OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
-	// 	IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_K, CHECKIN_PIN_K);
-	// 	if (IO_val == 0)
-	// 	{
-	// 		// 热电偶依旧异常，报警
-	// 		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-	// 		/*唤醒错误处理线程*/
-	// 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-	// 	}
-	// 	GPIO_ResetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
-	// 	break;
+		// 现在的版本主板接线不方便，因此暂时不检测主板的热电偶
+		// case K_TYPE:
+		// 	IO_val = 0;
+		// 	GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
+		// 	OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
+		// 	IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_K, CHECKIN_PIN_K);
+		// 	if (IO_val == 0)
+		// 	{
+		// 		// 热电偶依旧异常，报警
+		// 		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+		// 		/*唤醒错误处理线程*/
+		// 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		// 	}
+		// 	GPIO_ResetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
+		// 	break;
 
 	case E_TYPE:
 		IO_val = 0;
@@ -861,6 +850,10 @@ static void Thermocouple_check(void)
 		GPIO_ResetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
 		break;
 	}
+
+	// RESUME ADC
+	ADC_DMACmd(ADC1, ENABLE);
+	ADC_Cmd(ADC1, ENABLE);
 }
 
 static void voltage_check(void)
@@ -919,7 +912,7 @@ void main_task(void *p_arg)
 		/*part2：主焊接任务*/
 		welding_process();
 		/*part3:空闲时进行热点偶监测*/
-		// Thermocouple_check();
+		Thermocouple_check();
 		/*part4:空闲时过欠压监测*/
 		voltage_check();
 		/*part5：空闲温度显示*/
@@ -1516,12 +1509,11 @@ static void page_process(Page_ID id)
 		OSSemPend(&SENSOR_UPDATE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (OS_ERR_NONE == err)
 		{
-			// 在室温下才允许校准（10-40°C范围内才允许校准）
-			// if (weld_controller->realtime_temp < 2 * ROOM_TEMP && weld_controller->realtime_temp > 0.5 * ROOM_TEMP)
-			// 	Thermocouple_err_eliminate();
-			// else
-			// 	command_set_comp_val("warning", "aph", 127);
-			Thermocouple_err_eliminate();
+
+			if (weld_controller->realtime_temp < 2 * ROOM_TEMP && weld_controller->realtime_temp > 0.5 * ROOM_TEMP) // 在室温下才允许校准（10-40°C范围内才允许校准）
+				Thermocouple_err_eliminate();
+			else // 焊头尚未冷却，警报
+				command_set_comp_val("warning", "aph", 127);
 		}
 		/*5、显示实时温度*/
 		command_set_comp_val("temp33", "val", weld_controller->realtime_temp);

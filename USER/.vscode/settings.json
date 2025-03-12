@@ -51,7 +51,8 @@
         "optional": "c",
         "system_error": "c",
         "type_traits": "c",
-        "sstream": "c"
+        "sstream": "c",
+        "stm32f4xx_adc.h": "c"
     },
     // 头部注释
     "fileheader.customMade": {
