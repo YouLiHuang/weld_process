@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-12 20:53:20
+ * @LastEditTime: 2025-03-12 21:00:32
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -145,9 +145,9 @@ static bool Temp_down_reset_callback(uint8_t index);
 // J：0.2189*3300/4096=0.1763
 // K：0.218*3300/4096=0.1756
 static Thermocouple Thermocouple_Lists[] = {
-	{E_TYPE, 0.17, 0, 320},
+	{E_TYPE, 0.17, 0, 0},
 	{K_TYPE, 0.17, 0, 0}, // 主控板上的热电偶检测通道，实际上校准成了E
-	{J_TYPE, 0.17, 0, 260},
+	{J_TYPE, 0.17, 0, 0},
 };
 
 const error_match_list match_list[] = {
@@ -1034,6 +1034,9 @@ static void Thermocouple_err_eliminate()
 
 		/*校准完成，开启进度条动画*/
 		command_set_comp_val("tm0", "en", 1);
+
+		/*存储热电偶校准参数到eeprom*/
+		/*...*/
 	}
 
 #if 0
