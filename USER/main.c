@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-12 20:47:14
+ * @LastEditTime: 2025-03-12 20:51:51
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -28,8 +28,9 @@
 #include "ThermocoupleIO.h"
 
 /*user config*/
-#define ROOM_TEMP 20   // 默认室温
-#define SAMPLE_LEN 100 // 采样深度
+#define ROOM_TEMP 20	 // 默认室温
+#define SAMPLE_LEN 100	 // 采样深度
+#define ADC_BIAS_MAX 650 // 最大偏置值
 
 /*debug option*/
 #define TEMP_ADJUST 1	// 温度校准
@@ -1007,7 +1008,7 @@ static void Thermocouple_err_eliminate()
 	}
 	ADC_channel_init_val = Sum / SAMPLE_LEN;
 
-	if (ADC_channel_init_val > 650)
+	if (ADC_channel_init_val > ADC_BIAS_MAX)
 	{
 		/*偏置过高，异常报警*/
 		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
