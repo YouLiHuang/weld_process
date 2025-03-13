@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-13 10:30:54
+ * @LastEditTime: 2025-03-13 11:27:17
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -294,7 +294,7 @@ int main(void)
 	temp_draw_ctrl = new_temp_draw_ctrl(realtime_temp_buf, 500, 2000, 500);
 
 	/*默认e型热电偶*/
-	current_Thermocouple = &Thermocouple_Lists[1];
+	// current_Thermocouple = &Thermocouple_Lists[1];
 
 	/*------------------------------------------------------Hardware layer data initialization-----------------------------------------------------------*/
 	/*Peripheral initialization*/
@@ -1029,6 +1029,8 @@ static void Thermocouple_err_eliminate()
 				room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[i].intercept) / Thermocouple_Lists[i].slope;
 				// 曲线修正
 				Thermocouple_Lists[i].Bias = ADC_channel_init_val - room_temp_voltage;
+				// 更新当前热电偶
+				current_Thermocouple = &Thermocouple_Lists[i];
 			}
 		}
 
@@ -1036,98 +1038,18 @@ static void Thermocouple_err_eliminate()
 		command_set_comp_val("tm0", "en", 1);
 
 		/*存储热电偶校准参数到eeprom*/
-		/*...*/
+		uint8_t group = get_comp(param_page_list, "GP")->val;
+		switch (current_Thermocouple->type)
+		{
+		case E_TYPE:
+			SPI_Save_Word(current_Thermocouple->Bias, CARLIBRATION_BASE(group));
+			break;
+		case J_TYPE:
+			SPI_Save_Word(current_Thermocouple->Bias, CARLIBRATION_BASE(group) + ADDR_OFFSET);
+			break;
+		}
 	}
 
-#if 0
-	/*检测此时接入的是哪种热点偶*/
-	uint32_t sum = 0;
-	uint16_t adc_ch7_init_value = 0;
-	uint16_t adc_ch14_init_value = 0;
-	uint16_t adc_ch15_init_value = 0;
-	/*采集两个通道的初始偏置电压，1ms采集一个点*/
-	float adc_ch7_data[SAMPLE_LEN] = {0};
-	float adc_ch14_data[SAMPLE_LEN] = {0};
-	float adc_ch15_data[SAMPLE_LEN] = {0};
-	for (uint16_t i = 0; i < SAMPLE_LEN; i++)
-	{
-		adc_ch7_data[i] = ADC_Value_avg(ADC_Channel_7);
-		adc_ch14_data[i] = ADC_Value_avg(ADC_Channel_14);
-		adc_ch15_data[i] = ADC_Value_avg(ADC_Channel_15);
-		user_tim_delay(1);
-	}
-
-	/*低通滤波*/
-	float adc_ch7_fliter_buf[SAMPLE_LEN] = {0};
-	float adc_ch14_fliter_buf[SAMPLE_LEN] = {0};
-	float adc_ch15_fliter_buf[SAMPLE_LEN] = {0};
-
-	low_pass_Filter((float *)adc_ch7_data,
-					SAMPLE_LEN,
-					(float *)adc_ch7_fliter_buf,
-					1000,
-					1000);
-	low_pass_Filter((float *)adc_ch14_data,
-					SAMPLE_LEN,
-					(float *)adc_ch14_fliter_buf,
-					1000,
-					1000);
-	low_pass_Filter((float *)adc_ch15_data,
-					SAMPLE_LEN,
-					(float *)adc_ch15_fliter_buf,
-					1000,
-					1000);
-
-	/*均值滤波——计算初始偏置*/
-	sum = 0;
-	for (uint16_t i = 0; i < SAMPLE_LEN; i++)
-	{
-		sum += adc_ch7_fliter_buf[i];
-	}
-	adc_ch7_init_value = sum / SAMPLE_LEN;
-
-	sum = 0;
-	for (uint16_t i = 0; i < SAMPLE_LEN; i++)
-	{
-		sum += adc_ch14_fliter_buf[i];
-	}
-	adc_ch14_init_value = sum / SAMPLE_LEN;
-
-	sum = 0;
-	for (uint16_t i = 0; i < SAMPLE_LEN; i++)
-	{
-		sum += adc_ch15_fliter_buf[i];
-	}
-	adc_ch15_init_value = sum / SAMPLE_LEN;
-
-	if (adc_ch7_init_value > 650 || adc_ch14_init_value > 650 || adc_ch15_init_value > 650)
-	{
-		/*偏置过高，异常报警*/
-		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-		OS_ERR err;
-		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-	}
-	else
-	{
-		uint16_t room_temp_voltage = 0; // 常温对应的电压
-
-		// E adjust
-		room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[0].intercept) / Thermocouple_Lists[0].slope;
-		Thermocouple_Lists[0].Bias = adc_ch14_init_value - room_temp_voltage;
-
-		// J adjust
-		room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[1].intercept) / Thermocouple_Lists[1].slope;
-		Thermocouple_Lists[1].Bias = adc_ch15_init_value - room_temp_voltage;
-
-		// K adjust
-		room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[2].intercept) / Thermocouple_Lists[2].slope;
-		Thermocouple_Lists[2].Bias = adc_ch7_init_value - room_temp_voltage;
-
-		/*校准完成，开启进度条动画*/
-		command_set_comp_val("tm0", "en", 1);
-	}
-
-#endif
 }
 
 /*通信任务API*/

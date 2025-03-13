@@ -12,6 +12,7 @@
 #define TEMP_NUM 3
 #define ALARM_NUM 6
 #define GAIN_NUM 2
+#define CALIBRATION_VALUE_NUM 2
 /*address config*/
 #define ADDR_PAGE_WIDTH 40
 #define ADDR_OFFSET 2
@@ -20,6 +21,7 @@
 #define TEMP_BASE_OFFSET 12
 #define ALARM_BASE_OFFSET 18
 #define GAIN_BASE_OFFSET 30
+#define CARLIBRATION_BASE_OFFSET 34 // E J
 /*address convert*/
 #define PAGE_BASE(group) (ADDR_PAGE_WIDTH * (group + 1))
 
@@ -27,6 +29,7 @@
 #define TEMP_BASE(group) (PAGE_BASE(group) + TEMP_BASE_OFFSET)
 #define ALARM_BASE(group) (PAGE_BASE(group) + ALARM_BASE_OFFSET)
 #define GAIN_BASE(group) (PAGE_BASE(group) + GAIN_BASE_OFFSET)
+#define CARLIBRATION_BASE(group) (PAGE_BASE(group) + CARLIBRATION_BASE_OFFSET)
 
 /*hardware api*/
 void SPI1_Init(void);

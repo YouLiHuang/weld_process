@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-13 19:22:56
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-13 11:11:57
+ * @LastEditTime: 2025-03-13 11:16:17
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -391,6 +391,8 @@ void Load_param_alarm(weld_ctrl *ctrl, int array_of_data)
 		get_comp(temp_page_list, temp_name_list[i])->val = alarm_temperature_load[i];
 	}
 }
+
+
 
 /**
  * @description: 焊机号以及上位机通信初始化
