@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-13 19:22:56
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-03 19:21:01
+ * @LastEditTime: 2025-03-13 11:11:57
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -235,21 +235,26 @@ void Load_data_from_mem(void)
 	}
 }
 
-void save_param(weld_ctrl *ctrl, int array_of_data, const u16 *temp, const u8 temp_len, const u16 *time, const u8 time_len)
+void save_param(weld_ctrl *ctrl,
+				int array_of_data,
+				const u16 *temp,
+				const u8 temp_len,
+				const u16 *time,
+				const u8 time_len)
 {
 	/*保存组别*/
 	SPI_Save_Word(array_of_data, 0);
-	/*保存三段温度和6个时间*/
-	SPI_Save_Word(time[0], 40 * (array_of_data + 1));	   // time1
-	SPI_Save_Word(time[1], 40 * (array_of_data + 1) + 2);  // time2
-	SPI_Save_Word(time[2], 40 * (array_of_data + 1) + 4);  // time3
-	SPI_Save_Word(time[3], 40 * (array_of_data + 1) + 6);  // time4
-	SPI_Save_Word(time[4], 40 * (array_of_data + 1) + 8);  // time5
-	SPI_Save_Word(time[5], 40 * (array_of_data + 1) + 10); // 0
+	/*time1-time5*/
+	for (uint8_t i = 0; i < TIME_NUM; i++)
+	{
+		SPI_Save_Word(time[i], TIME_BASE(array_of_data) + ADDR_OFFSET * i);
+	}
 
-	SPI_Save_Word(temp[0], 40 * (array_of_data + 1) + 12); // temp1
-	SPI_Save_Word(temp[1], 40 * (array_of_data + 1) + 14); // temp2
-	SPI_Save_Word(temp[2], 40 * (array_of_data + 1) + 16); // temp3
+	/*temp1-temp3*/
+	for (uint8_t i = 0; i < TEMP_NUM; i++)
+	{
+		SPI_Save_Word(temp[i], TEMP_BASE(array_of_data) + ADDR_OFFSET * i);
+	}
 
 	/*数据同步*/
 	for (u8 i = 0; i < sizeof(ctrl->weld_time) / sizeof(u16); i++)
@@ -261,47 +266,53 @@ void save_param(weld_ctrl *ctrl, int array_of_data, const u16 *temp, const u8 te
 		ctrl->weld_temp[i] = temp[i];
 	}
 }
-void save_param_alarm(weld_ctrl *ctrl, int array_of_data, const u16 *temp, const u8 temp_len, const u16 *gain)
+
+void save_param_alarm(weld_ctrl *ctrl,
+					  int array_of_data,
+					  const u16 *temp,
+					  const u8 temp_len,
+					  const u16 *gain)
 {
 	/*存储组号*/
 	SPI_Save_Word(array_of_data, 0);
-	/*存储6个限制温度*/
-	SPI_Save_Word(temp[0], 40 * (array_of_data + 1) + 18);
-	SPI_Save_Word(temp[1], 40 * (array_of_data + 1) + 20);
-	SPI_Save_Word(temp[2], 40 * (array_of_data + 1) + 22);
-	SPI_Save_Word(temp[3], 40 * (array_of_data + 1) + 24);
-	SPI_Save_Word(temp[4], 40 * (array_of_data + 1) + 26);
-	SPI_Save_Word(temp[5], 40 * (array_of_data + 1) + 28);
-	/*存储2个温度系数*/
-	SPI_Save_Word(gain[0], 40 * (array_of_data + 1) + 30);
-	SPI_Save_Word(gain[1], 40 * (array_of_data + 1) + 32);
+	/*alarm1-alarm6*/
+	for (uint8_t i = 0; i < ALARM_NUM; i++)
+	{
+		SPI_Save_Word(temp[i], ALARM_BASE(array_of_data) + ADDR_OFFSET * i);
+	}
 
+	/*gain1-gain2*/
+	for (uint8_t i = 0; i < GAIN_NUM; i++)
+	{
+		SPI_Save_Word(gain[i], GAIN_BASE(array_of_data) + ADDR_OFFSET * i);
+	}
 	/*数据同步*/
 	for (u8 i = 0; i < sizeof(ctrl->alarm_temp) / sizeof(u16); i++)
 	{
 		ctrl->alarm_temp[i] = temp[i];
 	}
-
 	ctrl->temp_gain1 = gain[0] / 100.0;
 	ctrl->temp_gain2 = gain[1] / 100.0;
 }
 void Load_param(weld_ctrl *ctrl, int array_of_data)
 {
 	SPI_Save_Word(array_of_data, 0);
+	/*参数加载*/
 	u16 welding_time_load[5] = {0}, welding_Temp_load[3] = {0};
-	welding_time_load[0] = SPI_Load_Word(40 * (array_of_data + 1));		// pre load
-	welding_time_load[1] = SPI_Load_Word(40 * (array_of_data + 1) + 2); // first step
-	welding_time_load[2] = SPI_Load_Word(40 * (array_of_data + 1) + 4); // second step
-	welding_time_load[3] = SPI_Load_Word(40 * (array_of_data + 1) + 6); // third step
-	welding_time_load[4] = SPI_Load_Word(40 * (array_of_data + 1) + 8); // duty
+	for (uint8_t i = 0; i < sizeof(welding_time_load) / sizeof(u16); i++)
+	{
+		welding_time_load[i] = SPI_Load_Word(TIME_BASE(array_of_data) + ADDR_OFFSET * i);
+	}
 
-	welding_Temp_load[0] = SPI_Load_Word(40 * (array_of_data + 1) + 12); // temp1~temp3
-	welding_Temp_load[1] = SPI_Load_Word(40 * (array_of_data + 1) + 14);
-	welding_Temp_load[2] = SPI_Load_Word(40 * (array_of_data + 1) + 16);
+	/* temp1~temp3*/
+	for (uint8_t i = 0; i < sizeof(welding_Temp_load) / sizeof(u16); i++)
+	{
+		welding_Temp_load[i] = SPI_Load_Word(TEMP_BASE(array_of_data) + ADDR_OFFSET * i);
+	}
 
 	/*数据校验*/
-
-	/*参数修改*/
+	/*...*/
+	/*参数更新*/
 	for (u8 i = 0; i < sizeof(welding_time_load) / sizeof(u16); i++)
 	{
 		ctrl->weld_time[i] = welding_time_load[i];
@@ -339,37 +350,33 @@ void Load_param(weld_ctrl *ctrl, int array_of_data)
 }
 void Load_param_alarm(weld_ctrl *ctrl, int array_of_data)
 {
+	/*参数加载*/
 	u16 alarm_temperature_load[6] = {0};
-	alarm_temperature_load[0] = SPI_Load_Word(40 * (array_of_data + 1) + 18);
-	alarm_temperature_load[1] = SPI_Load_Word(40 * (array_of_data + 1) + 20);
-	alarm_temperature_load[2] = SPI_Load_Word(40 * (array_of_data + 1) + 22);
-	alarm_temperature_load[3] = SPI_Load_Word(40 * (array_of_data + 1) + 24);
-	alarm_temperature_load[4] = SPI_Load_Word(40 * (array_of_data + 1) + 26);
-	alarm_temperature_load[5] = SPI_Load_Word(40 * (array_of_data + 1) + 28);
+	for (uint8_t i = 0; i < sizeof(alarm_temperature_load) / sizeof(u16); i++)
+	{
+		alarm_temperature_load[i] = SPI_Load_Word(ALARM_BASE(array_of_data) + ADDR_OFFSET * i);
+	}
 
-	/*参数校验*/
+	double gain_raw[2] = {0};
+	for (uint8_t i = 0; i < sizeof(gain_raw) / sizeof(double); i++)
+	{
+		gain_raw[i] = SPI_Load_Word(GAIN_BASE(array_of_data) + ADDR_OFFSET * i);
+	}
+
+	/*参数校验/更新*/
 	for (u8 i = 0; i < sizeof(alarm_temperature_load) / sizeof(u16); i++)
 	{
 		if (alarm_temperature_load[i] > ALARM_MAX_TEMP)
 			alarm_temperature_load[i] = ALARM_MAX_TEMP;
-	}
 
-	for (u8 i = 0; i < sizeof(alarm_temperature_load) / sizeof(u16); i++)
-	{
 		ctrl->alarm_temp[i] = alarm_temperature_load[i];
 	}
-
-	/*参数修改*/
-	double gain1_raw, gain2_raw;
-	gain1_raw = (double)SPI_Load_Word(40 * (array_of_data + 1) + 30);
-	gain2_raw = (double)SPI_Load_Word(40 * (array_of_data + 1) + 32);
-
-	ctrl->temp_gain1 = (double)gain1_raw / 100.0;
-	ctrl->temp_gain2 = (double)gain2_raw / 100.0;
+	ctrl->temp_gain1 = (double)gain_raw[0] / 100.0;
+	ctrl->temp_gain2 = (double)gain_raw[1] / 100.0;
 
 	/*参数同步*/
-	get_comp(temp_page_list, "GAIN1")->val = gain1_raw;
-	get_comp(temp_page_list, "GAIN2")->val = gain2_raw;
+	get_comp(temp_page_list, "GAIN1")->val = gain_raw[0];
+	get_comp(temp_page_list, "GAIN2")->val = gain_raw[1];
 
 	char *temp_name_list[] = {
 		"alarm1",
@@ -433,4 +440,3 @@ void Host_computer_reset(void)
 	/*翻到参数设置页面*/
 	command_send_raw("page param_page");
 }
-

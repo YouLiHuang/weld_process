@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-12 21:00:32
+ * @LastEditTime: 2025-03-13 10:30:54
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -961,7 +961,7 @@ void main_task(void *p_arg)
 static void Thermocouple_err_eliminate()
 {
 
-	uint32_t Sum = 0;
+	uint32_t sum = 0;
 	uint16_t ADC_channel_init_val = 0;
 	float adc_channel_data[SAMPLE_LEN] = {0};
 	float adc_channel_fliter_buf[SAMPLE_LEN] = {0};
@@ -1001,12 +1001,12 @@ static void Thermocouple_err_eliminate()
 					1000);
 
 	/*均值滤波——计算初始偏置*/
-	Sum = 0;
+	sum = 0;
 	for (uint16_t i = 0; i < SAMPLE_LEN; i++)
 	{
-		Sum += adc_channel_fliter_buf[i];
+		sum += adc_channel_fliter_buf[i];
 	}
-	ADC_channel_init_val = Sum / SAMPLE_LEN;
+	ADC_channel_init_val = sum / SAMPLE_LEN;
 
 	if (ADC_channel_init_val > ADC_BIAS_MAX)
 	{
