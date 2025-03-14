@@ -33,9 +33,10 @@
 #define ADC_BIAS_MAX 650 // 最大偏置值
 
 /*debug option*/
-#define TEMP_ADJUST 1	// 温度校准
-#define VOLTAGE_CHECK 1 // 过欠压报警
-#define JK_TEMP_SHOW 0	// JK热电偶显示
+#define TEMP_ADJUST 1	 // 温度校准
+#define VOLTAGE_CHECK 1	 // 过欠压报警
+#define JK_TEMP_SHOW 0	 // JK热电偶显示
+#define POWER_ON_CHECK 0 // 开机自检
 
 // 任务优先级
 #define START_TASK_PRIO 3
@@ -294,7 +295,7 @@ int main(void)
 	temp_draw_ctrl = new_temp_draw_ctrl(realtime_temp_buf, 500, 2000, 500);
 
 	/*默认e型热电偶*/
-	// current_Thermocouple = &Thermocouple_Lists[1];
+	current_Thermocouple = &Thermocouple_Lists[1];
 
 	/*------------------------------------------------------Hardware layer data initialization-----------------------------------------------------------*/
 	/*Peripheral initialization*/
@@ -305,18 +306,17 @@ int main(void)
 	KEYin_Init();									// key io init
 	OUT_Init();										// output pin init
 	Check_IO_init();								// Thermocouple detection io initialization
-	SPI1_Init();
-	ADC_DMA_INIT();
+	SPI1_Init();									// spi init
+	ADC_DMA_INIT();									// ADC init
+	Current_Check_IO_Config();						// Current detection io configuration
+	Temp_Protect_IO_Config();						// temp overload init
 
 	/*TIM7-TIM3(time)-TIM5(pid)-TIM1(pwm1)-TIM4(pwm2)*/
 	TIM2_Int_Init();
 	TIM3_Int_Init();
 	TIM5_Int_Init();
 
-	/*硬件保护初始化*/
-	Current_Check_IO_Config(); // Current detection io configuration
-	// PROTECT_Init();			   // MCU 过热外部中断/变压器过热外部中断
-
+	/*user device init*/
 	Touchscreen_init();
 	Load_data_from_mem();
 	Host_computer_reset();
@@ -767,13 +767,14 @@ static bool current_out_of_ctrl(void)
 
 static void Power_on_check(void)
 {
+#if POWER_ON_CHECK == 1
 	OS_ERR err;
 	/*1、开机自检需要检测当前是哪一路热电偶*/
 	GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
 	GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
 	GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
 
-	OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
+	delay_ms(100);
 
 	if (GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E) != 0)
 	{
@@ -804,9 +805,9 @@ static void Power_on_check(void)
 
 	/*2、同时需要适配存储接口，读取出上次保存的热电偶校准值*/
 	/* ... */
-}
 
-float voltage_test[6] = {0};
+#endif
+}
 
 static void Temp_updata_realtime()
 {
@@ -823,65 +824,58 @@ static void Thermocouple_check(void)
 {
 
 	OS_ERR err;
-	// stop adc to avoid temp display change
-	ADC_DMACmd(ADC1, DISABLE);
-	ADC_Cmd(ADC1, DISABLE);
 
 	static uint8_t IO_val;
 	switch (current_Thermocouple->type)
 	{
 
 	case J_TYPE:
-		IO_val = 0;
-		GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
-		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
-		IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_J, CHECKIN_PIN_J);
-		if (IO_val == 0)
-		{
-			// 热电偶依旧异常，报警
-			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-			/*唤醒错误处理线程*/
-			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-		}
-		GPIO_ResetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
+		// IO_val = 0;
+		// GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
+		// OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
+		// IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_J, CHECKIN_PIN_J);
+		// if (IO_val == 0)
+		// {
+		// 	// 热电偶依旧异常，报警
+		// 	err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+		// 	/*唤醒错误处理线程*/
+		// 	OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		// }
+		// GPIO_ResetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
 		break;
 
 		// 现在的版本主板接线不方便，因此暂时不检测主板的热电偶
-		// case K_TYPE:
-		// 	IO_val = 0;
-		// 	GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
-		// 	OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
-		// 	IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_K, CHECKIN_PIN_K);
-		// 	if (IO_val == 0)
-		// 	{
-		// 		// 热电偶依旧异常，报警
-		// 		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-		// 		/*唤醒错误处理线程*/
-		// 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-		// 	}
-		// 	GPIO_ResetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
-		// 	break;
+	case K_TYPE:
+		// IO_val = 0;
+		// GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
+		// OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
+		// IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_K, CHECKIN_PIN_K);
+		// if (IO_val == 0)
+		// {
+		// 	// 热电偶依旧异常，报警
+		// 	err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+		// 	/*唤醒错误处理线程*/
+		// 	OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		// }
+		// GPIO_ResetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
+		break;
 
 	case E_TYPE:
-		IO_val = 0;
-		GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
-		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
-		uint8_t IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E);
-		// 断路报警
-		if (IO_val == 0)
-		{
-			// 热电偶依旧异常，报警
-			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-			/*唤醒错误处理线程*/
-			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-		}
-		GPIO_ResetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
+		// IO_val = 0;
+		// GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
+		// OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
+		// uint8_t IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E);
+		// // 断路报警
+		// if (IO_val == 0)
+		// {
+		// 	// 热电偶依旧异常，报警
+		// 	err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+		// 	/*唤醒错误处理线程*/
+		// 	OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		// }
+		// GPIO_ResetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
 		break;
 	}
-
-	// RESUME ADC
-	ADC_DMACmd(ADC1, ENABLE);
-	ADC_Cmd(ADC1, ENABLE);
 }
 
 static void voltage_check(void)
@@ -909,6 +903,43 @@ static void voltage_check(void)
 	}
 }
 
+static void Overload_check(void)
+{
+	OS_ERR err;
+	if (GPIO_ReadInputDataBit(CURRENT_OVERLOAD_GPIO, CURRENT_PIN) == 0)
+	{
+		OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
+		if (GPIO_ReadInputDataBit(CURRENT_OVERLOAD_GPIO, CURRENT_PIN) == 0)
+		{
+			err_get_type(err_ctrl, CURRENT_OUT_OT_CTRL)->state = true;
+			/*唤醒错误处理线程*/
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		}
+	}
+
+	// if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 0)
+	// {
+	// 	OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
+	// 	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 0)
+	// 	{
+	// 		err_get_type(err_ctrl, MCU_OVER_HEAT)->state = true;
+	// 		/*唤醒错误处理线程*/
+	// 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+	// 	}
+	// }
+
+	// if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 0)
+	// {
+	// 	OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
+	// 	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 0)
+	// 	{
+	// 		err_get_type(err_ctrl, MCU_OVER_HEAT)->state = true;
+	// 		/*唤醒错误处理线程*/
+	// 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+	// 	}
+	// }
+}
+
 /*
 	焊接主任务
 	功能描述：
@@ -923,7 +954,7 @@ void main_task(void *p_arg)
 
 	OS_ERR err;
 	KEYin_Init();
-	/*开机自检*/
+
 	Power_on_check();
 	while (1)
 	{
@@ -943,8 +974,8 @@ void main_task(void *p_arg)
 		Thermocouple_check();
 		/*part4:空闲时过欠压监测*/
 		voltage_check();
-		/*part5：空闲温度显示*/
-		Temp_updata_realtime();
+		/*part5：过流/过温度保护*/
+		Overload_check();
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
@@ -1049,7 +1080,6 @@ static void Thermocouple_err_eliminate()
 			break;
 		}
 	}
-
 }
 
 /*通信任务API*/
@@ -1530,6 +1560,32 @@ static void page_process(Page_ID id)
 		command_get_comp_val(setting_page_list, "baudrate", "val");
 		/*3、读取热电偶类型*/
 		command_get_comp_val(setting_page_list, "sensortype", "val");
+		/*用户完成热电偶选择，更新热电偶类型*/
+		switch (get_comp(setting_page_list, "sensortype")->val)
+		{
+		case K_TYPE:
+			for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
+			{
+				if (Thermocouple_Lists[i].type == K_TYPE)
+					current_Thermocouple = &Thermocouple_Lists[i];
+			}
+
+			break;
+		case E_TYPE:
+			for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
+			{
+				if (Thermocouple_Lists[i].type == E_TYPE)
+					current_Thermocouple = &Thermocouple_Lists[i];
+			}
+			break;
+		case J_TYPE:
+			for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
+			{
+				if (Thermocouple_Lists[i].type == J_TYPE)
+					current_Thermocouple = &Thermocouple_Lists[i];
+			}
+			break;
+		}
 		/*4、订阅热电偶校准信号*/
 		OSSemPend(&SENSOR_UPDATE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (OS_ERR_NONE == err)
@@ -1654,13 +1710,14 @@ void read_task(void *p_arg)
 	OS_ERR err;
 	while (1)
 	{
-		/*处理页面逻辑*/
+		/*part1:处理页面逻辑*/
 		if (Page_id_get() == true)
 		{
 			page_process(page_param->id);
 			data_syn(page_param->id);
 		}
-
+		/*part2：空闲温度显示*/
+		Temp_updata_realtime();
 		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
 }

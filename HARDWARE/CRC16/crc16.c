@@ -5,6 +5,7 @@
 #include "includes.h"
 #include "spi.h"
 #include "touchscreen.h"
+#include "welding_process.h"
 
 extern OS_Q UART_Msg;
 
@@ -362,8 +363,6 @@ int bound_trail(u32 bound)
 	else
 		return 0;
 }
-
-
 
 /**
  * @description: 线性插值函数

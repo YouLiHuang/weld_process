@@ -326,16 +326,21 @@ void TIM5_IRQHandler(void)
 			/*时间更新*/
 			weld_controller->step_time_tick++;
 
-			if (current_temp_comp >= weld_controller->second_step_turn && weld_controller->pid_ctrl->stable_flag == false)
-			{
-				/*到达刹车点，转阶段*/
-				weld_controller->pid_ctrl->stable_flag = true;
-			}
+			// if (current_temp_comp >= weld_controller->second_step_turn && weld_controller->pid_ctrl->stable_flag == false)
+			// {
+			// 	/*到达刹车点，转阶段*/
+			// 	weld_controller->pid_ctrl->stable_flag = true;
+			// }
 
 			if (weld_controller->pid_ctrl->stable_flag == false)
 			{
 				// 第一个设定点
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->second_step_set + STABLE_ERR,
+				// weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->second_step_set + STABLE_ERR,
+				// 											 current_temp_comp,
+				// 											 weld_controller->Duty_Cycle,
+				// 											 weld_controller->pid_ctrl);
+
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
 															 current_temp_comp,
 															 weld_controller->Duty_Cycle,
 															 weld_controller->pid_ctrl);

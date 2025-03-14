@@ -9,22 +9,25 @@
  */
 #ifndef __PROTECT_H
 #define __PROTECT_H
-#include "adc.h"
+
+#include "includes.h"
+#include "touchscreen.h"
 #include "stm32f4xx.h"
-#include "key.h"
-#include "welding_process.h"
 #include "stdbool.h"
 
+/*hardware api*/
+#define CURRENT_OVERLOAD_GPIO GPIOB
+#define TEMP_OVERLOAD_GPIO GPIOC
+#define CURRENT_PIN GPIO_Pin_0
+#define RECTIFICATION_PIN GPIO_Pin_9
+#define RADIATOR_PIN GPIO_Pin_10
+
+/*user config*/
 #define OVER_VOLTAGE 3500
 #define DOWN_VOLTAGE 2600
 #define VOLTAGE_FLOW 2048
-
-#define ADC_Buffer_Size1 200
-#define ADC_Calculate 100
-#define ADC_Average_Number 50
 #define ERR_LIST_MAX_LEN 16
-
-/*三类错误的阈值，持续发生20ms错误触发警报*/
+/*threshold kinds*/
 #define OVER_TEMP_THRESHOLD 20
 #define LOW_TEMP_THRESHOLD 20
 #define SENSOR_ERR_THRESHOLD 150
@@ -91,11 +94,7 @@ void err_cnt_clear(Error_ctrl *ctrl);
 
 /*hardword config*/
 void Current_Check_IO_Config(void);
-void PROTECT_Init(void);
-void TIM_P_Protect_IT(void);
-void ADC_V_Protect_IT(void);
-void EXTI0_Currunt_Protect_IT(void);
-void EXTI9_Temperature_Protect_IT(void);
-void EXTI10_Temperature_Protect_IT(void);
+void Temp_Protect_IO_Config(void);
+void Temp_Protect_IO_Config(void);
 
 #endif

@@ -1,7 +1,7 @@
 #ifndef __SPI_H
 #define __SPI_H
 #include "sys.h"
-#include "welding_process.h"
+#include "includes.h"
 
 #define RESET_SPI_DATA 0
 #define ALARM_MAX_TEMP 700
@@ -33,18 +33,13 @@
 
 /*hardware api*/
 void SPI1_Init(void);
-void spi1_config(void);
-void SPI_Sendbyte(u8 data);
-u8 SPI_Readbyte(void);
-u16 SPI_Load_Word(u16 addr);
-void SPI_Save_Word(u16 data, u16 addr);
-void WREN(void);
-
+uint16_t SPI_Load_Word(uint16_t addr);
+void SPI_Save_Word(uint16_t data, uint16_t addr);
 /*user api*/
-void save_param(weld_ctrl *ctrl, int array_of_data, const u16 *temp, const u8 temp_len, const u16 *time, const u8 time_len);
-void save_param_alarm(weld_ctrl *ctrl, int array_of_data, const u16 *temp, const u8 temp_len, const u16 *gain);
-void Load_param(weld_ctrl *ctrl, int array_of_data);
-void Load_param_alarm(weld_ctrl *ctrl, int array_of_data);
+void save_param(void *controller, int array_of_data, const uint16_t *temp, const uint8_t temp_len, const uint16_t *time, const uint8_t time_len);
+void save_param_alarm(void *controller, int array_of_data, const uint16_t *temp, const uint8_t temp_len, const uint16_t *gain);
+void Load_param(void *controller, int array_of_data);
+void Load_param_alarm(void *controller, int array_of_data);
 
 /*computer api*/
 void Host_computer_reset(void);

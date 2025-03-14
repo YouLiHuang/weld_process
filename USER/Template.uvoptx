@@ -505,32 +505,32 @@
         <Ww>
           <count>3</count>
           <WinNumber>2</WinNumber>
-          <ItemText>temp_draw_buffer,0x0A</ItemText>
+          <ItemText>realtime_temp_buf,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>4</count>
           <WinNumber>2</WinNumber>
-          <ItemText>realtime_temp_buf,0x0A</ItemText>
+          <ItemText>temp_draw_ctrl,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>5</count>
           <WinNumber>2</WinNumber>
-          <ItemText>temp_draw_ctrl,0x0A</ItemText>
+          <ItemText>weld_controller,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>6</count>
           <WinNumber>2</WinNumber>
-          <ItemText>weld_controller,0x0A</ItemText>
+          <ItemText>USART_RX_BUF,0x10</ItemText>
         </Ww>
         <Ww>
           <count>7</count>
           <WinNumber>2</WinNumber>
-          <ItemText>USART_RX_BUF,0x10</ItemText>
+          <ItemText>err_ctrl</ItemText>
         </Ww>
         <Ww>
           <count>8</count>
           <WinNumber>2</WinNumber>
-          <ItemText>err_ctrl</ItemText>
+          <ItemText>realtime_temp_buf,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>9</count>
@@ -540,22 +540,12 @@
         <Ww>
           <count>10</count>
           <WinNumber>2</WinNumber>
-          <ItemText>last_temp_sample_time,0x0A</ItemText>
+          <ItemText>current_Thermocouple</ItemText>
         </Ww>
         <Ww>
           <count>11</count>
           <WinNumber>2</WinNumber>
-          <ItemText>temp_draw_buffer,0x0A</ItemText>
-        </Ww>
-        <Ww>
-          <count>12</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>realtime_temp_buf,0x0A</ItemText>
-        </Ww>
-        <Ww>
-          <count>13</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>current_Thermocouple</ItemText>
+          <ItemText>m_ADCValue,0x0A</ItemText>
         </Ww>
       </WatchWindow2>
       <MemoryWindow1>

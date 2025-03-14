@@ -44,10 +44,4 @@ typedef struct crc16_value
     unsigned char crc16_low;
 } crc16_value;
 
-#if 0
-void usart3_niming_report(uint8_t fun, uint8_t *data, uint8_t len);
-void test_send(short roll, short pitch, short yaw, short Cduk);
-void usart3_send_char(uint8_t c);
-#endif
-
 #endif

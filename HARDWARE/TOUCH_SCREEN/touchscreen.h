@@ -112,11 +112,10 @@ typedef enum UP_DOWN
 
 typedef enum SENSOR_TYPE
 {
-    K_TYPE = 0,
-    E_TYPE,
+    E_TYPE = 0,
+    K_TYPE,
     J_TYPE
 } SENSOR_TYPE;
-
 
 /*-------------------------实时页面参数-------------------------*/
 typedef struct page_param
