@@ -145,12 +145,13 @@ void pid_param_dynamic_reload(void *controller, double *fitting_curves, uint16_t
 #endif
 
 	weld_ctrl *ctrl = (weld_ctrl *)controller;
+	ctrl->pid_ctrl->stable_flag = false;
 	// 多阶段d增大抑制超调
 	if (ctrl->weld_time[1] > 0 && ctrl->weld_time[2] > 0)
 	{
 		ctrl->pid_ctrl->kp = 12;
 		ctrl->pid_ctrl->ki = 0.02;
-		ctrl->pid_ctrl->kd = 23;
+		ctrl->pid_ctrl->kd = 22;
 	}
 	// 但阶段d无需太大-快速性
 	else
@@ -292,6 +293,7 @@ void TIM5_IRQHandler(void)
 		case FIRST_STATE:
 			/*1、算法控制——模拟斜坡输入*/
 			weld_controller->step_time_tick++;
+#if 0
 			if (current_temp_comp >= weld_controller->first_step_turn && weld_controller->pid_ctrl->stable_flag == false)
 			{
 				/*到达刹车点，转阶段*/
@@ -313,7 +315,11 @@ void TIM5_IRQHandler(void)
 															 weld_controller->Duty_Cycle,
 															 weld_controller->pid_ctrl);
 			}
-
+#endif
+			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + STABLE_ERR,
+														 current_temp_comp,
+														 weld_controller->Duty_Cycle,
+														 weld_controller->pid_ctrl);
 			/*2、执行*/
 			TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
 			TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
@@ -343,7 +349,7 @@ void TIM5_IRQHandler(void)
 		case SECOND_STATE:
 			/*时间更新*/
 			weld_controller->step_time_tick++;
-
+#if 0
 			if (current_temp_comp >= weld_controller->second_step_turn && weld_controller->pid_ctrl->stable_flag == false)
 			{
 				/*到达刹车点，转阶段*/
@@ -365,6 +371,11 @@ void TIM5_IRQHandler(void)
 															 weld_controller->Duty_Cycle,
 															 weld_controller->pid_ctrl);
 			}
+#endif
+			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
+														 current_temp_comp,
+														 weld_controller->Duty_Cycle,
+														 weld_controller->pid_ctrl);
 
 			/*2、执行*/
 			TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);

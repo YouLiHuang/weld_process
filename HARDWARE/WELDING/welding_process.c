@@ -436,6 +436,9 @@ static void Weld_Preparation()
 	Kalman_Init(&kfp);							   // 卡尔曼滤波器初始化，初始值归零
 	kalman_comp_temp = 0;						   // 卡尔曼估计值初始化
 
+	/*pid*/
+	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->first_step_set);
+
 	/*IO控制*/
 	OVER = 0;  // 1为焊接结束信号
 	RLY10 = 1; // 气阀1启动
@@ -544,10 +547,10 @@ static void Preload()
 static void First_Step()
 {
 
-	weld_controller->state = FIRST_STATE;														// 进入一阶段标志
-	ctrl_param_config(weld_controller);															// 参数动态配置
-	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->first_step_set); // kp动态调整
-	if ((page_param->key2 == ION) && (weld_controller->weld_time[1] != 0))						// ION_IOF==0开PWM
+	weld_controller->state = FIRST_STATE; // 进入一阶段标志
+	// ctrl_param_config(weld_controller);															// 参数动态配置
+	// pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->first_step_set); // kp动态调整
+	if ((page_param->key2 == ION) && (weld_controller->weld_time[1] != 0)) // ION_IOF==0开PWM
 	{
 		/*1、一阶段采样开始*/
 		temp_draw_ctrl->first_step_index_start = 0;
@@ -602,9 +605,9 @@ static void First_Step()
  */
 static void Second_Step()
 {
-	weld_controller->state = SECOND_STATE;														 // 进入二阶段
-	ctrl_param_config(weld_controller);															 // 参数动态配置
-	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->second_step_set); // kp动态调整
+	weld_controller->state = SECOND_STATE; // 进入二阶段
+	// ctrl_param_config(weld_controller);															 // 参数动态配置
+	// pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->second_step_set); // kp动态调整
 	if ((page_param->key2 == ION) && (weld_controller->weld_time[2] != 0))
 	{
 		/*1、进入二阶段采样*/
