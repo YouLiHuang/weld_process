@@ -119,6 +119,7 @@ Page_Param *page_param = NULL;			   // 记录当前所在界面id及三个按钮
 Component_Queue *param_page_list = NULL;   // 参数设定界面的组件列表
 Component_Queue *temp_page_list = NULL;	   // 温度限制界面的组件列表
 Component_Queue *setting_page_list = NULL; // 通讯界面组件列表
+Component_Queue *wave_page_list = NULL;	   // 波形页面组件列表
 Error_ctrl *err_ctrl = NULL;			   // 错误注册表
 Temp_draw_ctrl *temp_draw_ctrl = NULL;	   // 绘图控制器
 weld_ctrl *weld_controller = NULL;		   // 焊接实时控制器
@@ -226,6 +227,11 @@ static char *setting_page_name_list[] = {
 	"baudrate",
 	"sensortype"};
 
+static char *wave_page_name_list[] = {
+	"kp",
+	"ki",
+	"kd"};
+
 /*--------------------------------------------------------全局变量------------------------------------------------------------------*/
 /*上位机485参数*/
 uint8_t ID_OF_MAS = 0;		// 焊机485通讯机号，默认是零,最大可设置15
@@ -253,7 +259,7 @@ int main(void)
 
 	/*------------------------------------------------------User layer data objects-----------------------------------------------------------*/
 	/*pid controller*/
-	pid_ctrl = new_pid_forword_ctrl(0, 12, 0.1, 6);
+	pid_ctrl = new_pid_forword_ctrl(0, 12, 0.02, 23);
 	/*Welding controller*/
 	weld_controller = new_weld_ctrl(pid_ctrl);
 	/*New interface component list initialization*/
@@ -276,6 +282,12 @@ int main(void)
 	page_list_init(setting_page_list,
 				   setting_page_name_list,
 				   sizeof(setting_page_name_list) / sizeof(char *));
+
+	/*wave list*/
+	wave_page_list = newList(WAVE_PAGE);
+	page_list_init(wave_page_list,
+				   wave_page_name_list,
+				   sizeof(wave_page_name_list) / sizeof(char *));
 
 	/*...Users can create their own page queues as needed...*/
 
@@ -1346,47 +1358,24 @@ static void parse_key_action(Page_ID id)
 #if PID_DEBUG == 1
 static bool pid_param_get(uint16_t *pid_raw_param)
 {
-	const char *pid_param_name_list[4] = {
-		"kpf",
+	const char *pid_param_name_list[] = {
 		"kp",
 		"ki",
 		"kd"};
+	uint8_t cnt = 0;
 
-	uint8_t *msg = NULL;
-	OS_ERR err;
-	OS_MSG_SIZE msg_size = 0;
-	uint8_t param_get_success_cnt = 0;
-
-	for (uint8_t i = 0; i < 4; i++)
+	for (uint8_t i = 0; i < sizeof(pid_param_name_list) / sizeof(char *); i++)
 	{
-
-		char buffer[50] = {0};
-		sprintf(buffer, "get %s.%s", pid_param_name_list[i], "val"); // 指令预处理
-		strcat(buffer, END_OF_CMD);									 // 加上结束符
-		RS485_send(buffer, strlen(buffer));							 // 发送数据
-		/*订阅队列，并进行消息处理*/
-		msg = (uint8_t *)OSQPend(&UART_Msg,			   // 消息队列指针
-								 20,				   // 等待时长
-								 OS_OPT_PEND_BLOCKING, // 阻塞等待模式
-								 &msg_size,			   // 获取消息大小
-								 NULL,				   // 获取消息的时间戳
-								 &err);				   // 返回错误代码
-		if (err == OS_ERR_NONE && msg != NULL && msg_size >= MIN_CMD_LEN)
-		{
-			if (msg[0] == CMD_INT_VAR_RETURN && msg[msg_size - 1] == END_FLAG && msg[msg_size - 2] == END_FLAG && msg[msg_size - 3] == END_FLAG)
-			{
-				param_get_success_cnt++;
-				pid_raw_param[i] = msg[1] | msg[2] << 8 | msg[3] << 16 | msg[4] << 24;
-			}
-		}
-		else
-		{
-			break;
-		}
+		if (command_get_comp_val(wave_page_list, pid_param_name_list[i], "val") == true)
+			cnt++;
 	}
-
-	if (param_get_success_cnt == 4)
+	if (cnt == sizeof(pid_param_name_list) / sizeof(char *))
+	{
+		pid_raw_param[0] = get_comp(wave_page_list, "kp")->val;
+		pid_raw_param[1] = get_comp(wave_page_list, "ki")->val;
+		pid_raw_param[2] = get_comp(wave_page_list, "kd")->val;
 		return true;
+	}
 	else
 		return false;
 }
@@ -1462,20 +1451,18 @@ static void page_process(Page_ID id)
 	case WAVE_PAGE:
 	{
 #if PID_DEBUG == 1
-		command_set_comp_val("wave_page.kpf", "aph", 127);
 		command_set_comp_val("wave_page.kp", "aph", 127);
 		command_set_comp_val("wave_page.ki", "aph", 127);
 		command_set_comp_val("wave_page.kd", "aph", 127);
-		uint16_t pid_param[4] = {0};
+		uint16_t pid_param[3] = {0};
 		if (pid_param_get(pid_param) == true)
 		{
-			weld_controller->pid_ctrl->kp_f = pid_param[0] / 100.0;
-			weld_controller->pid_ctrl->kp = pid_param[1] / 100.0;
-			weld_controller->pid_ctrl->ki = pid_param[2] / 100.0;
-			weld_controller->pid_ctrl->kd = pid_param[3] / 100.0;
+			weld_controller->pid_ctrl->kp = pid_param[0] / 100.0;
+			weld_controller->pid_ctrl->ki = pid_param[1] / 100.0;
+			weld_controller->pid_ctrl->kd = pid_param[2] / 100.0;
 		}
 
-#else
+#endif
 		OS_ERR err;
 		uint16_t total_time = 0;	 // 总焊接时长
 		uint16_t delta_tick = 0;	 // 坐标间隔
@@ -1535,7 +1522,6 @@ static void page_process(Page_ID id)
 			/*绘图结束清空缓存*/
 			memset(temp_draw_ctrl->temp_buf, 0, sizeof(temp_draw_ctrl->temp_buf) / sizeof(uint16_t));
 		}
-#endif
 	}
 	break;
 

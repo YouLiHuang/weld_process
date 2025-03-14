@@ -14,7 +14,6 @@
 #include "sys.h"
 #include "PID.h"
 
-
 void user_value_convert_to_string(char *buffer, const uint8_t buf_len, const uint16_t value);
 void welding_process(void);
 
@@ -22,11 +21,13 @@ void welding_process(void);
 #define PID_DEBUG 0             // pid调试模式
 #define COMMUNICATE 0           // 上位机通信接口
 #define REALTIME_TEMP_DISPLAY 1 // 实时温度绘制开关
+#define PRE_HEAT 0              // 预热
+#define STEP_CTRL 0             // 多阶段调节
 
 #define HOST_WELD_CTRL 1 // 上位机控制焊接
 
 /*温升控制*/
-#define STABLE_ERR 40           // 稳态误差补偿
+#define STABLE_ERR 25           // 稳态误差补偿
 #define BASE_TEMP 120           // 基值温度
 #define PRE_HEAT_MAX_TIME 250   // 最大预热时长
 #define PRE_HEAT_MIN_TIME 1     // 最小预热时长

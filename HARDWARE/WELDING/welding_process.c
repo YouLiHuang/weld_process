@@ -259,29 +259,26 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 	/*-------------------------------------------------------用户自定义模式-------------------------------------------------------*/
 	if (get_comp(temp_page_list, "switch")->val == 0)
 	{
-		switch (ctrl->state)
+		switch (current_Thermocouple->type)
 		{
-		case FIRST_STATE:
-			/*一阶段参数*/
-			if (ctrl->weld_temp[0] < 300)
+		case K_TYPE:
+		case J_TYPE:
+		case E_TYPE:
+			switch (ctrl->state)
 			{
-				ctrl->first_step_turn = 0.985 * ctrl->weld_temp[0]; // 刹车点
-				ctrl->first_step_set = ctrl->weld_temp[0];			// 第1个阶跃目标(0.85-1)
+			case FIRST_STATE:
+				/*一阶段参数*/
+				ctrl->first_step_set = (weld_controller->temp_gain2 * 0.1 + 0.9) * (double)(ctrl->weld_temp[0] + STABLE_ERR); // 阶跃目标
+				ctrl->first_step_turn = weld_controller->temp_gain1 * ctrl->first_step_set;									  // 刹车点
+				break;
+			case SECOND_STATE:
+				/*二阶段参数*/
+				ctrl->second_step_set = (weld_controller->temp_gain2 * 0.1 + 0.9) * (double)(ctrl->weld_temp[1] + STABLE_ERR); // 阶跃目标
+				ctrl->second_step_turn = weld_controller->temp_gain1 * ctrl->second_step_set;								   // 刹车点
+				break;
+			case THIRD_STATE:
+				break;
 			}
-			else
-			{
-				ctrl->first_step_turn = 0.985 * ctrl->weld_temp[0];												 // 刹车点
-				ctrl->first_step_set = (0.85 + 0.15 * weld_controller->temp_gain1) * (double)ctrl->weld_temp[0]; // 第1个阶跃目标(0.85-1)
-			}
-			break;
-
-		case SECOND_STATE:
-			/*二阶段参数*/
-			ctrl->second_step_turn = 0.985 * ctrl->weld_temp[1];											  // 刹车点
-			ctrl->second_step_set = (0.85 + 0.15 * weld_controller->temp_gain2) * (double)ctrl->weld_temp[1]; // 第1个阶跃目标(0.85-1)
-			break;
-
-		case THIRD_STATE:
 			break;
 		}
 	}
@@ -300,8 +297,8 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 				/*冷启动模式:冷启动防止升温不足，导致二阶段过冲*/
 				if (ctrl->first_step_start_temp < ctrl->weld_temp[0] / 3)
 				{
-					ctrl->first_step_turn = 0.9 * ctrl->weld_temp[0];						 // 刹车点
 					ctrl->first_step_set = ctrl->first_step_start_temp + ctrl->weld_temp[0]; // 第一个设定点
+					ctrl->first_step_turn = 0.95 * ctrl->weld_temp[0];						 // 刹车点
 				}
 				else
 				{
@@ -309,8 +306,9 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 					delta_temp = ctrl->weld_temp[0] - ctrl->first_step_start_temp;
 					if (delta_temp < DELTA_COMPENSATE_MAX && delta_temp > DETTA_COMPENSATE_MIN)
 					{
-						ctrl->first_step_turn = 0.9 * ctrl->weld_temp[0];						   // 刹车点
+
 						ctrl->first_step_set = ctrl->first_step_start_temp + DELTA_COMPENSATE_MAX; // 第一个设定点（设大，为了快速性）
+						ctrl->first_step_turn = 0.95 * ctrl->weld_temp[0];						   // 刹车点
 					}
 					/*2、离设定点较远或较近，无需改进*/
 					else
@@ -327,19 +325,20 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 						weld_controller->temp_gain1 = set_gain;
 						get_comp(temp_page_list, "GAIN1")->val = set_gain * 100;
 
-						ctrl->first_step_turn = 0.9 * ctrl->weld_temp[0];							// 刹车点
 						ctrl->first_step_set = (0.9 + 0.1 * set_gain) * (double)ctrl->weld_temp[0]; // 第1个设定点(0.85-1)
+						ctrl->first_step_turn = 0.95 * ctrl->weld_temp[0];							// 刹车点
 					}
 				}
 				break;
 			case SECOND_STATE:
-				/*二阶段参数*/
+/*二阶段参数*/
+#if 0
 				/*1、和设定点较近，改进pid，加速升温*/
 				delta_temp = ctrl->weld_temp[1] - ctrl->second_step_start_temp;
 				if (delta_temp < 0.8 * DELTA_COMPENSATE_MAX && delta_temp > DETTA_COMPENSATE_MIN)
 				{
-					ctrl->second_step_turn = 0.9 * ctrl->weld_temp[1];								   // 刹车点
 					ctrl->second_step_set = ctrl->second_step_start_temp + DELTA_COMPENSATE_MAX * 0.8; // 第1个阶跃目标（设大，为了快速性）
+					ctrl->second_step_turn = 0.95 * ctrl->weld_temp[1];								   // 刹车点
 				}
 				/*2、离设定点较远或较近，无需改进*/
 				else
@@ -356,9 +355,24 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 					weld_controller->temp_gain2 = set_gain;
 					get_comp(temp_page_list, "GAIN2")->val = set_gain * 100;
 
-					ctrl->second_step_turn = 0.9 * ctrl->weld_temp[1];											// 刹车点
 					ctrl->second_step_set = (set_gain * 0.1 + 0.9) * (double)(ctrl->weld_temp[1] + STABLE_ERR); // 阶跃目标
+					ctrl->second_step_turn = 0.95 * ctrl->second_step_set;										// 刹车点
 				}
+#endif
+				/*根据起始温度调节设定值，起始温度越低，设定点就越低，防止过大的超调*/
+				percent = (double)ctrl->second_step_start_temp / (double)ctrl->weld_temp[1]; // 起始温度对最终温度占比
+				set_gain = 0.3969 * log(percent) + 1.0021;									 // 参见excel表格
+				if (set_gain <= 0)
+					set_gain = 0;
+				if (set_gain >= 1)
+					set_gain = 1;
+
+				/*参数动态调整后，数据保存 */
+				weld_controller->temp_gain2 = set_gain;
+				get_comp(temp_page_list, "GAIN2")->val = set_gain * 100;
+
+				ctrl->second_step_set = (set_gain * 0.1 + 0.9) * (double)(ctrl->weld_temp[1] + STABLE_ERR); // 阶跃目标
+				ctrl->second_step_turn = 0.95 * ctrl->second_step_set;										// 刹车点
 				break;
 
 			case THIRD_STATE:
@@ -492,18 +506,20 @@ static void Preload()
 	weld_controller->state = IDEAL_STATE;
 	weld_controller->step_time_tick = 0;
 
-	/*预热阶段——加热到基值温度，改善超调*/
+/*预热阶段——加热到基值温度，改善超调*/
+#if PRE_HEAT == 1
 	u16 current_temp = temp_convert(current_Thermocouple);
 	if (current_temp < BASE_TEMP)
 	{
 		/*根据起始温度设定加热时长到基值温度(线性映射)20：250 150：0*/
-		u16 pre_heat_time = -1.9231 * (float)current_temp + 288.46;
+		u16 pre_heat_time = -0.77 * (float)current_temp + 115.4;
 		if (pre_heat_time >= PRE_HEAT_MAX_TIME)
 			pre_heat_time = PRE_HEAT_MAX_TIME;
 		if (pre_heat_time <= PRE_HEAT_MIN_TIME)
 			pre_heat_time = PRE_HEAT_MIN_TIME;
 
 		weld_controller->state = PRE_STATE;
+		weld_controller->step_time_tick = 0;
 		TIM_Cmd(TIM5, ENABLE);
 		while (weld_controller->step_time_tick < pre_heat_time)
 		{
@@ -518,6 +534,7 @@ static void Preload()
 		weld_controller->state = IDEAL_STATE;
 		weld_controller->step_time_tick = 0;
 	}
+#endif
 }
 
 /**
@@ -814,25 +831,35 @@ static void weld_real_time_ctrl()
 	Preload();
 
 	/*一阶段*/
-	err_cnt_clear(err_ctrl);													 // 报错统计值复位
-	weld_controller->first_step_start_temp = temp_convert(current_Thermocouple); // 起始温度
-	First_Step();																 // 一阶段
-	if (true == err_occur(err_ctrl))											 // 唤醒错误处理线程
-		goto STOP_LABEL;
+	if (weld_controller->weld_time[1] != 0)
+	{
+		err_cnt_clear(err_ctrl);													 // 报错统计值复位
+		weld_controller->first_step_start_temp = temp_convert(current_Thermocouple); // 起始温度
+		First_Step();																 // 一阶段
+		if (true == err_occur(err_ctrl))											 // 唤醒错误处理线程
+			goto STOP_LABEL;
+	}
 
 	/*二阶段*/
-	err_cnt_clear(err_ctrl);													  // 报错统计值复位
-	weld_controller->second_step_start_temp = temp_convert(current_Thermocouple); // 起始温度
-	Second_Step();																  // 二阶段
-	if (true == err_occur(err_ctrl))											  // 唤醒错误处理线程
-		goto STOP_LABEL;
+	if (weld_controller->weld_time[2] != 0)
+	{
+
+		err_cnt_clear(err_ctrl);													  // 报错统计值复位
+		weld_controller->second_step_start_temp = temp_convert(current_Thermocouple); // 起始温度
+		Second_Step();																  // 二阶段
+		if (true == err_occur(err_ctrl))											  // 唤醒错误处理线程
+			goto STOP_LABEL;
+	}
 
 	/*三阶段*/
-	err_cnt_clear(err_ctrl);													 // 报错统计值复位
-	weld_controller->third_step_start_temp = temp_convert(current_Thermocouple); // 起始温度
-	Third_Step();																 // 三阶段
-	if (true == err_occur(err_ctrl))											 // 唤醒错误处理线程
-		goto STOP_LABEL;
+	if (weld_controller->weld_time[3] != 0)
+	{
+		err_cnt_clear(err_ctrl);													 // 报错统计值复位
+		weld_controller->third_step_start_temp = temp_convert(current_Thermocouple); // 起始温度
+		Third_Step();																 // 三阶段
+		if (true == err_occur(err_ctrl))											 // 唤醒错误处理线程
+			goto STOP_LABEL;
+	}
 
 	/*结束一轮焊接*/
 	End_of_Weld();
