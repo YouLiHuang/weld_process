@@ -12,7 +12,6 @@
 #include "sys.h"
 #include "includes.h"
 
-#define CURRENT_CHECK PBin(0) // 电流失控检测IO
 #define KEY_PC0 PCin(0)       // 启动1
 #define KEY_PC1 PCin(1)       // 启动2	PC1
 #define KEY_PC2 PCin(2)       // 启动3	PC2

@@ -1,12 +1,13 @@
 /*
  * @Author: huangyouli.scut@gmail.com
- * @Date: 2025-01-11 15:47:16
+ * @Date: 2025-03-17 09:23:13
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-17 10:00:54
- * @Description:
- *
- * Copyright (c) 2025 by huangyouli, All Rights Reserved.
+ * @LastEditTime: 2025-03-17 10:02:19
+ * @Description: 
+ * 
+ * Copyright (c) 2025 by huangyouli, All Rights Reserved. 
  */
+
 
 #include "sys.h"
 #include "delay.h"
@@ -762,20 +763,7 @@ void error_task(void *p_arg)
 /*----------------------------------------------------------主线程---------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
 static void voltage_check(void);
-static bool current_out_of_ctrl(void);
-static bool current_out_of_ctrl(void)
-{
-	OS_ERR err;
-	if (CURRENT_CHECK == 0)
-	{
-		OSTimeDly(15, OS_OPT_TIME_DLY, &err); // 消抖
-		if (CURRENT_CHECK == 0)
-			return true;
-		else
-			return false;
-	}
-	return false;
-}
+
 
 static void Power_on_check(void)
 {
