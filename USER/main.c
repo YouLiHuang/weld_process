@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-17 09:50:56
+ * @LastEditTime: 2025-03-17 10:00:54
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -986,23 +986,15 @@ void main_task(void *p_arg)
 	while (1)
 	{
 
-		/*part1：电流失控检测*/
-		if (current_out_of_ctrl() == true)
-		{
-			err_get_type(err_ctrl, CURRENT_OUT_OT_CTRL)->state = true;
-			OS_ERR err;
-			/*唤醒错误处理线程*/
-			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-		}
-
-		/*part2：主焊接任务*/
-		welding_process();
-		/*part3:空闲时进行热点偶监测*/
-		Thermocouple_check();
-		/*part4:空闲时过欠压监测*/
-		voltage_check();
-		/*part5：过流/过温度保护*/
+		/*part1：过流/过温度保护*/
 		Overload_check();
+		/*part2:空闲时过欠压监测*/
+		voltage_check();
+		/*part3:热电偶监测*/
+		Thermocouple_check();
+
+		/*part4：主焊接任务*/
+		welding_process();
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
