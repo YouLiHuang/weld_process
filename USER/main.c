@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-17 09:23:13
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-17 10:02:19
+ * @LastEditTime: 2025-03-17 10:03:40
  * @Description: 
  * 
  * Copyright (c) 2025 by huangyouli, All Rights Reserved. 
@@ -545,7 +545,7 @@ void start_task(void *p_arg)
 }
 #if 0
 /**
- * @description: Temperature rise monitoring API
+ * @description: used to identufy differernt thermocouple 
  * @return {*}
  */
 static bool Temp_up_check(void)
