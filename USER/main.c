@@ -2,12 +2,11 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-17 09:23:13
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-17 10:04:57
- * @Description: 
- * 
- * Copyright (c) 2025 by huangyouli, All Rights Reserved. 
+ * @LastEditTime: 2025-03-17 10:06:09
+ * @Description:
+ *
+ * Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
-
 
 #include "sys.h"
 #include "delay.h"
@@ -744,6 +743,7 @@ void error_task(void *p_arg)
 				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->reset_callback != NULL)
 					err_ctrl->err_list[i]->reset_callback(i);
 			}
+#if 0
 			/*重新配置*/
 			uart_init(115200);
 			/*串口屏复位*/
@@ -752,6 +752,7 @@ void error_task(void *p_arg)
 			Load_data_from_mem();
 			/*上位机复位*/
 			Host_computer_reset();
+#endif
 		}
 
 		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err); // 休眠
@@ -762,7 +763,6 @@ void error_task(void *p_arg)
 /*----------------------------------------------------------主线程---------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
 static void voltage_check(void);
-
 
 static void Power_on_check(void)
 {
