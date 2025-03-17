@@ -668,8 +668,8 @@ static void Second_Step()
  */
 static void Third_Step()
 {
-	weld_controller->state = THIRD_STATE;													  // 进入二阶段
-	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[2]); // kp动态调整
+	weld_controller->state = THIRD_STATE; // 进入二阶段
+	// pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[2]); // kp动态调整
 	if ((page_param->key2 == ION) && (weld_controller->weld_time[3] != 0))
 	{
 		/*1、三阶段采样开始，坐标记录*/
@@ -1096,10 +1096,12 @@ static void down_temp_line()
 		temp = temp_convert(current_Thermocouple); // 温度采样
 		if (temp > MAX_TEMP_DISPLAY)			   // 限幅
 			temp = MAX_TEMP_DISPLAY;
+
 		temp_display = temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY; // 坐标放缩
 		draw_point(temp_display);								 // 绘图
-		command_set_comp_val("temp33", "val", temp);			 // 显示实时温度数值
-		user_tim_delay(temp_draw_ctrl->delta_tick);				 // 采样间隔
+		command_set_comp_val("temp33", "val", temp_display);	 // 显示实时温度数值
+
+		user_tim_delay(temp_draw_ctrl->delta_tick); // 采样间隔
 		index++;
 	}
 }

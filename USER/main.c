@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-11 15:47:16
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-13 11:27:17
+ * @LastEditTime: 2025-03-17 09:50:56
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -36,7 +36,7 @@
 #define TEMP_ADJUST 1	 // 温度校准
 #define VOLTAGE_CHECK 1	 // 过欠压报警
 #define JK_TEMP_SHOW 0	 // JK热电偶显示
-#define POWER_ON_CHECK 0 // 开机自检
+#define POWER_ON_CHECK 1 // 开机自检
 
 // 任务优先级
 #define START_TASK_PRIO 3
@@ -815,8 +815,23 @@ static void Power_on_check(void)
 		}
 	}
 
-	/*2、同时需要适配存储接口，读取出上次保存的热电偶校准值*/
-	/* ... */
+	if (current_Thermocouple == NULL)
+	{
+		// 未检测出热电偶接线，报警
+		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+		/*唤醒错误处理线程*/
+		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+	}
+
+	/*读取出上次保存的热电偶校准值*/
+	if (current_Thermocouple->type == E_TYPE)
+	{
+		current_Thermocouple->Bias = SPI_Load_Word(CARLIBRATION_BASE(remember_array));
+	}
+	else if (current_Thermocouple->type == J_TYPE)
+	{
+		current_Thermocouple->Bias = SPI_Load_Word(CARLIBRATION_BASE(remember_array) + ADDR_OFFSET);
+	}
 
 #endif
 }
@@ -842,50 +857,50 @@ static void Thermocouple_check(void)
 	{
 
 	case J_TYPE:
-		// IO_val = 0;
-		// GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
-		// OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
-		// IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_J, CHECKIN_PIN_J);
-		// if (IO_val == 0)
-		// {
-		// 	// 热电偶依旧异常，报警
-		// 	err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-		// 	/*唤醒错误处理线程*/
-		// 	OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-		// }
-		// GPIO_ResetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
+		IO_val = 0;
+		GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
+		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
+		IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_J, CHECKIN_PIN_J);
+		if (IO_val == 0)
+		{
+			// 热电偶依旧异常，报警
+			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+			/*唤醒错误处理线程*/
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		}
+		GPIO_ResetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
 		break;
 
 		// 现在的版本主板接线不方便，因此暂时不检测主板的热电偶
 	case K_TYPE:
-		// IO_val = 0;
-		// GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
-		// OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
-		// IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_K, CHECKIN_PIN_K);
-		// if (IO_val == 0)
-		// {
-		// 	// 热电偶依旧异常，报警
-		// 	err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-		// 	/*唤醒错误处理线程*/
-		// 	OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-		// }
-		// GPIO_ResetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
+		IO_val = 0;
+		GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
+		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
+		IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_K, CHECKIN_PIN_K);
+		if (IO_val == 0)
+		{
+			// 热电偶依旧异常，报警
+			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+			/*唤醒错误处理线程*/
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		}
+		GPIO_ResetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
 		break;
 
 	case E_TYPE:
-		// IO_val = 0;
-		// GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
-		// OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
-		// uint8_t IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E);
-		// // 断路报警
-		// if (IO_val == 0)
-		// {
-		// 	// 热电偶依旧异常，报警
-		// 	err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-		// 	/*唤醒错误处理线程*/
-		// 	OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-		// }
-		// GPIO_ResetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
+		IO_val = 0;
+		GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
+		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
+		uint8_t IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E);
+		// 断路报警
+		if (IO_val == 0)
+		{
+			// 热电偶依旧异常，报警
+			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+			/*唤醒错误处理线程*/
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		}
+		GPIO_ResetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
 		break;
 	}
 }
@@ -1854,26 +1869,29 @@ void computer_read_task(void *p_arg)
 				}
 
 				/*保存焊接时间*/
-				SPI_Save_Word(weld_controller->weld_time[0], 40 * (remember_array + 1));
-				SPI_Save_Word(weld_controller->weld_time[1], 40 * (remember_array + 1) + 2);
-				SPI_Save_Word(weld_controller->weld_time[2], 40 * (remember_array + 1) + 4);
-				SPI_Save_Word(weld_controller->weld_time[3], 40 * (remember_array + 1) + 6);
-				SPI_Save_Word(weld_controller->weld_time[4], 40 * (remember_array + 1) + 8);
-				SPI_Save_Word(0, 40 * (remember_array + 1) + 10);
-				/*保存温度*/
-				SPI_Save_Word(weld_controller->weld_temp[0], 40 * (remember_array + 1) + 12);
-				SPI_Save_Word(weld_controller->weld_temp[1], 40 * (remember_array + 1) + 14);
-				SPI_Save_Word(weld_controller->weld_temp[2], 40 * (remember_array + 1) + 16);
+				/*time1-time5*/
+				for (uint8_t i = 0; i < TIME_NUM; i++)
+				{
+					SPI_Save_Word(weld_controller->weld_time[i], TIME_BASE(remember_array) + ADDR_OFFSET * i);
+				}
+
+				/*保存三段温度设定值*/
+				/*temp1-temp3*/
+				for (uint8_t i = 0; i < TEMP_NUM; i++)
+				{
+					SPI_Save_Word(weld_controller->weld_temp[i], TEMP_BASE(remember_array) + ADDR_OFFSET * i);
+				}
 				/*保存限制温度*/
-				SPI_Save_Word(weld_controller->alarm_temp[0], 40 * (remember_array + 1) + 18);
-				SPI_Save_Word(weld_controller->alarm_temp[1], 40 * (remember_array + 1) + 20);
-				SPI_Save_Word(weld_controller->alarm_temp[2], 40 * (remember_array + 1) + 22);
-				SPI_Save_Word(weld_controller->alarm_temp[3], 40 * (remember_array + 1) + 24);
-				SPI_Save_Word(weld_controller->alarm_temp[4], 40 * (remember_array + 1) + 26);
-				SPI_Save_Word(weld_controller->alarm_temp[5], 40 * (remember_array + 1) + 28);
+				/*alarm1-alarm6*/
+				for (uint8_t i = 0; i < ALARM_NUM; i++)
+				{
+					SPI_Save_Word(weld_controller->alarm_temp[i], ALARM_BASE(remember_array) + ADDR_OFFSET * i);
+				}
+
 				/*保存增益*/
-				SPI_Save_Word(weld_controller->temp_gain1 * 100, 40 * (remember_array + 1) + 30);
-				SPI_Save_Word(weld_controller->temp_gain2 * 100, 40 * (remember_array + 1) + 32);
+				/*gain1-gain2*/
+				SPI_Save_Word(weld_controller->temp_gain1 * 100, GAIN_BASE(remember_array));
+				SPI_Save_Word(weld_controller->temp_gain2 * 100, GAIN_BASE(remember_array) + ADDR_OFFSET);
 
 				/*2、屏幕刷新*/
 				/*时间刷新*/
@@ -1919,45 +1937,46 @@ void computer_read_task(void *p_arg)
 				/*1、数据更新*/
 				remember_array = Host_GP;
 
-				weld_controller->weld_time[0] = ModBus_time[0];
-				weld_controller->weld_time[1] = ModBus_time[1];
-				weld_controller->weld_time[2] = ModBus_time[3];
-				weld_controller->weld_time[3] = ModBus_time[4];
-				weld_controller->weld_time[4] = ModBus_time[5];
+				for (uint8_t i = 0; i < sizeof(weld_controller->weld_time) / sizeof(uint16_t); i++)
+				{
+					weld_controller->weld_time[i] = ModBus_time[i];
+				}
 
-				weld_controller->weld_temp[0] = ModBus_temp[0];
-				weld_controller->weld_temp[1] = ModBus_temp[1];
-				weld_controller->weld_temp[2] = ModBus_temp[2];
+				for (uint8_t i = 0; i < sizeof(weld_controller->weld_temp) / sizeof(uint16_t); i++)
+				{
+					weld_controller->weld_temp[i] = ModBus_temp[i];
+				}
 
-				weld_controller->alarm_temp[0] = ModBus_alarm_temp[0];
-				weld_controller->alarm_temp[1] = ModBus_alarm_temp[1];
-				weld_controller->alarm_temp[2] = ModBus_alarm_temp[2];
-				weld_controller->alarm_temp[3] = ModBus_alarm_temp[3];
-				weld_controller->alarm_temp[4] = ModBus_alarm_temp[4];
-				weld_controller->alarm_temp[5] = ModBus_alarm_temp[5];
+				for (uint8_t i = 0; i < sizeof(weld_controller->alarm_temp) / sizeof(uint16_t); i++)
+				{
+					weld_controller->alarm_temp[i] = ModBus_alarm_temp[i];
+				}
 
-				/*3、将用户数据更新至外部flash*/
+				/*3、将用户数据更新至eeprom*/
 				/*保存焊接时间*/
-				SPI_Save_Word(weld_controller->weld_time[0], 40 * (remember_array + 1));
-				SPI_Save_Word(weld_controller->weld_time[1], 40 * (remember_array + 1) + 2);
-				SPI_Save_Word(weld_controller->weld_time[2], 40 * (remember_array + 1) + 4);
-				SPI_Save_Word(weld_controller->weld_time[3], 40 * (remember_array + 1) + 6);
-				SPI_Save_Word(weld_controller->weld_time[4], 40 * (remember_array + 1) + 8);
-				SPI_Save_Word(0, 40 * (remember_array + 1) + 10);
-				/*保存温度*/
-				SPI_Save_Word(weld_controller->weld_temp[0], 40 * (remember_array + 1) + 12);
-				SPI_Save_Word(weld_controller->weld_temp[1], 40 * (remember_array + 1) + 14);
-				SPI_Save_Word(weld_controller->weld_temp[2], 40 * (remember_array + 1) + 16);
+				/*time1-time5*/
+				for (uint8_t i = 0; i < TIME_NUM; i++)
+				{
+					SPI_Save_Word(weld_controller->weld_time[i], TIME_BASE(remember_array) + ADDR_OFFSET * i);
+				}
+
+				/*保存三段温度设定值*/
+				/*temp1-temp3*/
+				for (uint8_t i = 0; i < TEMP_NUM; i++)
+				{
+					SPI_Save_Word(weld_controller->weld_temp[i], TEMP_BASE(remember_array) + ADDR_OFFSET * i);
+				}
 				/*保存限制温度*/
-				SPI_Save_Word(weld_controller->alarm_temp[0], 40 * (remember_array + 1) + 18);
-				SPI_Save_Word(weld_controller->alarm_temp[1], 40 * (remember_array + 1) + 20);
-				SPI_Save_Word(weld_controller->alarm_temp[2], 40 * (remember_array + 1) + 22);
-				SPI_Save_Word(weld_controller->alarm_temp[3], 40 * (remember_array + 1) + 24);
-				SPI_Save_Word(weld_controller->alarm_temp[4], 40 * (remember_array + 1) + 26);
-				SPI_Save_Word(weld_controller->alarm_temp[5], 40 * (remember_array + 1) + 28);
+				/*alarm1-alarm6*/
+				for (uint8_t i = 0; i < ALARM_NUM; i++)
+				{
+					SPI_Save_Word(weld_controller->alarm_temp[i], ALARM_BASE(remember_array) + ADDR_OFFSET * i);
+				}
+
 				/*保存增益*/
-				SPI_Save_Word(weld_controller->temp_gain1 * 100, 40 * (remember_array + 1) + 30);
-				SPI_Save_Word(weld_controller->temp_gain2 * 100, 40 * (remember_array + 1) + 32);
+				/*gain1-gain2*/
+				SPI_Save_Word(weld_controller->temp_gain1 * 100, GAIN_BASE(remember_array));
+				SPI_Save_Word(weld_controller->temp_gain2 * 100, GAIN_BASE(remember_array) + ADDR_OFFSET);
 				Host_action = 0;
 			}
 
