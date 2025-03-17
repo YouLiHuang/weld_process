@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-17 09:23:13
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-17 10:03:40
+ * @LastEditTime: 2025-03-17 10:04:57
  * @Description: 
  * 
  * Copyright (c) 2025 by huangyouli, All Rights Reserved. 
@@ -648,8 +648,7 @@ static bool Thermocouple_reset_callback(uint8_t index)
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
 	err_ctrl->err_list[index]->state = false; // 清除错误状态
 	ret = true;
-	/*再次检测热点偶是否正常*/
-	Thermocouple_check();
+
 	return ret;
 }
 static bool Current_out_of_ctrl_reset_callback(uint8_t index)
