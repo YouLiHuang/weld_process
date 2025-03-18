@@ -3,7 +3,7 @@
 #include "sys.h"
 #include "includes.h"
 
-#define RESET_SPI_DATA 0
+#define RESET_SPI_DATA 1
 #define ALARM_MAX_TEMP 700
 
 /*------------------mem config------------------*/
@@ -23,6 +23,7 @@
 #define GAIN_BASE_OFFSET 30
 #define CARLIBRATION_BASE_OFFSET 34 // E J
 /*address convert*/
+#define GP_BASE 0
 #define PAGE_BASE(group) (ADDR_PAGE_WIDTH * (group + 1))
 
 #define TIME_BASE(group) (PAGE_BASE(group) + TIME_BASE_OFFSET)

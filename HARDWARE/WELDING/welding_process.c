@@ -215,9 +215,8 @@ static void Load_Data()
 {
 	uint8_t GP_Temp = 0;
 	uint8_t key = 0;
-	Component *comp = get_comp(param_page_list, "GP");
 	/*扫描按键，根据启动模式对对应参数组数据进行读取，并将其发送至触摸屏*/
-	GP_Temp = comp->val;
+	GP_Temp = get_comp(param_page_list, "GP")->val;
 	if ((GP_Temp % 2 == 0)) // 如果GP是双数
 	{
 		key = new_key_scan();
@@ -626,7 +625,7 @@ static void Second_Step()
 			}
 
 			/*后续计算稳定温度值索引*/
-			if (weld_controller->realtime_temp >= weld_controller->second_step_turn && temp_draw_ctrl->second_step_stable_index == 0)
+			if (weld_controller->realtime_temp >= 0.98 * weld_controller->weld_temp[1] && temp_draw_ctrl->second_step_stable_index == 0)
 			{
 				if (weld_controller->pid_ctrl->stable_threshold_cnt >= weld_controller->pid_ctrl->stable_threshold)
 					temp_draw_ctrl->second_step_stable_index = temp_draw_ctrl->current_index;
@@ -1101,7 +1100,9 @@ static void down_temp_line()
 		draw_point(temp_display);								 // 绘图
 		command_set_comp_val("temp33", "val", temp_display);	 // 显示实时温度数值
 
-		user_tim_delay(temp_draw_ctrl->delta_tick); // 采样间隔
+		// user_tim_delay(temp_draw_ctrl->delta_tick); // 采样间隔
+		delay_ms(temp_draw_ctrl->delta_tick);
+
 		index++;
 	}
 }

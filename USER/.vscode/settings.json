@@ -52,7 +52,10 @@
         "system_error": "c",
         "type_traits": "c",
         "sstream": "c",
-        "stm32f4xx_adc.h": "c"
+        "stm32f4xx_adc.h": "c",
+        "dual_func_demo.h": "c",
+        "usbh_msc_usr.h": "c",
+        "usb_bsp.h": "c"
     },
     // 头部注释
     "fileheader.customMade": {

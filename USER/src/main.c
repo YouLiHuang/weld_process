@@ -26,6 +26,8 @@
 #include "PID.h"
 #include "filter.h"
 #include "ThermocoupleIO.h"
+#include "usbh_msc_usr.h"
+#include "log.h"
 
 /*user config*/
 #define ROOM_TEMP 20	 // 默认室温
@@ -52,7 +54,7 @@ void start_task(void *p_arg);
 // 任务优先级
 #define ERROR_TASK_PRIO 4
 // 任务堆栈大小
-#define ERROR_STK_SIZE 3072
+#define ERROR_STK_SIZE 1024
 // 任务控制块
 OS_TCB ErrorTaskTCB;
 // 任务堆栈
@@ -63,7 +65,7 @@ void error_task(void *p_arg);
 // 任务优先级
 #define MAIN_TASK_PRIO 5
 // 任务堆栈大小
-#define MAIN_STK_SIZE 4096
+#define MAIN_STK_SIZE 2048
 // 任务控制块
 OS_TCB Main_TaskTCB;
 // 任务堆栈
@@ -73,7 +75,7 @@ void main_task(void *p_arg);
 // 任务优先级
 #define READ_TASK_PRIO 6
 // 任务堆栈大小
-#define READ_STK_SIZE 3072
+#define READ_STK_SIZE 2048
 // 任务控制块
 OS_TCB READ_TaskTCB;
 // 任务堆栈
@@ -91,6 +93,17 @@ OS_TCB COMPUTER_TaskTCB;
 CPU_STK COMPUTER_TASK_STK[COMPUTER_STK_SIZE];
 // 任务函数
 void computer_read_task(void *p_arg);
+
+// 任务优先级
+#define USB_TASK_PRIO 6
+// 任务堆栈大小
+#define USB_STK_SIZE 2048
+// 任务控制块
+OS_TCB USB_TaskTCB;
+// 任务堆栈
+CPU_STK USB_TASK_STK[USB_STK_SIZE];
+// 任务函数
+void usb_task(void *p_arg);
 
 /*--------------------------------------------------------新触摸屏界面部分------------------------------------------------------------------*/
 ////////////////////////RS485的消息队列/////////////////////////////////////////
@@ -324,7 +337,7 @@ int main(void)
 	Temp_Protect_IO_Config();						// temp overload init
 
 	/*TIM7-TIM3(time)-TIM5(pid)-TIM1(pwm1)-TIM4(pwm2)*/
-	TIM2_Int_Init();
+	TIM8_Int_Init();
 	TIM3_Int_Init();
 	TIM5_Int_Init();
 
@@ -335,6 +348,11 @@ int main(void)
 
 	/*硬件测试代码段*/
 	/*...*/
+//	while (1)
+//	{
+//		printf("log test...\r\n");
+//		delay_ms(500);
+//	}
 
 	/*------------------------------------------------------System level data objects-----------------------------------------------------------*/
 	/*UCOSIII init*/
@@ -518,7 +536,23 @@ void start_task(void *p_arg)
 				 (CPU_STK_SIZE)READ_STK_SIZE / 10,
 				 (CPU_STK_SIZE)READ_STK_SIZE,
 				 (OS_MSG_QTY)0,
-				 (OS_TICK)20, // 设置最大连续运行时长（时间片）
+				 (OS_TICK)50, // 设置最大连续运行时长（时间片）
+				 (void *)0,
+				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
+				 (OS_ERR *)&err);
+
+	// USB任务
+	// 优先级：6
+	OSTaskCreate((OS_TCB *)&USB_TaskTCB,
+				 (CPU_CHAR *)"usb task",
+				 (OS_TASK_PTR)usb_task,
+				 (void *)0,
+				 (OS_PRIO)USB_TASK_PRIO,
+				 (CPU_STK *)&USB_TASK_STK[0],
+				 (CPU_STK_SIZE)USB_STK_SIZE / 10,
+				 (CPU_STK_SIZE)USB_STK_SIZE,
+				 (OS_MSG_QTY)0,
+				 (OS_TICK)20,
 				 (void *)0,
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
@@ -607,9 +641,9 @@ static bool Temp_up_check(void)
 }
 #endif
 
-/*---------------------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------------------*/
 /*--------------------------------------错误回调API--------------------------------------*/
-/*---------------------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------------------*/
 
 static bool Temp_up_err_callback(uint8_t index)
 {
@@ -722,9 +756,9 @@ void error_task(void *p_arg)
 			RLY12 = 0;	// 气阀3关
 
 			/*3、错误处理*/
-			user_tim_delay(20);
+			OSTimeDlyHMSM(0, 0, 0, 20, OS_OPT_TIME_PERIODIC, &err);
 			Page_to(page_param, ALARM_PAGE);
-			user_tim_delay(20);
+			OSTimeDlyHMSM(0, 0, 0, 20, OS_OPT_TIME_PERIODIC, &err);
 			Page_to(page_param, ALARM_PAGE);
 			page_param->id = ALARM_PAGE;
 			for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
@@ -967,16 +1001,14 @@ void main_task(void *p_arg)
 {
 
 	OS_ERR err;
-	KEYin_Init();
-
 	Power_on_check();
 	while (1)
 	{
 
 		/*part1：过流/过温度保护*/
-		Overload_check();
+		// Overload_check();
 		/*part2:空闲时过欠压监测*/
-		voltage_check();
+		// voltage_check();
 		/*part3:热电偶监测*/
 		Thermocouple_check();
 
@@ -1507,6 +1539,7 @@ static void page_process(Page_ID id)
 			for (uint16_t i = temp_draw_ctrl->second_step_stable_index; i < temp_draw_ctrl->second_step_index_end; i++)
 				sum += temp_draw_ctrl->temp_buf[i];
 			temp_display[1] = sum / (temp_draw_ctrl->second_step_index_end - temp_draw_ctrl->second_step_stable_index + 1);
+
 			/*一二段均值发送到触摸屏*/
 			command_set_comp_val(temp_display_name[0], "val", temp_display[0]);
 			command_set_comp_val(temp_display_name[1], "val", temp_display[1]);
@@ -1538,34 +1571,48 @@ static void page_process(Page_ID id)
 		command_get_comp_val(setting_page_list, "adress", "val");
 		/*2、读取页面设定的波特率*/
 		command_get_comp_val(setting_page_list, "baudrate", "val");
-		/*3、读取热电偶类型*/
-		command_get_comp_val(setting_page_list, "sensortype", "val");
-		/*用户完成热电偶选择，更新热电偶类型*/
-		switch (get_comp(setting_page_list, "sensortype")->val)
+		/*3、设定热电偶类型*/
+		switch (current_Thermocouple->type)
 		{
 		case K_TYPE:
-			for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
-			{
-				if (Thermocouple_Lists[i].type == K_TYPE)
-					current_Thermocouple = &Thermocouple_Lists[i];
-			}
+			command_set_comp_val("KEJ", "val", 0);
+			break;
 
-			break;
 		case E_TYPE:
-			for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
-			{
-				if (Thermocouple_Lists[i].type == E_TYPE)
-					current_Thermocouple = &Thermocouple_Lists[i];
-			}
+			command_set_comp_val("KEJ", "val", 1);
 			break;
+
 		case J_TYPE:
-			for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
-			{
-				if (Thermocouple_Lists[i].type == J_TYPE)
-					current_Thermocouple = &Thermocouple_Lists[i];
-			}
+			command_set_comp_val("KEJ", "val", 2);
 			break;
 		}
+
+		/*用户完成热电偶选择，更新热电偶类型*/
+		// switch (get_comp(setting_page_list, "sensortype")->val)
+		// {
+		// case K_TYPE:
+		// 	for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
+		// 	{
+		// 		if (Thermocouple_Lists[i].type == K_TYPE)
+		// 			current_Thermocouple = &Thermocouple_Lists[i];
+		// 	}
+
+		// 	break;
+		// case E_TYPE:
+		// 	for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
+		// 	{
+		// 		if (Thermocouple_Lists[i].type == E_TYPE)
+		// 			current_Thermocouple = &Thermocouple_Lists[i];
+		// 	}
+		// 	break;
+		// case J_TYPE:
+		// 	for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
+		// 	{
+		// 		if (Thermocouple_Lists[i].type == J_TYPE)
+		// 			current_Thermocouple = &Thermocouple_Lists[i];
+		// 	}
+		// 	break;
+		// }
 		/*4、订阅热电偶校准信号*/
 		OSSemPend(&SENSOR_UPDATE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (OS_ERR_NONE == err)
@@ -1665,11 +1712,11 @@ static bool data_syn(Page_ID id)
 		}
 
 		/*更新热电偶类型*/
-		for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple_Lists[0]); i++)
-		{
-			if (get_comp(setting_page_list, "sensortype")->val == Thermocouple_Lists[i].type)
-				current_Thermocouple = &Thermocouple_Lists[i]; // 更新当前热电偶类型
-		}
+		// for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple_Lists[0]); i++)
+		// {
+		// 	if (get_comp(setting_page_list, "sensortype")->val == Thermocouple_Lists[i].type)
+		// 		current_Thermocouple = &Thermocouple_Lists[i]; // 更新当前热电偶类型
+		// }
 	}
 
 	default:
@@ -1963,5 +2010,34 @@ void computer_read_task(void *p_arg)
 		}
 
 		OSTimeDlyHMSM(0, 0, 0, 25, OS_OPT_TIME_PERIODIC, &err); // 休眠
+	}
+}
+
+/*-------------------------------------------------------------------------------------------------------------------------*/
+/*----------------------------------------------------USB读写线程----------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------------------------------*/
+extern USBH_HOST USB_Host __ALIGN_END;
+extern USB_OTG_CORE_HANDLE USB_OTG_Core __ALIGN_END;
+void usb_task(void *p_arg)
+{
+	
+	OS_ERR err;
+	  USBH_Init(&USB_OTG_Core,
+#ifdef USE_USB_OTG_FS
+            USB_OTG_FS_CORE_ID,
+#elif defined USE_USB_OTG_HS
+            USB_OTG_HS_CORE_ID,
+#endif
+            &USB_Host,
+            &USBH_MSC_cb,
+            &USR_USBH_MSC_cb);
+
+  USB_OTG_BSP_mDelay(500);
+	while (1)
+	{
+		
+		/* Host Task handler */
+    USBH_Process(&USB_OTG_Core, &USB_Host);
+		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
 }

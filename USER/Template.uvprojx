@@ -337,7 +337,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F40_41xxx,USE_STDPERIPH_DRIVER,__FPU_USED=1</Define>
               <Undefine></Undefine>
-              <IncludePath>..\CORE;..\SYSTEM\delay;..\SYSTEM\sys;..\FWLIB\STM32F4xx_StdPeriph_Driver\inc;..\USER;..\UCOSIII\uC-CPU;..\UCOSIII\uC-LIB;..\UCOSIII\uCOS-III;..\UCOSIII\UCOS_BSP;..\UCOSIII\uCOS_CONFIG;..\UCOSIII\uCOS-III\Source;..\UCOSIII\uC-CPU\ARM-Cortex-M4\RealView;..\UCOSIII\uC-LIB\Ports\ARM-Cortex-M4\RealView;..\UCOSIII\uCOS-III\Ports\ARM-Cortex-M4\Generic\RealView;..\HARDWARE\HCSR04;..\HARDWARE\CRC16;..\HARDWARE\ADC;..\HARDWARE\PID;..\HARDWARE\PWM;..\HARDWARE\SPI;..\HARDWARE\TIMEC;..\HARDWARE\WELDING;..\HARDWARE\PROTECT;..\HARDWARE\Kalman;..\HARDWARE\KEY;..\HARDWARE\TEMPCOMPA;..\SYSTEM\usart;..\HARDWARE\TOUCH_SCREEN;..\HARDWARE\FILTER;..\HARDWARE\PINCTRL</IncludePath>
+              <IncludePath>..\CORE;..\SYSTEM\delay;..\SYSTEM\sys;..\FWLIB\STM32F4xx_StdPeriph_Driver\inc;.\inc;..\UCOSIII\uC-CPU;..\UCOSIII\uC-LIB;..\UCOSIII\uCOS-III;..\UCOSIII\UCOS_BSP;..\UCOSIII\uCOS_CONFIG;..\UCOSIII\uCOS-III\Source;..\UCOSIII\uC-CPU\ARM-Cortex-M4\RealView;..\UCOSIII\uC-LIB\Ports\ARM-Cortex-M4\RealView;..\UCOSIII\uCOS-III\Ports\ARM-Cortex-M4\Generic\RealView;..\HARDWARE\HCSR04;..\HARDWARE\CRC16;..\HARDWARE\ADC;..\HARDWARE\PID;..\HARDWARE\PWM;..\HARDWARE\SPI;..\HARDWARE\TIMEC;..\HARDWARE\WELDING;..\HARDWARE\PROTECT;..\HARDWARE\Kalman;..\HARDWARE\KEY;..\HARDWARE\TEMPCOMPA;..\SYSTEM\usart;..\HARDWARE\TOUCH_SCREEN;..\HARDWARE\FILTER;..\HARDWARE\PINCTRL;..\FWLIB\STM32_USB_Device_Library\Core\inc;..\FWLIB\STM32_USB_Device_Library\Class\msc\inc;..\FWLIB\STM32_USB_HOST_Library\Core\inc;..\FWLIB\STM32_USB_HOST_Library\Class\MSC\inc;..\FWLIB\STM32_USB_OTG_Driver\inc;E:\BaiduNetdiskDownload\weld_process_usb\FWLIB\fat_fs\src;..\HARDWARE\SDIO</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -382,19 +382,49 @@
           <GroupName>USER</GroupName>
           <Files>
             <File>
+              <FileName>log.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\log.c</FilePath>
+            </File>
+            <File>
+              <FileName>usb_bsp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\usb_bsp.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_desc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\usbd_desc.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_usr.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\usbd_usr.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbh_msc_usr.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\usbh_msc_usr.c</FilePath>
+            </File>
+            <File>
               <FileName>main.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\main.c</FilePath>
+              <FilePath>.\src\main.c</FilePath>
             </File>
             <File>
               <FileName>stm32f4xx_it.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\stm32f4xx_it.c</FilePath>
+              <FilePath>.\src\stm32f4xx_it.c</FilePath>
             </File>
             <File>
               <FileName>system_stm32f4xx.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\system_stm32f4xx.c</FilePath>
+              <FilePath>.\src\system_stm32f4xx.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_storage_msd.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\usbd_storage_msd.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -470,6 +500,16 @@
               <FileName>ThermocoupleIO.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\PINCTRL\ThermocoupleIO.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm324xg_eval.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\SDIO\stm324xg_eval.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm324xg_eval_sdio_sd.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\SDIO\stm324xg_eval_sdio_sd.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -550,6 +590,16 @@
               <FileName>stm32f4xx_exti.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\FWLIB\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_exti.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_sdio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_sdio.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_i2c.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_i2c.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -805,6 +855,146 @@
               <FileName>filter.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\FILTER\filter.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>USB_HOST_CORE</GroupName>
+          <Files>
+            <File>
+              <FileName>usbh_core.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_HOST_Library\Core\src\usbh_core.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbh_hcs.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_HOST_Library\Core\src\usbh_hcs.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbh_ioreq.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_HOST_Library\Core\src\usbh_ioreq.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbh_stdreq.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_HOST_Library\Core\src\usbh_stdreq.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>USB_HOST_CLASS_MSC</GroupName>
+          <Files>
+            <File>
+              <FileName>usbh_msc_bot.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_HOST_Library\Class\MSC\src\usbh_msc_bot.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbh_msc_core.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_HOST_Library\Class\MSC\src\usbh_msc_core.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbh_msc_fatfs.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_HOST_Library\Class\MSC\src\usbh_msc_fatfs.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbh_msc_scsi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_HOST_Library\Class\MSC\src\usbh_msc_scsi.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>USB_DEVICE_CORE</GroupName>
+          <Files>
+            <File>
+              <FileName>usbd_core.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_Device_Library\Core\src\usbd_core.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_ioreq.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_Device_Library\Core\src\usbd_ioreq.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_req.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_Device_Library\Core\src\usbd_req.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>USB_DEVICE_CLASS_MSC</GroupName>
+          <Files>
+            <File>
+              <FileName>usbd_msc_bot.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_Device_Library\Class\msc\src\usbd_msc_bot.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_msc_core.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_Device_Library\Class\msc\src\usbd_msc_core.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_msc_data.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_Device_Library\Class\msc\src\usbd_msc_data.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_msc_scsi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_Device_Library\Class\msc\src\usbd_msc_scsi.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>USB_DRIVER</GroupName>
+          <Files>
+            <File>
+              <FileName>usb_core.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_OTG_Driver\src\usb_core.c</FilePath>
+            </File>
+            <File>
+              <FileName>usb_dcd.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_OTG_Driver\src\usb_dcd.c</FilePath>
+            </File>
+            <File>
+              <FileName>usb_dcd_int.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_OTG_Driver\src\usb_dcd_int.c</FilePath>
+            </File>
+            <File>
+              <FileName>usb_hcd.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_OTG_Driver\src\usb_hcd.c</FilePath>
+            </File>
+            <File>
+              <FileName>usb_hcd_int.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_OTG_Driver\src\usb_hcd_int.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>FATFS</GroupName>
+          <Files>
+            <File>
+              <FileName>diskio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\fat_fs\src\diskio.c</FilePath>
+            </File>
+            <File>
+              <FileName>ff.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\fat_fs\src\ff.c</FilePath>
             </File>
           </Files>
         </Group>

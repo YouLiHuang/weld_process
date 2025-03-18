@@ -137,31 +137,33 @@ void Load_data_from_mem(void)
 {
 #if RESET_SPI_DATA == 1
 	/*数据初始化*/
-	for (int array_of_data = 0; array_of_data < 21; array_of_data++)
+	int time_init[] = {100, 300, 2500, 200, 50};
+	int temp_init[] = {200, 450, 150};
+	int alarm_temp[] = {400, 100, 650, 200, 650, 200};
+
+	for (int array_of_data = 1; array_of_data < 20; array_of_data++)
 	{
 		// GP
 		SPI_Save_Word(0, array_of_data);
-		// welding_time[0]-welding_time[5]
-		SPI_Save_Word(100 + array_of_data, 40 * (array_of_data + 1));
-		SPI_Save_Word(300 + array_of_data, 40 * (array_of_data + 1) + 2);
-		SPI_Save_Word(100 + array_of_data, 40 * (array_of_data + 1) + 4); // 可去除
-		SPI_Save_Word(2500 + array_of_data, 40 * (array_of_data + 1) + 6);
-		SPI_Save_Word(200 + array_of_data, 40 * (array_of_data + 1) + 8);
-		SPI_Save_Word(50 + array_of_data, 40 * (array_of_data + 1) + 10);
-		// welding_Temp
-		SPI_Save_Word(150 + array_of_data, 40 * (array_of_data + 1) + 12);
-		SPI_Save_Word(330 + array_of_data, 40 * (array_of_data + 1) + 14);
-		SPI_Save_Word(100 + array_of_data, 40 * (array_of_data + 1) + 16);
-		// 限制温度
-		SPI_Save_Word(220 + array_of_data, 40 * (array_of_data + 1) + 18);
-		SPI_Save_Word(50 + array_of_data, 40 * (array_of_data + 1) + 20);
-		SPI_Save_Word(420 + array_of_data, 40 * (array_of_data + 1) + 22);
-		SPI_Save_Word(200 + array_of_data, 40 * (array_of_data + 1) + 24);
-		SPI_Save_Word(420 + array_of_data, 40 * (array_of_data + 1) + 26);
-		SPI_Save_Word(50 + array_of_data, 40 * (array_of_data + 1) + 28);
-		// 温度增益
-		SPI_Save_Word(95 + array_of_data, 40 * (array_of_data + 1) + 30);
-		SPI_Save_Word(70 + array_of_data, 40 * (array_of_data + 1) + 32);
+		// time1-time5
+		for (uint8_t i = 0; i < sizeof(time_init) / sizeof(int); i++)
+		{
+			SPI_Save_Word(time_init[i], TIME_BASE(array_of_data) + ADDR_OFFSET * i);
+		}
+
+		for (uint8_t i = 0; i < sizeof(temp_init) / sizeof(int); i++)
+		{
+			SPI_Save_Word(temp_init[i], TEMP_BASE(array_of_data) + ADDR_OFFSET * i);
+		}
+
+		for (uint8_t i = 0; i < sizeof(alarm_temp) / sizeof(int); i++)
+		{
+			SPI_Save_Word(alarm_temp[i], ALARM_BASE(array_of_data) + ADDR_OFFSET * i);
+		}
+
+		// gain1 gain2
+		SPI_Save_Word(95 + array_of_data, GAIN_BASE(array_of_data));
+		SPI_Save_Word(95 + array_of_data, GAIN_BASE(array_of_data) + ADDR_OFFSET);
 	}
 #endif
 

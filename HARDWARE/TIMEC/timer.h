@@ -22,7 +22,7 @@
 
 void TIM3_Int_Init(void);
 void TIM5_Int_Init(void);
-void TIM2_Int_Init(void);
+void TIM8_Int_Init(void);
 void user_timer_handle(void);
 
 #define TEMP_BUF_MAX_LEN 3000

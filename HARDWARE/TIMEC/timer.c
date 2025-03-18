@@ -163,30 +163,30 @@ void pid_param_dynamic_reload(void *controller, double *fitting_curves, uint16_t
 }
 
 /**
- * @description: 定时器2初始化，1ms中断
+ * @description: 定时器8初始化，1ms中断
  * @return {*}
  */
-void TIM2_Int_Init(void)
+void TIM8_Int_Init(void)
 {
 	uint16_t arr = 1000 - 1;
 	uint16_t psc = 168 - 1;
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 	RCC_PCLK1Config(RCC_HCLK_Div1);						 // APB1不分频（168M）
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE); // 使能TIM3时钟
+	RCC_APB1PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE); // 使能TIM3时钟
 
 	TIM_TimeBaseInitStructure.TIM_Period = arr;						// 自动重装载值
 	TIM_TimeBaseInitStructure.TIM_Prescaler = psc;					// 定时器分频
 	TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up; // 向上计数模式
 	TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
 
-	TIM_TimeBaseInit(TIM2, &TIM_TimeBaseInitStructure); // 初始化TIM3
+	TIM_TimeBaseInit(TIM8, &TIM_TimeBaseInitStructure); // 初始化TIM3
 
-	TIM_Cmd(TIM2, DISABLE);						// 使能定时器3
-	TIM_ClearITPendingBit(TIM2, TIM_IT_Update); // 清除中断标志
-	TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);	// 允许定时器3更新中断
+	TIM_Cmd(TIM8, DISABLE);						// 使能定时器3
+	TIM_ClearITPendingBit(TIM8, TIM_IT_Update); // 清除中断标志
+	TIM_ITConfig(TIM8, TIM_IT_Update, ENABLE);	// 允许定时器3更新中断
 
-	NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQn;				 // 定时器3中断
+	NVIC_InitStructure.NVIC_IRQChannel = TIM8_UP_TIM13_IRQn;	 // 定时器3中断
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00; // 抢占优先级0
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x02;		 // 子优先级0
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
@@ -468,28 +468,28 @@ void TIM3_IRQHandler(void)
 }
 
 /**
- * @description: tim2 irq handle
+ * @description: TIM8 irq handle
  * @return {*}
  */
-static uint16_t tim2_user_cnt;
-void TIM2_IRQHandler(void)
+static uint16_t TIM8_user_cnt;
+void TIM8_IRQHandler(void)
 {
 #if SYSTEM_SUPPORT_OS // 使用UCOS操作系统
 	OSIntEnter();
 #endif
-	if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET) // 溢出中断
+	if (TIM_GetITStatus(TIM8, TIM_IT_Update) == SET) // 溢出中断
 	{
-		tim2_user_cnt++;
+		TIM8_user_cnt++;
 	}
-	TIM_ClearITPendingBit(TIM2, TIM_IT_Update); // 清除中断标志位
+	TIM_ClearITPendingBit(TIM8, TIM_IT_Update); // 清除中断标志位
 #if SYSTEM_SUPPORT_OS
 	OSIntExit(); // 退出中断
 #endif
 }
 
-uint16_t tim2_cnt_get()
+uint16_t TIM8_cnt_get()
 {
-	return tim2_user_cnt;
+	return TIM8_user_cnt;
 }
 
 /**
@@ -499,14 +499,14 @@ uint16_t tim2_cnt_get()
  */
 void user_tim_delay(uint16_t time_ms)
 {
-	TIM_Cmd(TIM2, ENABLE);
-	tim2_user_cnt = 0;
-	while (tim2_user_cnt < time_ms)
+	TIM_Cmd(TIM8, ENABLE);
+	TIM8_user_cnt = 0;
+	while (TIM8_user_cnt < time_ms)
 	{
 		__NOP();
 	}
-	TIM_Cmd(TIM2, DISABLE);
-	TIM_ClearITPendingBit(TIM2, TIM_IT_Update); // 清除中断标志位
-	TIM2->CNT = 0;
-	tim2_user_cnt = 0;
+	TIM_Cmd(TIM8, DISABLE);
+	TIM_ClearITPendingBit(TIM8, TIM_IT_Update); // 清除中断标志位
+	TIM8->CNT = 0;
+	TIM8_user_cnt = 0;
 }

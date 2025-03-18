@@ -1,52 +1,15 @@
 #include "delay.h"
 #include "sys.h"
-////////////////////////////////////////////////////////////////////////////////// 	 
-//如果使用ucos,则包括下面的头文件即可.
 #if SYSTEM_SUPPORT_OS
 #include "includes.h"					//ucos 使用	  
 #endif
-//////////////////////////////////////////////////////////////////////////////////  
-//本程序只供学习使用，未经作者许可，不得用于其它任何用途
-//ALIENTEK STM32F407开发板
-//使用SysTick的普通计数模式对延迟进行管理(支持ucosii)
-//包括delay_us,delay_ms
-//正点原子@ALIENTEK
-//技术论坛:www.openedv.com
-//创建日期:2014/5/2
-//版本：V1.3
-//版权所有，盗版必究。
-//Copyright(C) 广州市星翼电子科技有限公司 2014-2024
-//All rights reserved
-//********************************************************************************
-//修改说明
-//V1.1 20140803 
-//1,delay_us,添加参数等于0判断,如果参数等于0,则直接退出. 
-//2,修改ucosii下,delay_ms函数,加入OSLockNesting的判断,在进入中断后,也可以准确延时.
-//V1.2 20150411  
-//修改OS支持方式,以支持任意OS(不限于UCOSII和UCOSIII,理论上任意OS都可以支持)
-//添加:delay_osrunning/delay_ostickspersec/delay_osintnesting三个宏定义
-//添加:delay_osschedlock/delay_osschedunlock/delay_ostimedly三个函数
-//V1.3 20150521
-//修正UCOSIII支持时的2个bug：
-//delay_tickspersec改为：delay_ostickspersec
-//delay_intnesting改为：delay_osintnesting
-////////////////////////////////////////////////////////////////////////////////// 
+
 
 static u8  fac_us=0;							//us延时倍乘数			   
 static u16 fac_ms=0;							//ms延时倍乘数,在os下,代表每个节拍的ms数
 	
 #if SYSTEM_SUPPORT_OS							//如果SYSTEM_SUPPORT_OS定义了,说明要支持OS了(不限于UCOS).
-//当delay_us/delay_ms需要支持OS的时候需要三个与OS相关的宏定义和函数来支持
-//首先是3个宏定义:
-//    delay_osrunning:用于表示OS当前是否正在运行,以决定是否可以使用相关函数
-//delay_ostickspersec:用于表示OS设定的时钟节拍,delay_init将根据这个参数来初始哈systick
-// delay_osintnesting:用于表示OS中断嵌套级别,因为中断里面不可以调度,delay_ms使用该参数来决定如何运行
-//然后是3个函数:
-//  delay_osschedlock:用于锁定OS任务调度,禁止调度
-//delay_osschedunlock:用于解锁OS任务调度,重新开启调度
-//    delay_ostimedly:用于OS延时,可以引起任务调度.
 
-//本例程仅作UCOSII和UCOSIII的支持,其他OS,请自行参考着移植
 //支持UCOSII
 #ifdef 	OS_CRITICAL_METHOD						//OS_CRITICAL_METHOD定义了,说明要支持UCOSII				
 #define delay_osrunning		OSRunning			//OS是否运行标记,0,不运行;1,在运行
@@ -108,10 +71,6 @@ void SysTick_Handler(void)
 }
 #endif
 			   
-//初始化延迟函数
-//当使用ucos的时候,此函数会初始化ucos的时钟节拍
-//SYSTICK的时钟固定为AHB时钟的1/8
-//SYSCLK:系统时钟频率
 void delay_init(u8 SYSCLK)
 {
 #if SYSTEM_SUPPORT_OS 						//如果需要支持OS.
@@ -132,7 +91,7 @@ void delay_init(u8 SYSCLK)
 #endif
 }								    
 
-#if SYSTEM_SUPPORT_OS 						//如果需要支持OS.
+#if SYSTEM_SUPPORT_OS 			
 //延时nus
 //nus:要延时的us数.	
 //nus:0~204522252(最大值即2^32/fac_us@fac_us=21)	    								   
@@ -157,9 +116,8 @@ void delay_us(u32 nus)
 	};
 	delay_osschedunlock();					//恢复OS调度											    
 }  
-//延时nms
-//nms:要延时的ms数
-//nms:0~65535
+
+
 void delay_ms(u16 nms)
 {	
 	if(delay_osrunning&&delay_osintnesting==0)//如果OS已经在跑了,并且不是在中断里面(中断里面不能任务调度)	    

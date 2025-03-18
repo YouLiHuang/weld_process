@@ -31,6 +31,12 @@
 #include "stm32f4xx_it.h"
 #include "protect.h"
 
+#include "usb_bsp.h"
+#include "usb_hcd_int.h"
+#include "usb_dcd_int.h"
+#include "usbh_core.h"
+#include "dual_func_demo.h"
+
 /** @addtogroup Template_Project
  * @{
  */
@@ -199,26 +205,42 @@ void DebugMon_Handler(void)
 /*  available peripheral interrupt handler's name please refer to the startup */
 /*  file (startup_stm32f4xx.s).                                               */
 /******************************************************************************/
+extern USB_OTG_CORE_HANDLE USB_OTG_Core;
+extern USBH_HOST USB_Host;
+/**
+ * @brief   OTG_FS_IRQHandler
+ *          This function handles USB-On-The-Go FS global interrupt request.
+ *          requests.
+ * @param  None
+ * @retval None
+ */
 
-// void TIM7_IRQHandler(void)
-// {
-// 	TIM_P_Protect_IT();
-// }
-
-void EXTI9_5_IRQHandler(void)
-{
-  // EXTI9_Temperature_Protect_IT();
-}
-
-void EXTI15_10_IRQHandler(void)
-{
-  // EXTI10_Temperature_Protect_IT();
-}
-
-void EXTI0_IRQHandler(void)
-{
-  // EXTI0_Currunt_Protect_IT();
-}
+ #ifdef USE_USB_OTG_FS
+ void OTG_FS_IRQHandler(void)
+ #else
+ void OTG_HS_IRQHandler(void)
+ #endif
+ {
+   if (USB_OTG_IsHostMode(&USB_OTG_Core)) /* ensure that we are in device mode */
+   {
+     USBH_OTG_ISR_Handler(&USB_OTG_Core);
+   }
+   else
+   {
+     USBD_OTG_ISR_Handler(&USB_OTG_Core);
+   }
+ }
+ 
+ /**
+  * @brief  TIM2_IRQHandler
+  *         This function handles Timer2 Handler.
+  * @param  None
+  * @retval None
+  */
+ void TIM2_IRQHandler(void)
+ {
+   USB_OTG_BSP_TimerIRQ();
+ }
 
 /**
  * @brief  This function handles PPP interrupt request.
