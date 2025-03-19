@@ -55,7 +55,9 @@
         "stm32f4xx_adc.h": "c",
         "dual_func_demo.h": "c",
         "usbh_msc_usr.h": "c",
-        "usb_bsp.h": "c"
+        "usb_bsp.h": "c",
+        "diskio.h": "c",
+        "usbh_msc_core.h": "c"
     },
     // 头部注释
     "fileheader.customMade": {

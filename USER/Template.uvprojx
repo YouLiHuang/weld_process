@@ -10,14 +10,14 @@
       <TargetName>Template</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pCCUsed>5060960::V5.06 update 7 (build 960)::.\ARMCC</pCCUsed>
+      <pCCUsed>5060750::V5.06 update 6 (build 750)::ARMCC</pCCUsed>
       <uAC6>0</uAC6>
       <TargetOption>
         <TargetCommonOption>
           <Device>STM32F407ZG</Device>
           <Vendor>STMicroelectronics</Vendor>
-          <PackID>Keil.STM32F4xx_DFP.3.0.0</PackID>
-          <PackURL>https://www.keil.com/pack/</PackURL>
+          <PackID>Keil.STM32F4xx_DFP.2.13.0</PackID>
+          <PackURL>http://www.keil.com/pack</PackURL>
           <Cpu>IROM(0x08000000,0x100000) IRAM(0x20000000,0x20000) IRAM2(0x10000000,0x10000) CPUTYPE("Cortex-M4") FPU2 CLOCK(12000000) ELITTLE</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
           <StartupFile></StartupFile>
@@ -184,6 +184,7 @@
             <hadXRAM>0</hadXRAM>
             <uocXRam>0</uocXRam>
             <RvdsVP>2</RvdsVP>
+            <RvdsMve>0</RvdsMve>
             <hadIRAM2>1</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
@@ -337,7 +338,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F40_41xxx,USE_STDPERIPH_DRIVER,__FPU_USED=1</Define>
               <Undefine></Undefine>
-              <IncludePath>..\CORE;..\SYSTEM\delay;..\SYSTEM\sys;..\FWLIB\STM32F4xx_StdPeriph_Driver\inc;.\inc;..\UCOSIII\uC-CPU;..\UCOSIII\uC-LIB;..\UCOSIII\uCOS-III;..\UCOSIII\UCOS_BSP;..\UCOSIII\uCOS_CONFIG;..\UCOSIII\uCOS-III\Source;..\UCOSIII\uC-CPU\ARM-Cortex-M4\RealView;..\UCOSIII\uC-LIB\Ports\ARM-Cortex-M4\RealView;..\UCOSIII\uCOS-III\Ports\ARM-Cortex-M4\Generic\RealView;..\HARDWARE\HCSR04;..\HARDWARE\CRC16;..\HARDWARE\ADC;..\HARDWARE\PID;..\HARDWARE\PWM;..\HARDWARE\SPI;..\HARDWARE\TIMEC;..\HARDWARE\WELDING;..\HARDWARE\PROTECT;..\HARDWARE\Kalman;..\HARDWARE\KEY;..\HARDWARE\TEMPCOMPA;..\SYSTEM\usart;..\HARDWARE\TOUCH_SCREEN;..\HARDWARE\FILTER;..\HARDWARE\PINCTRL;..\FWLIB\STM32_USB_Device_Library\Core\inc;..\FWLIB\STM32_USB_Device_Library\Class\msc\inc;..\FWLIB\STM32_USB_HOST_Library\Core\inc;..\FWLIB\STM32_USB_HOST_Library\Class\MSC\inc;..\FWLIB\STM32_USB_OTG_Driver\inc;E:\BaiduNetdiskDownload\weld_process_usb\FWLIB\fat_fs\src;..\HARDWARE\SDIO</IncludePath>
+              <IncludePath>..\CORE;..\SYSTEM\delay;..\SYSTEM\sys;..\FWLIB\STM32F4xx_StdPeriph_Driver\inc;.\inc;..\UCOSIII\uC-CPU;..\UCOSIII\uC-LIB;..\UCOSIII\uCOS-III;..\UCOSIII\UCOS_BSP;..\UCOSIII\uCOS_CONFIG;..\UCOSIII\uCOS-III\Source;..\UCOSIII\uC-CPU\ARM-Cortex-M4\RealView;..\UCOSIII\uC-LIB\Ports\ARM-Cortex-M4\RealView;..\UCOSIII\uCOS-III\Ports\ARM-Cortex-M4\Generic\RealView;..\HARDWARE\HCSR04;..\HARDWARE\CRC16;..\HARDWARE\ADC;..\HARDWARE\PID;..\HARDWARE\PWM;..\HARDWARE\SPI;..\HARDWARE\TIMEC;..\HARDWARE\WELDING;..\HARDWARE\PROTECT;..\HARDWARE\Kalman;..\HARDWARE\KEY;..\HARDWARE\TEMPCOMPA;..\SYSTEM\usart;..\HARDWARE\TOUCH_SCREEN;..\HARDWARE\FILTER;..\HARDWARE\PINCTRL;..\FWLIB\STM32_USB_Device_Library\Core\inc;..\FWLIB\STM32_USB_Device_Library\Class\msc\inc;..\FWLIB\STM32_USB_HOST_Library\Core\inc;..\FWLIB\STM32_USB_HOST_Library\Class\MSC\inc;..\FWLIB\STM32_USB_OTG_Driver\inc;..\HARDWARE\SDIO;..\FWLIB\fat_fs\src</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -392,16 +393,6 @@
               <FilePath>.\src\usb_bsp.c</FilePath>
             </File>
             <File>
-              <FileName>usbd_desc.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\usbd_desc.c</FilePath>
-            </File>
-            <File>
-              <FileName>usbd_usr.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\usbd_usr.c</FilePath>
-            </File>
-            <File>
               <FileName>usbh_msc_usr.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\usbh_msc_usr.c</FilePath>
@@ -420,11 +411,6 @@
               <FileName>system_stm32f4xx.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\system_stm32f4xx.c</FilePath>
-            </File>
-            <File>
-              <FileName>usbd_storage_msd.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\usbd_storage_msd.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -500,16 +486,6 @@
               <FileName>ThermocoupleIO.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\PINCTRL\ThermocoupleIO.c</FilePath>
-            </File>
-            <File>
-              <FileName>stm324xg_eval.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\SDIO\stm324xg_eval.c</FilePath>
-            </File>
-            <File>
-              <FileName>stm324xg_eval_sdio_sd.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\SDIO\stm324xg_eval_sdio_sd.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -590,11 +566,6 @@
               <FileName>stm32f4xx_exti.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\FWLIB\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_exti.c</FilePath>
-            </File>
-            <File>
-              <FileName>stm32f4xx_sdio.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\FWLIB\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_sdio.c</FilePath>
             </File>
             <File>
               <FileName>stm32f4xx_i2c.c</FileName>
@@ -884,6 +855,36 @@
           </Files>
         </Group>
         <Group>
+          <GroupName>USB_DRIVER</GroupName>
+          <Files>
+            <File>
+              <FileName>usb_core.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_OTG_Driver\src\usb_core.c</FilePath>
+            </File>
+            <File>
+              <FileName>usb_hcd.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_OTG_Driver\src\usb_hcd.c</FilePath>
+            </File>
+            <File>
+              <FileName>usb_hcd_int.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32_USB_OTG_Driver\src\usb_hcd_int.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>FATFS</GroupName>
+          <Files>
+            <File>
+              <FileName>ff.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\fat_fs\src\ff.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
           <GroupName>USB_HOST_CLASS_MSC</GroupName>
           <Files>
             <File>
@@ -905,96 +906,6 @@
               <FileName>usbh_msc_scsi.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\FWLIB\STM32_USB_HOST_Library\Class\MSC\src\usbh_msc_scsi.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>USB_DEVICE_CORE</GroupName>
-          <Files>
-            <File>
-              <FileName>usbd_core.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\FWLIB\STM32_USB_Device_Library\Core\src\usbd_core.c</FilePath>
-            </File>
-            <File>
-              <FileName>usbd_ioreq.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\FWLIB\STM32_USB_Device_Library\Core\src\usbd_ioreq.c</FilePath>
-            </File>
-            <File>
-              <FileName>usbd_req.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\FWLIB\STM32_USB_Device_Library\Core\src\usbd_req.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>USB_DEVICE_CLASS_MSC</GroupName>
-          <Files>
-            <File>
-              <FileName>usbd_msc_bot.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\FWLIB\STM32_USB_Device_Library\Class\msc\src\usbd_msc_bot.c</FilePath>
-            </File>
-            <File>
-              <FileName>usbd_msc_core.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\FWLIB\STM32_USB_Device_Library\Class\msc\src\usbd_msc_core.c</FilePath>
-            </File>
-            <File>
-              <FileName>usbd_msc_data.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\FWLIB\STM32_USB_Device_Library\Class\msc\src\usbd_msc_data.c</FilePath>
-            </File>
-            <File>
-              <FileName>usbd_msc_scsi.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\FWLIB\STM32_USB_Device_Library\Class\msc\src\usbd_msc_scsi.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>USB_DRIVER</GroupName>
-          <Files>
-            <File>
-              <FileName>usb_core.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\FWLIB\STM32_USB_OTG_Driver\src\usb_core.c</FilePath>
-            </File>
-            <File>
-              <FileName>usb_dcd.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\FWLIB\STM32_USB_OTG_Driver\src\usb_dcd.c</FilePath>
-            </File>
-            <File>
-              <FileName>usb_dcd_int.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\FWLIB\STM32_USB_OTG_Driver\src\usb_dcd_int.c</FilePath>
-            </File>
-            <File>
-              <FileName>usb_hcd.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\FWLIB\STM32_USB_OTG_Driver\src\usb_hcd.c</FilePath>
-            </File>
-            <File>
-              <FileName>usb_hcd_int.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\FWLIB\STM32_USB_OTG_Driver\src\usb_hcd_int.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>FATFS</GroupName>
-          <Files>
-            <File>
-              <FileName>diskio.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\FWLIB\fat_fs\src\diskio.c</FilePath>
-            </File>
-            <File>
-              <FileName>ff.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\FWLIB\fat_fs\src\ff.c</FilePath>
             </File>
           </Files>
         </Group>

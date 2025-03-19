@@ -33,9 +33,7 @@
 
 #include "usb_bsp.h"
 #include "usb_hcd_int.h"
-#include "usb_dcd_int.h"
 #include "usbh_core.h"
-#include "dual_func_demo.h"
 
 /** @addtogroup Template_Project
  * @{
@@ -207,29 +205,23 @@ void DebugMon_Handler(void)
 /******************************************************************************/
 extern USB_OTG_CORE_HANDLE USB_OTG_Core;
 extern USBH_HOST USB_Host;
-/**
- * @brief   OTG_FS_IRQHandler
- *          This function handles USB-On-The-Go FS global interrupt request.
- *          requests.
- * @param  None
- * @retval None
- */
+extern void USB_OTG_BSP_TimerIRQ(void);
 
- #ifdef USE_USB_OTG_FS
- void OTG_FS_IRQHandler(void)
- #else
- void OTG_HS_IRQHandler(void)
- #endif
- {
-   if (USB_OTG_IsHostMode(&USB_OTG_Core)) /* ensure that we are in device mode */
-   {
-     USBH_OTG_ISR_Handler(&USB_OTG_Core);
-   }
-   else
-   {
-     USBD_OTG_ISR_Handler(&USB_OTG_Core);
-   }
- }
+/**
+  * @brief  OTG_FS_IRQHandler
+  *          This function handles USB-On-The-Go FS global interrupt request.
+  *          requests.
+  * @param  None
+  * @retval None
+  */
+#ifdef USE_USB_OTG_FS
+void OTG_FS_IRQHandler(void)
+#else
+void OTG_HS_IRQHandler(void)
+#endif
+{
+  USBH_OTG_ISR_Handler(&USB_OTG_Core);
+}
  
  /**
   * @brief  TIM2_IRQHandler

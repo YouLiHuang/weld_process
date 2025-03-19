@@ -56,7 +56,7 @@
 /** @defgroup USBH_USR_Private_Macros
  * @{
  */
- 
+
 /**
  * @}
  */
@@ -68,24 +68,19 @@
 uint8_t USBH_USR_ApplicationState = USH_USR_FS_INIT;
 FATFS fatfs;
 FIL file;
-uint8_t line_idx = 0;
-__IO uint8_t wait_user_input = 0;
-uint8_t Enum_Done = 0;
-
-uint8_t writeTextBuff[] = "STM32 Connectivity line Host Demo application using FAT_FS   ";
 
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
-#if defined ( __ICCARM__ )      /* !< IAR Compiler */
-#pragma data_alignment=4
+#if defined(__ICCARM__) /* !< IAR Compiler */
+#pragma data_alignment = 4
 #endif
-#endif                          /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
+#endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE USB_OTG_Core __ALIGN_END;
 
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
-#if defined ( __ICCARM__ )      /* !< IAR Compiler */
-#pragma data_alignment=4
+#if defined(__ICCARM__) /* !< IAR Compiler */
+#pragma data_alignment = 4
 #endif
-#endif                          /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
+#endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 __ALIGN_BEGIN USBH_HOST USB_Host __ALIGN_END;
 
 /* Points to the DEVICE_PROP structure of current device */
@@ -360,8 +355,7 @@ int USBH_USR_MSC_Application(void)
 {
 
   FRESULT res;
-  uint8_t writeTextBuff[] =
-      "STM32 Connectivity line Host Demo application using FAT_FS   ";
+  uint8_t writeTextBuff[] = "STM32 Connectivity line Host Demo application using FAT_FS   ";
   uint16_t bytesWritten, bytesToWrite;
 
   switch (USBH_USR_ApplicationState)
@@ -376,12 +370,12 @@ int USBH_USR_MSC_Application(void)
       return (-1);
     }
     printf("> File System initialized.\n");
-    printf("> Disk capacity : %lu Bytes\n", USBH_MSC_Param.MSCapacity *
-                                                USBH_MSC_Param.MSPageLength);
+    printf("> Disk capacity : %lu Bytes\n",
+           USBH_MSC_Param.MSCapacity * USBH_MSC_Param.MSPageLength);
 
     if (USBH_MSC_Param.MSWriteProtect == DISK_WRITE_PROTECTED)
     {
-      printf((void *)MSG_WR_PROTECT);
+      printf(MSG_WR_PROTECT);
     }
 
     USBH_USR_ApplicationState = USH_USR_FS_READLIST;
@@ -389,7 +383,7 @@ int USBH_USR_MSC_Application(void)
 
   case USH_USR_FS_READLIST:
 
-    printf((void *)MSG_ROOT_CONT);
+    printf(MSG_ROOT_CONT);
     Explore_Disk("0:/", 1);
 
     USBH_USR_ApplicationState = USH_USR_FS_WRITEFILE;
@@ -446,18 +440,14 @@ int USBH_USR_MSC_Application(void)
 
     USBH_USR_ApplicationState = USH_USR_FS_DRAW;
 
-#if !defined(USE_STM324x9I_EVAL)
-    printf("To start Image slide show Press Key\n");
-#endif
-
     break;
 
   case USH_USR_FS_DRAW:
 
     /* Key button in polling */
-    while ((HCD_IsDeviceConnected(&USB_OTG_Core)) &&
-           (STM_EVAL_PBGetState(BUTTON_KEY) == SET))
+    while (HCD_IsDeviceConnected(&USB_OTG_Core))
     {
+      printf("simulate Toggle Leds\n");
     }
 
     while (HCD_IsDeviceConnected(&USB_OTG_Core))
@@ -467,7 +457,7 @@ int USBH_USR_MSC_Application(void)
         /* fat_fs initialisation fails */
         return (-1);
       }
-      // return Image_Browser("0:/");
+      
     }
     break;
   default:
@@ -522,7 +512,6 @@ uint8_t Explore_Disk(char *path, uint8_t recu_level)
       {
         printf("...");
       }
-      
 
       if (recu_level == 1)
       {

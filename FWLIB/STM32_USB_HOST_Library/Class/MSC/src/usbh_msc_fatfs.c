@@ -18,7 +18,7 @@ extern USBH_HOST                     USB_Host;
 /* Initialize Disk Drive                                                 */
 /*-----------------------------------------------------------------------*/
 
-DSTATUS USB_disk_initialize (
+DSTATUS disk_initialize (
                          BYTE drv		/* Physical drive number (0) */
                            )
 {
@@ -39,7 +39,7 @@ DSTATUS USB_disk_initialize (
 /* Get Disk Status                                                       */
 /*-----------------------------------------------------------------------*/
 
-DSTATUS USB_disk_status (
+DSTATUS disk_status (
                      BYTE drv		/* Physical drive number (0) */
                        )
 {
@@ -53,7 +53,7 @@ DSTATUS USB_disk_status (
 /* Read Sector(s)                                                        */
 /*-----------------------------------------------------------------------*/
 
-DRESULT USB_disk_read (
+DRESULT disk_read (
                    BYTE pdrv,			/* Physical drive number (0) */
                    BYTE *buff,			/* Pointer to the data buffer to store read data */
                    DWORD sector,		/* Start sector number (LBA) */
@@ -95,7 +95,7 @@ DRESULT USB_disk_read (
 /*-----------------------------------------------------------------------*/
 
 #if _READONLY == 0
-DRESULT USB_disk_write (
+DRESULT disk_write (
                     BYTE pdrv,			/* Physical drive number (0) */
                     const BYTE *buff,	/* Pointer to the data to be written */
                     DWORD sector,		/* Start sector number (LBA) */
@@ -138,7 +138,7 @@ DRESULT USB_disk_write (
 /*-----------------------------------------------------------------------*/
 
 #if _USE_IOCTL != 0
-DRESULT USB_disk_ioctl (
+DRESULT disk_ioctl (
                     BYTE drv,		/* Physical drive number (0) */
                     BYTE ctrl,		/* Control code */
                     void *buff		/* Buffer to send/receive control data */
