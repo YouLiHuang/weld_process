@@ -338,7 +338,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F40_41xxx,USE_STDPERIPH_DRIVER,__FPU_USED=1</Define>
               <Undefine></Undefine>
-              <IncludePath>..\CORE;..\SYSTEM\delay;..\SYSTEM\sys;..\FWLIB\STM32F4xx_StdPeriph_Driver\inc;.\inc;..\UCOSIII\uC-CPU;..\UCOSIII\uC-LIB;..\UCOSIII\uCOS-III;..\UCOSIII\UCOS_BSP;..\UCOSIII\uCOS_CONFIG;..\UCOSIII\uCOS-III\Source;..\UCOSIII\uC-CPU\ARM-Cortex-M4\RealView;..\UCOSIII\uC-LIB\Ports\ARM-Cortex-M4\RealView;..\UCOSIII\uCOS-III\Ports\ARM-Cortex-M4\Generic\RealView;..\HARDWARE\CRC16;..\HARDWARE\ADC;..\HARDWARE\PWM;..\HARDWARE\SPI;..\HARDWARE\TIMEC;..\HARDWARE\PROTECT;..\HARDWARE\KEY;..\SYSTEM\usart;..\HARDWARE\TOUCH_SCREEN;..\HARDWARE\PINCTRL;..\FWLIB\STM32_USB_Device_Library\Core\inc;..\FWLIB\STM32_USB_Device_Library\Class\msc\inc;..\FWLIB\STM32_USB_HOST_Library\Core\inc;..\FWLIB\STM32_USB_HOST_Library\Class\MSC\inc;..\FWLIB\STM32_USB_OTG_Driver\inc;..\FWLIB\fat_fs\src;..\HARDWARE\SDIO</IncludePath>
+              <IncludePath>..\CORE;..\SYSTEM\delay;..\SYSTEM\sys;..\FWLIB\STM32F4xx_StdPeriph_Driver\inc;.\inc;..\UCOSIII\uC-CPU;..\UCOSIII\uC-LIB;..\UCOSIII\uCOS-III;..\UCOSIII\UCOS_BSP;..\UCOSIII\uCOS_CONFIG;..\UCOSIII\uCOS-III\Source;..\UCOSIII\uC-CPU\ARM-Cortex-M4\RealView;..\UCOSIII\uC-LIB\Ports\ARM-Cortex-M4\RealView;..\UCOSIII\uCOS-III\Ports\ARM-Cortex-M4\Generic\RealView;..\HARDWARE\CRC16;..\HARDWARE\ADC;..\HARDWARE\PWM;..\HARDWARE\SPI;..\HARDWARE\TIMEC;..\HARDWARE\PROTECT;..\HARDWARE\KEY;..\SYSTEM\usart;..\HARDWARE\TOUCH_SCREEN;..\HARDWARE\PINCTRL;..\FWLIB\STM32_USB_Device_Library\Core\inc;..\FWLIB\STM32_USB_Device_Library\Class\msc\inc;..\FWLIB\STM32_USB_HOST_Library\Core\inc;..\FWLIB\STM32_USB_HOST_Library\Class\MSC\inc;..\FWLIB\STM32_USB_OTG_Driver\inc;..\FWLIB\fat_fs\src;..\HARDWARE\SDIO;..\HARDWARE\usart</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -508,9 +508,14 @@
               <FilePath>..\HARDWARE\TOUCH_SCREEN\touchscreen.c</FilePath>
             </File>
             <File>
-              <FileName>ThermocoupleIO.c</FileName>
+              <FileName>usart.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\HARDWARE\PINCTRL\ThermocoupleIO.c</FilePath>
+              <FilePath>..\HARDWARE\usart\usart.c</FilePath>
+            </File>
+            <File>
+              <FileName>thermocoupleIO.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\PINCTRL\thermocoupleIO.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -533,9 +538,9 @@
               <FilePath>..\FWLIB\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_rng.c</FilePath>
             </File>
             <File>
-              <FileName>usart.c</FileName>
+              <FileName>system_stm32f4xx.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\SYSTEM\usart\usart.c</FilePath>
+              <FilePath>..\SYSTEM\config\system_stm32f4xx.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -843,6 +848,16 @@
           <GroupName>USER</GroupName>
           <Files>
             <File>
+              <FileName>main.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\main.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_it.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\stm32f4xx_it.c</FilePath>
+            </File>
+            <File>
               <FileName>log.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\log.c</FilePath>
@@ -858,34 +873,19 @@
               <FilePath>.\src\usbh_msc_usr.c</FilePath>
             </File>
             <File>
-              <FileName>main.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\main.c</FilePath>
-            </File>
-            <File>
-              <FileName>stm32f4xx_it.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\stm32f4xx_it.c</FilePath>
-            </File>
-            <File>
-              <FileName>system_stm32f4xx.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\system_stm32f4xx.c</FilePath>
-            </File>
-            <File>
               <FileName>Kalman.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\Kalman.c</FilePath>
             </File>
             <File>
-              <FileName>PID.c</FileName>
+              <FileName>filter.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\src\PID.c</FilePath>
+              <FilePath>.\src\filter.c</FilePath>
             </File>
             <File>
-              <FileName>welding_process.c</FileName>
+              <FileName>pid.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\src\welding_process.c</FilePath>
+              <FilePath>.\src\pid.c</FilePath>
             </File>
             <File>
               <FileName>tempcompa.c</FileName>
@@ -893,9 +893,9 @@
               <FilePath>.\src\tempcompa.c</FilePath>
             </File>
             <File>
-              <FileName>filter.c</FileName>
+              <FileName>welding_process.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\src\filter.c</FilePath>
+              <FilePath>.\src\welding_process.c</FilePath>
             </File>
           </Files>
         </Group>
