@@ -370,7 +370,7 @@ void TIM5_IRQHandler(void)
 			/*时间更新*/
 			weld_controller->step_time_tick++;
 			/*1、：算法控制——缓降，暂时不实现，直接关闭输出*/
-			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[2] + STABLE_ERR,
+			weld_controller->Duty_Cycle = PI_ctrl_output(0,
 														 current_temp_comp,
 														 weld_controller->Duty_Cycle,
 														 weld_controller->pid_ctrl);
