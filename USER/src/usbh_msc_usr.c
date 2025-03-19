@@ -400,7 +400,7 @@ int USBH_USR_MSC_Application(void)
       break;
     }
     /* Writes a text file, test.txt in the disk */
-    printf("> Writing File to disk flash ...\n");
+    printf("> Writing File to disk\n");
     if (USBH_MSC_Param.MSWriteProtect == DISK_WRITE_PROTECTED)
     {
 

@@ -67,7 +67,7 @@ void error_task(void *p_arg);
 // 任务优先级
 #define MAIN_TASK_PRIO 5
 // 任务堆栈大小
-#define MAIN_STK_SIZE 2048
+#define MAIN_STK_SIZE 3072
 // 任务控制块
 OS_TCB Main_TaskTCB;
 // 任务堆栈
@@ -629,7 +629,7 @@ static bool Temp_up_check(void)
 	TIM_SetCompare1(TIM4, PD_MAX / 2);
 
 	// 加热80ms
-	user_tim_delay(100);
+	delay_ms(100);
 
 	// 关闭
 	TIM_SetCompare1(TIM1, 0);
@@ -640,7 +640,7 @@ static bool Temp_up_check(void)
 	TIM_Cmd(TIM1, DISABLE);
 
 	// 延时检测温度
-	user_tim_delay(100);
+	delay_ms(100);
 	New_Temperature = temp_convert(current_Thermocouple);
 
 	/*判断温度变化*/
@@ -795,12 +795,11 @@ void error_task(void *p_arg)
 			/*重新配置*/
 			uart_init(115200);
 			/*串口屏复位*/
-			Touchscreen_init();
+			// Touchscreen_init();
 			/*加载数据*/
 			Load_data_from_mem();
 			/*上位机复位*/
 			Host_computer_reset();
-
 		}
 
 		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err); // 休眠
@@ -873,9 +872,6 @@ static void Power_on_check(void)
 
 static void Temp_updata_realtime()
 {
-	// voltage_test[3] = (ADC_Value_avg(ADC_Channel_7) * 825) >> 10;
-	// voltage_test[4] = (ADC_Value_avg(ADC_Channel_14) * 825) >> 10;
-	// voltage_test[5] = (ADC_Value_avg(ADC_Channel_15) * 825) >> 10;
 #if TEMP_ADJUST == 1
 	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 	command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
@@ -894,7 +890,7 @@ static void Thermocouple_check(void)
 	case J_TYPE:
 		IO_val = 0;
 		GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
-		OSTimeDlyHMSM(0, 0, 0, KEJ_CHECK_DUTY, OS_OPT_TIME_PERIODIC, &err);
+		delay_ms(KEJ_CHECK_DUTY);
 		IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_J, CHECKIN_PIN_J);
 		if (IO_val == 0)
 		{
@@ -910,7 +906,7 @@ static void Thermocouple_check(void)
 	case K_TYPE:
 		IO_val = 0;
 		GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
-		OSTimeDlyHMSM(0, 0, 0, KEJ_CHECK_DUTY, OS_OPT_TIME_PERIODIC, &err);
+		delay_ms(KEJ_CHECK_DUTY);
 		IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_K, CHECKIN_PIN_K);
 		if (IO_val == 0)
 		{
@@ -925,7 +921,7 @@ static void Thermocouple_check(void)
 	case E_TYPE:
 		IO_val = 0;
 		GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
-		OSTimeDlyHMSM(0, 0, 0, KEJ_CHECK_DUTY, OS_OPT_TIME_PERIODIC, &err);
+		delay_ms(KEJ_CHECK_DUTY);
 		uint8_t IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E);
 		// 断路报警
 		if (IO_val == 0)
@@ -1057,7 +1053,7 @@ static void Thermocouple_err_eliminate()
 		for (uint16_t i = 0; i < SAMPLE_LEN; i++)
 		{
 			adc_channel_data[i] = ADC_Value_avg(THERMOCOUPLE_CHANNEL_E);
-			user_tim_delay(1);
+			delay_ms(1);
 		}
 
 		break;
@@ -1066,7 +1062,7 @@ static void Thermocouple_err_eliminate()
 		for (uint16_t i = 0; i < SAMPLE_LEN; i++)
 		{
 			adc_channel_data[i] = ADC_Value_avg(THERMOCOUPLE_CHANNEL_K);
-			user_tim_delay(1);
+			delay_ms(1);
 		}
 		break;
 
@@ -1074,7 +1070,7 @@ static void Thermocouple_err_eliminate()
 		for (uint16_t i = 0; i < SAMPLE_LEN; i++)
 		{
 			adc_channel_data[i] = ADC_Value_avg(THERMOCOUPLE_CHANNEL_J);
-			user_tim_delay(1);
+			delay_ms(1);
 		}
 		break;
 	}
@@ -1113,6 +1109,7 @@ static void Thermocouple_err_eliminate()
 				// 常温下热点偶曲线计算出的理论电压值
 				room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[i].intercept) / Thermocouple_Lists[i].slope;
 				// 曲线修正
+				/*！！！！！由于测试机的主板使用的是e型热电偶，因此不可以按照k型方式校准！！！！！！*/
 				Thermocouple_Lists[i].Bias = ADC_channel_init_val - room_temp_voltage;
 				// 更新当前热电偶
 				current_Thermocouple = &Thermocouple_Lists[i];
@@ -1603,32 +1600,6 @@ static void page_process(Page_ID id)
 			break;
 		}
 
-		/*用户完成热电偶选择，更新热电偶类型*/
-		// switch (get_comp(setting_page_list, "sensortype")->val)
-		// {
-		// case K_TYPE:
-		// 	for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
-		// 	{
-		// 		if (Thermocouple_Lists[i].type == K_TYPE)
-		// 			current_Thermocouple = &Thermocouple_Lists[i];
-		// 	}
-
-		// 	break;
-		// case E_TYPE:
-		// 	for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
-		// 	{
-		// 		if (Thermocouple_Lists[i].type == E_TYPE)
-		// 			current_Thermocouple = &Thermocouple_Lists[i];
-		// 	}
-		// 	break;
-		// case J_TYPE:
-		// 	for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
-		// 	{
-		// 		if (Thermocouple_Lists[i].type == J_TYPE)
-		// 			current_Thermocouple = &Thermocouple_Lists[i];
-		// 	}
-		// 	break;
-		// }
 		/*4、订阅热电偶校准信号*/
 		OSSemPend(&SENSOR_UPDATE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (OS_ERR_NONE == err)
