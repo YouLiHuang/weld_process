@@ -482,7 +482,7 @@ static void stop_weld(void)
 	TIM3->CNT = 0;
 	TIM5->CNT = 0;
 
-	weld_ctrl_reset(weld_controller);
+	// weld_ctrl_reset(weld_controller);
 }
 /**
  * @description: Pre-stress before welding
