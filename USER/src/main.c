@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-19 21:34:11
+ * @LastEditTime: 2025-03-19 22:19:53
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -351,22 +351,7 @@ int main(void)
 	Host_computer_reset();
 
 	/*Hardware test snippet*/
-	// 	USBH_Init(&USB_OTG_Core,
-	// #ifdef USE_USB_OTG_FS
-	// 			  USB_OTG_FS_CORE_ID,
-	// #elif defined USE_USB_OTG_HS
-	// 			  USB_OTG_HS_CORE_ID,
-	// #endif
-	// 			  &USB_Host,
-	// 			  &USBH_MSC_cb,
-	// 			  &USR_USBH_MSC_cb);
-
-	// 	USB_OTG_BSP_mDelay(500);
-	// 	while (1)
-	// 	{
-	// 		/* Host Task handler */
-	// 		USBH_Process(&USB_OTG_Core, &USB_Host);
-	// 	}
+	/*...*/
 
 	/*------------------------------------------------------System level data objects-----------------------------------------------------------*/
 	/*UCOSIII init*/
@@ -468,7 +453,7 @@ and the time slice length is 1 system clock beat, 1 ms
 				 (CPU_STK_SIZE)ERROR_STK_SIZE / 10,
 				 (CPU_STK_SIZE)ERROR_STK_SIZE,
 				 (OS_MSG_QTY)0,
-				 (OS_TICK)10,
+				 (OS_TICK)10, // 最大连续运行时长（时间片）
 				 (void *)0,
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
@@ -484,7 +469,7 @@ and the time slice length is 1 system clock beat, 1 ms
 				 (CPU_STK_SIZE)MAIN_STK_SIZE / 10,
 				 (CPU_STK_SIZE)MAIN_STK_SIZE,
 				 (OS_MSG_QTY)0,
-				 (OS_TICK)100, // 最大连续运行时长（时间片）
+				 (OS_TICK)100,
 				 (void *)0,
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
@@ -500,7 +485,7 @@ and the time slice length is 1 system clock beat, 1 ms
 				 (CPU_STK_SIZE)READ_STK_SIZE / 10,
 				 (CPU_STK_SIZE)READ_STK_SIZE,
 				 (OS_MSG_QTY)0,
-				 (OS_TICK)20, // 设置最大连续运行时长（时间片）
+				 (OS_TICK)20,
 				 (void *)0,
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
