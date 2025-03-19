@@ -2,51 +2,35 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-18 19:08:13
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-10 10:26:06
- * @Description: 
- * 
- * Copyright (c) 2025 by huangyouli, All Rights Reserved. 
+ * @LastEditTime: 2025-03-19 09:13:07
+ * @Description:
+ *
+ * Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
-#include "sys.h"  
+#include "sys.h"
 
-//THUMBÖ¸Áî²»Ö§³Ö»ã±àÄÚÁª
-//²ÉÓÃÈçÏÂ·½·¨ÊµÏÖÖ´ÐÐ»ã±àÖ¸ÁîWFI  
+// THUMBÖ¸ï¿½î²»Ö§ï¿½Ö»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½ï¿½Êµï¿½ï¿½Ö´ï¿½Ð»ï¿½ï¿½Ö¸ï¿½ï¿½WFI
 __asm void WFI_SET(void)
 {
-	WFI;		  
+	WFI;
 }
-//¹Ø±ÕËùÓÐÖÐ¶Ï(µ«ÊÇ²»°üÀ¨faultºÍNMIÖÐ¶Ï)
+// ï¿½Ø±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½(ï¿½ï¿½ï¿½Ç²ï¿½ï¿½ï¿½ï¿½ï¿½faultï¿½ï¿½NMIï¿½Ð¶ï¿½)
 __asm void INTX_DISABLE(void)
 {
-	CPSID   I
-	BX      LR	  
+	CPSID I
+		BX LR
 }
-//¿ªÆôËùÓÐÖÐ¶Ï
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½
 __asm void INTX_ENABLE(void)
 {
-	CPSIE   I
-	BX      LR  
+	CPSIE I
+		BX LR
 }
-//ÉèÖÃÕ»¶¥µØÖ·
-//addr:Õ»¶¥µØÖ·
-__asm void MSR_MSP(u32 addr) 
+// ï¿½ï¿½ï¿½ï¿½Õ»ï¿½ï¿½ï¿½ï¿½Ö·
+// addr:Õ»ï¿½ï¿½ï¿½ï¿½Ö·
+__asm void MSR_MSP(u32 addr)
 {
-	MSR MSP, r0 			//set Main Stack value
-	BX r14
+	MSR MSP, r0 // set Main Stack value
+				 BX r14
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,7 +1,7 @@
 #include "tempcomp.h"
 
 /**
- * @description: ²¹³¥ÏµÊý³õÊ¼»¯
+ * @description: ï¿½ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½
  * @param {dynamical_comp} *comp
  * @param {float} const_time
  * @return {*}
@@ -16,7 +16,7 @@ void dynamic_init(dynamical_comp *comp, float const_time)
 }
 
 /**
- * @description: ÎÂ¶È´°¿Ú³õÊ¼»¯
+ * @description: ï¿½Â¶È´ï¿½ï¿½Ú³ï¿½Ê¼ï¿½ï¿½
  * @param {last_temp_sotre} *temp
  * @return {*}
  */
@@ -29,7 +29,7 @@ void window_init(last_temp_sotre *temp)
     temp->temp_4 = 0;
 }
 /**
- * @description:  »¬¶¯´°¿ÚÐÞ¸ÄÊýÖµ
+ * @description:  ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Þ¸ï¿½ï¿½ï¿½Öµ
  * @param {last_temp_sotre} *temp
  * @param {u16} now_temp
  * @return {*}
@@ -44,7 +44,7 @@ void slid_windows(last_temp_sotre *temp, u16 now_temp)
 }
 
 /**
- * @description:  ¶¯Ì¬²¹³¥
+ * @description:  ï¿½ï¿½Ì¬ï¿½ï¿½ï¿½ï¿½
  * @param {last_temp_sotre} *temp
  * @param {dynamical_comp} *comp
  * @return {*}

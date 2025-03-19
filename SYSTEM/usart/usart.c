@@ -10,31 +10,6 @@
 #if SYSTEM_SUPPORT_OS
 #include "includes.h" //ucos 使用
 #endif
-//////////////////////////////////////////////////////////////////
-// 加入以下代码,支持printf函数,而不需要选择use MicroLIB
-#if 0
-#pragma import(__use_no_semihosting)
-// 标准库需要的支持函数
-struct __FILE
-{
-	int handle;
-};
-
-FILE __stdout;
-// 定义_sys_exit()以避免使用半主机模式
-void _sys_exit(int x)
-{
-	x = x;
-}
-// 重定义fputc函数
-int fputc(int ch, FILE *f)
-{
-	while ((USART1->SR & 0X40) == 0)
-		;
-	USART1->DR = (uint8_t)ch;
-	return ch;
-}
-#endif
 
 uint8_t USART_RX_BUF3[USART3_REC_LEN3]; // 接收缓冲,最大USART_REC_LEN个字节.
 uint8_t USART_RX_BUF[USART_REC_LEN];	// 接收缓冲,最大USART_REC_LEN个字节.

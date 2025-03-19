@@ -1,11 +1,11 @@
 /*
  * @Author: huangyouli.scut@gmail.com
- * @Date: 2025-03-17 09:23:13
+ * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-17 10:06:09
- * @Description:
- *
- * Copyright (c) 2025 by huangyouli, All Rights Reserved.
+ * @LastEditTime: 2025-03-19 09:12:24
+ * @Description: 
+ * 
+ * Copyright (c) 2025 by huangyouli, All Rights Reserved. 
  */
 
 #include "sys.h"
@@ -348,11 +348,11 @@ int main(void)
 
 	/*硬件测试代码段*/
 	/*...*/
-//	while (1)
-//	{
-//		printf("log test...\r\n");
-//		delay_ms(500);
-//	}
+	//	while (1)
+	//	{
+	//		printf("log test...\r\n");
+	//		delay_ms(500);
+	//	}
 
 	/*------------------------------------------------------System level data objects-----------------------------------------------------------*/
 	/*UCOSIII init*/
@@ -2020,24 +2020,24 @@ extern USBH_HOST USB_Host __ALIGN_END;
 extern USB_OTG_CORE_HANDLE USB_OTG_Core __ALIGN_END;
 void usb_task(void *p_arg)
 {
-	
-	OS_ERR err;
-	  USBH_Init(&USB_OTG_Core,
-#ifdef USE_USB_OTG_FS
-            USB_OTG_FS_CORE_ID,
-#elif defined USE_USB_OTG_HS
-            USB_OTG_HS_CORE_ID,
-#endif
-            &USB_Host,
-            &USBH_MSC_cb,
-            &USR_USBH_MSC_cb);
 
-  USB_OTG_BSP_mDelay(500);
+	OS_ERR err;
+	USBH_Init(&USB_OTG_Core,
+#ifdef USE_USB_OTG_FS
+			  USB_OTG_FS_CORE_ID,
+#elif defined USE_USB_OTG_HS
+			  USB_OTG_HS_CORE_ID,
+#endif
+			  &USB_Host,
+			  &USBH_MSC_cb,
+			  &USR_USBH_MSC_cb);
+
+	USB_OTG_BSP_mDelay(500);
 	while (1)
 	{
-		
+
 		/* Host Task handler */
-    USBH_Process(&USB_OTG_Core, &USB_Host);
+		USBH_Process(&USB_OTG_Core, &USB_Host);
 		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
 }

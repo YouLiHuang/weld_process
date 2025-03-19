@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-21 09:52:41
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-02 20:04:28
+ * @LastEditTime: 2025-03-19 09:10:00
  * @Description:pid control algorithm
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -45,7 +45,6 @@ void reset_forword_ctrl(pid_feedforword_ctrl *ctrl)
 	ctrl->stable_threshold_cnt = 0;
 	ctrl->stable_threshold = STABLE_THRESHOLD;
 }
-
 
 int PI_ctrl_output(int target, int feedback, int current_output, pid_feedforword_ctrl *ctrl)
 {

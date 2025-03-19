@@ -208,12 +208,12 @@ extern USBH_HOST USB_Host;
 extern void USB_OTG_BSP_TimerIRQ(void);
 
 /**
-  * @brief  OTG_FS_IRQHandler
-  *          This function handles USB-On-The-Go FS global interrupt request.
-  *          requests.
-  * @param  None
-  * @retval None
-  */
+ * @brief  OTG_FS_IRQHandler
+ *          This function handles USB-On-The-Go FS global interrupt request.
+ *          requests.
+ * @param  None
+ * @retval None
+ */
 #ifdef USE_USB_OTG_FS
 void OTG_FS_IRQHandler(void)
 #else
@@ -222,17 +222,17 @@ void OTG_HS_IRQHandler(void)
 {
   USBH_OTG_ISR_Handler(&USB_OTG_Core);
 }
- 
- /**
-  * @brief  TIM2_IRQHandler
-  *         This function handles Timer2 Handler.
-  * @param  None
-  * @retval None
-  */
- void TIM2_IRQHandler(void)
- {
-   USB_OTG_BSP_TimerIRQ();
- }
+
+/**
+ * @brief  TIM2_IRQHandler
+ *         This function handles Timer2 Handler.
+ * @param  None
+ * @retval None
+ */
+void TIM2_IRQHandler(void)
+{
+  USB_OTG_BSP_TimerIRQ();
+}
 
 /**
  * @brief  This function handles PPP interrupt request.

@@ -457,8 +457,7 @@ int USBH_USR_MSC_Application(void)
         /* fat_fs initialisation fails */
         return (-1);
       }
-      
-    }
+        }
     break;
   default:
     break;

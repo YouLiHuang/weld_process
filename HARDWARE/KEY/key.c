@@ -2,10 +2,10 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-18 19:08:13
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-10 10:26:56
- * @Description: 
- * 
- * Copyright (c) 2025 by huangyouli, All Rights Reserved. 
+ * @LastEditTime: 2025-03-19 09:09:49
+ * @Description:
+ *
+ * Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
 #include "key.h"
 #include "delay.h"
@@ -59,5 +59,3 @@ u8 new_key_scan()
 	}
 	return 0;
 }
-
-
