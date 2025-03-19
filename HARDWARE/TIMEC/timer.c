@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-15 19:17:48
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-16 11:12:21
+ * @LastEditTime: 2025-03-19 21:40:19
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -27,11 +27,12 @@
 /*实时控制*/
 extern weld_ctrl *weld_controller;
 double fitting_curves[3] = {-0.00004, 0.0159, 12.756}; // 二次曲线拟合系数
+
 /*温度补偿部分*/
 extern Kalman kfp;
 extern dynamical_comp dynam_comp;
 last_temp_sotre lasttemp;
-uint16_t kalman_comp_temp = 0; // 卡尔曼滤波+动态补偿后的温度值
+uint16_t kalman_comp_temp = 0; 
 
 /*错误处理*/
 extern Error_ctrl *err_ctrl;	// 错误注册表
@@ -39,7 +40,7 @@ extern OS_SEM ERROR_HANDLE_SEM; // 错误信号
 
 /*绘图专用数据*/
 extern Temp_draw_ctrl *temp_draw_ctrl;
-uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN] = {0}; // 温度保存缓冲区
+uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN] = {0}; // Temperature preservation buffer
 
 /*热电偶*/
 extern Thermocouple *current_Thermocouple;
@@ -163,68 +164,37 @@ void pid_param_dynamic_reload(void *controller, double *fitting_curves, uint16_t
 }
 
 /**
- * @description: 定时器8初始化，1ms中断
- * @return {*}
- */
-void TIM8_Int_Init(void)
-{
-	uint16_t arr = 1000 - 1;
-	uint16_t psc = 168 - 1;
-	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
-	NVIC_InitTypeDef NVIC_InitStructure;
-	RCC_PCLK1Config(RCC_HCLK_Div1);						 // APB1不分频（168M）
-	RCC_APB1PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE); // 使能TIM3时钟
-
-	TIM_TimeBaseInitStructure.TIM_Period = arr;						// 自动重装载值
-	TIM_TimeBaseInitStructure.TIM_Prescaler = psc;					// 定时器分频
-	TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up; // 向上计数模式
-	TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
-
-	TIM_TimeBaseInit(TIM8, &TIM_TimeBaseInitStructure); // 初始化TIM3
-
-	TIM_Cmd(TIM8, DISABLE);						// 使能定时器3
-	TIM_ClearITPendingBit(TIM8, TIM_IT_Update); // 清除中断标志
-	TIM_ITConfig(TIM8, TIM_IT_Update, ENABLE);	// 允许定时器3更新中断
-
-	NVIC_InitStructure.NVIC_IRQChannel = TIM8_UP_TIM13_IRQn;	 // 定时器3中断
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00; // 抢占优先级0
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x02;		 // 子优先级0
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
-}
-
-/**
- * @description: 定时器3配置，焊接周期时间记录，1ms中断
+ * @description: Timer 3 configuration, welding cycle time recording, 1ms interrupt
  * @return {*}
  */
 void TIM3_Int_Init(void)
 {
-	uint16_t arr = 2000 - 1; // 1ms发生中断
+	uint16_t arr = 2000 - 1; 
 	uint16_t psc = 84 - 1;
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE); // 使能TIM3时钟
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
 
-	TIM_TimeBaseInitStructure.TIM_Period = arr;						// 自动重装载值
-	TIM_TimeBaseInitStructure.TIM_Prescaler = psc;					// 定时器分频
-	TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up; // 向上计数模式
+	TIM_TimeBaseInitStructure.TIM_Period = arr;
+	TIM_TimeBaseInitStructure.TIM_Prescaler = psc;
+	TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
 
-	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseInitStructure); // 初始化TIM3
-	TIM_Cmd(TIM3, DISABLE);								// 使能定时器3
-	TIM_ClearITPendingBit(TIM3, TIM_IT_Update);			// 清除中断标志
-	TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);			// 允许定时器3更新中断
+	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseInitStructure);
+	TIM_Cmd(TIM3, DISABLE);
+	TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+	TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);
 
-	NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn;				 // 定时器3中断
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00; // 抢占优先级0
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;		 // 子优先级0
+	NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 }
 
 /**
- * @description:  定时器初始化，时钟主频168MHz，tim3 为pid控制定时器，记录焊接过程温度（1ms中断）
+ * @description:  Timer initialization, clock frequency 168MHz, tim3 is PID control timer, record welding process temperature (1ms interrupt)
  * @return {*}
  */
 void TIM5_Int_Init(void)
@@ -234,29 +204,31 @@ void TIM5_Int_Init(void)
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE); /// 使能TIM5时钟
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
 
-	TIM_TimeBaseInitStructure.TIM_Period = arr;						// 自动重装载值
-	TIM_TimeBaseInitStructure.TIM_Prescaler = psc;					// 定时器分频
-	TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up; // 向上计数模式
+	TIM_TimeBaseInitStructure.TIM_Period = arr;
+	TIM_TimeBaseInitStructure.TIM_Prescaler = psc;
+	TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
 
-	TIM_TimeBaseInit(TIM5, &TIM_TimeBaseInitStructure); // 初始化TIM5
+	TIM_TimeBaseInit(TIM5, &TIM_TimeBaseInitStructure);
 
-	TIM_Cmd(TIM5, DISABLE); // 使能定时器5
+	TIM_Cmd(TIM5, DISABLE);
 	TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
-	TIM_ITConfig(TIM5, TIM_IT_Update, ENABLE); // 允许定时器5更新中断
+	TIM_ITConfig(TIM5, TIM_IT_Update, ENABLE);
 
-	NVIC_InitStructure.NVIC_IRQChannel = TIM5_IRQn;				 // 定时器3中断
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00; // 抢占优先级0
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;		 // 子优先级0
+	NVIC_InitStructure.NVIC_IRQChannel = TIM5_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 }
 
-static volatile uint16_t current_temp_comp = 0; // 当前温度估计值
-/*
-  定时器5中断函数——焊接实时闭环控制
+static volatile uint16_t current_temp_comp = 0;
+
+/**
+ * @description: Timer 5 interrupt function - real-time closed-loop control of welding
+ * @return {*}
  */
 void TIM5_IRQHandler(void)
 {
@@ -267,7 +239,7 @@ void TIM5_IRQHandler(void)
 
 	if (TIM_GetITStatus(TIM5, TIM_IT_Update) == SET)
 	{
-		/*Ⅰ、反馈*/
+		/*feedback*/
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple); // 原始温度数据实时温度
 #if KALMAN_FILTER == 1
 		uint16_t kalman_filter_temp = KalmanFilter(&kfp, weld_controller->realtime_temp); // 卡尔曼滤波
@@ -283,15 +255,15 @@ void TIM5_IRQHandler(void)
 		current_temp_comp = weld_controller->realtime_temp;
 #endif
 
-		/*Ⅱ、算法控制器*/
+		/*pid control*/
 		switch (weld_controller->state)
 		{
 		case PRE_STATE:
 			weld_controller->step_time_tick++;
 			break;
-			/*--------------------------------------------------------------------一阶段----------------------------------------------------------------------*/
+			/*--------------------------------------------------------------------first step----------------------------------------------------------------------*/
 		case FIRST_STATE:
-			/*1、算法控制——模拟斜坡输入*/
+			/*Time updates*/
 			weld_controller->step_time_tick++;
 #if 0
 			if (current_temp_comp >= weld_controller->first_step_turn && weld_controller->pid_ctrl->stable_flag == false)
@@ -326,9 +298,9 @@ void TIM5_IRQHandler(void)
 
 			break;
 
-			/*--------------------------------------------------------------------二阶段----------------------------------------------------------------------*/
+			/*--------------------------------------------------------------------second step----------------------------------------------------------------------*/
 		case SECOND_STATE:
-			/*时间更新*/
+			/*Time updates*/
 			weld_controller->step_time_tick++;
 #if 0
 			if (current_temp_comp >= weld_controller->second_step_turn && weld_controller->pid_ctrl->stable_flag == false)
@@ -358,31 +330,34 @@ void TIM5_IRQHandler(void)
 														 weld_controller->Duty_Cycle,
 														 weld_controller->pid_ctrl);
 
-			/*2、执行*/
+			/*execute*/
 			TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
 			TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
 
 			break;
 
-			/*--------------------------------------------------------------------三阶段----------------------------------------------------------------------*/
-			/*冷却过程，温度控制要求不高，应该可以给定一个指定斜率的下降曲线，PDC的起始值参考上一阶段的终了值*/
+			/*--------------------------------------------------------------------third step----------------------------------------------------------------------*/
+			/*
+			In the cooling process, the temperature control requirements are not high, 
+			and it should be possible to give a descending curve with a specified slope, 
+			and the starting value of the PDC refers to the end value of the previous stage
+			*/
 		case THIRD_STATE:
-			/*时间更新*/
+			/*Time updates*/
 			weld_controller->step_time_tick++;
-			/*1、：算法控制——缓降，暂时不实现，直接关闭输出*/
+			/*Algorithm control - slow down, temporarily do not implement, directly close the output*/
 			weld_controller->Duty_Cycle = PI_ctrl_output(0,
 														 current_temp_comp,
 														 weld_controller->Duty_Cycle,
 														 weld_controller->pid_ctrl);
-			/*2、执行*/
+			/*execute*/
 			TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
 			TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
 
 			break;
 		}
 
-		/*Ⅲ、数据可视化采集*/
-		/*降低采样率*/
+		/*Data visualization collection, Reduce the sampling rate*/
 		if (weld_controller->weld_time_tick % temp_draw_ctrl->sample_freq == 0)
 		{
 			if (temp_draw_ctrl->current_index < temp_draw_ctrl->buf_len_max)
@@ -390,76 +365,29 @@ void TIM5_IRQHandler(void)
 		}
 	}
 
-	TIM_ClearITPendingBit(TIM5, TIM_IT_Update); // 清除中断标志位
+	TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
 
 #if SYSTEM_SUPPORT_OS
-	OSIntExit(); // 退出中断
+	OSIntExit();
 #endif
 }
 
-/*
-   定时器3中断服务函数
-   实现功能
-   1、焊接时间统计——温度采集处理
-   2、记录过程中温度点数据
-   3、对焊头温度进行补偿
-*/
+/**
+ * @description: Timer 3 interrupts, and the total duration of the welding cycle is recorded
+ * @return {*}
+ */
 void TIM3_IRQHandler(void)
 {
-#if SYSTEM_SUPPORT_OS // 使用UCOS操作系统
+#if SYSTEM_SUPPORT_OS
 	OSIntEnter();
 #endif
 
-	if (TIM_GetITStatus(TIM3, TIM_IT_Update) == SET) // 溢出中断
+	if (TIM_GetITStatus(TIM3, TIM_IT_Update) == SET)
 	{
 		weld_controller->weld_time_tick += 1;
 	}
-	TIM_ClearITPendingBit(TIM3, TIM_IT_Update); // 清除中断标志位
+	TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
 #if SYSTEM_SUPPORT_OS
-	OSIntExit(); // 退出中断
+	OSIntExit();
 #endif
-}
-
-/**
- * @description: TIM8 irq handle
- * @return {*}
- */
-static uint16_t TIM8_user_cnt;
-void TIM8_IRQHandler(void)
-{
-#if SYSTEM_SUPPORT_OS // 使用UCOS操作系统
-	OSIntEnter();
-#endif
-	if (TIM_GetITStatus(TIM8, TIM_IT_Update) == SET) // 溢出中断
-	{
-		TIM8_user_cnt++;
-	}
-	TIM_ClearITPendingBit(TIM8, TIM_IT_Update); // 清除中断标志位
-#if SYSTEM_SUPPORT_OS
-	OSIntExit(); // 退出中断
-#endif
-}
-
-uint16_t TIM8_cnt_get()
-{
-	return TIM8_user_cnt;
-}
-
-/**
- * @description: this api is use to provide precise delay
- * @param {uint16_t} time_ms
- * @return {*}
- */
-void user_tim_delay(uint16_t time_ms)
-{
-	TIM_Cmd(TIM8, ENABLE);
-	TIM8_user_cnt = 0;
-	while (TIM8_user_cnt < time_ms)
-	{
-		__NOP();
-	}
-	TIM_Cmd(TIM8, DISABLE);
-	TIM_ClearITPendingBit(TIM8, TIM_IT_Update); // 清除中断标志位
-	TIM8->CNT = 0;
-	TIM8_user_cnt = 0;
 }

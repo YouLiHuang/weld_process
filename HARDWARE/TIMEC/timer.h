@@ -19,13 +19,11 @@
 #define DRAW_RESERVE 10      // 绘图余量
 #define DRAW_AREA_HIGH 210   // 绘图组件高度
 #define MAX_TEMP_DISPLAY 780 // 最大能显示的温度
+#define TEMP_BUF_MAX_LEN 3000
 
 void TIM3_Int_Init(void);
 void TIM5_Int_Init(void);
-void TIM8_Int_Init(void);
-void user_timer_handle(void);
 
-#define TEMP_BUF_MAX_LEN 3000
 typedef struct Temp_draw_controller
 {
     uint16_t *temp_buf;
@@ -52,9 +50,5 @@ Temp_draw_ctrl *new_temp_draw_ctrl(uint16_t *buf, uint16_t len1, uint16_t len2, 
 void reset_temp_draw_ctrl(Temp_draw_ctrl *ctrl, const uint16_t welding_time[]);
 
 void pid_param_dynamic_reload(void *controller, double *fitting_curves, uint16_t setting);
-
-/*可将该api进一步封装为，支持回调函数作为参数*/
-void user_tim_delay(uint16_t time_ms);
-uint16_t tim2_cnt_get(void);
 
 #endif

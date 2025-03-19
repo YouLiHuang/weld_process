@@ -489,15 +489,17 @@ uint8_t Explore_Disk(char *path, uint8_t recu_level)
   FRESULT res;
   FILINFO fno;
   DIR dir;
-  char *fn;
-  char tmp[14];
 
   res = f_opendir(&dir, path);
   if (res == FR_OK)
   {
     while (HCD_IsDeviceConnected(&USB_OTG_Core))
     {
-#if 0
+#if USE_STM32_DEMO
+
+      char *fn;
+      char tmp[14];
+
       res = f_readdir(&dir, &fno);
       if (res != FR_OK || fno.fname[0] == 0)
       {
@@ -535,17 +537,17 @@ uint8_t Explore_Disk(char *path, uint8_t recu_level)
         Explore_Disk(fn, 2);
       }
 #endif
-
-      res = f_readdir(&dir, &fno); // 读取目录项
-
+      // 读取目录项
+      res = f_readdir(&dir, &fno);
+      // 遍历结束
       if (res != FR_OK || fno.fname[0] == 0)
       {
-        break; // 遍历结束
+        break;
       }
-
+      // 跳过当前目录和父目录
       if (fno.fname[0] == '.')
       {
-        continue; // 跳过当前目录和父目录
+        continue;
       }
 
       // 判断是文件还是目录

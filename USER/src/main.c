@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-19 09:17:57
+ * @LastEditTime: 2025-03-19 21:34:11
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -30,6 +30,7 @@
 #include "log.h"
 
 /*user config*/
+#define USE_STM32_DEMO 0  // USB 测试代码
 #define KEJ_CHECK_DUTY 25 // 热电偶检测滤波周期
 #define ROOM_TEMP 20	  // 默认室温
 #define SAMPLE_LEN 100	  // 采样深度
@@ -340,8 +341,7 @@ int main(void)
 	Current_Check_IO_Config();						// Current detection io configuration
 	Temp_Protect_IO_Config();						// temp overload init
 
-	/*TIM7-TIM3(time)-TIM5(pid)-TIM1(pwm1)-TIM4(pwm2)*/
-	TIM8_Int_Init();
+	/*TIM3(weld time) TIM5(pid) TIM1(pwm1) TIM4(pwm2)*/
 	TIM3_Int_Init();
 	TIM5_Int_Init();
 
@@ -350,7 +350,7 @@ int main(void)
 	Load_data_from_mem();
 	Host_computer_reset();
 
-	/*硬件测试代码段*/
+	/*Hardware test snippet*/
 	// 	USBH_Init(&USB_OTG_Core,
 	// #ifdef USE_USB_OTG_FS
 	// 			  USB_OTG_FS_CORE_ID,
@@ -404,108 +404,60 @@ void start_task(void *p_arg)
 	p_arg = p_arg;
 
 	CPU_Init();
+
+	/*Statistical tasks*/
 #if OS_CFG_STAT_TASK_EN > 0u
-	OSStatTaskCPUUsageInit(&err); // 统计任务
+	OSStatTaskCPUUsageInit(&err);
 #endif
 
-#ifdef CPU_CFG_INT_DIS_MEAS_EN // 如果使能了测量中断关闭时间
+/*If the measurement interrupt shutdown time is enabled*/
+#ifdef CPU_CFG_INT_DIS_MEAS_EN
 	CPU_IntDisMeasMaxCurReset();
 #endif
 
-#if OS_CFG_SCHED_ROUND_ROBIN_EN // 当使用时间片轮转的时候,使能时间片轮转调度功能,时间片长度为1个系统时钟节拍,1ms
+/*
+When time slice rotation is used,
+the time slice rotation scheduling function is enabled,
+and the time slice length is 1 system clock beat, 1 ms
+*/
+#if OS_CFG_SCHED_ROUND_ROBIN_EN
 	OSSchedRoundRobinCfg(DEF_ENABLED, 1, &err);
 #endif
 
-	OS_CRITICAL_ENTER(); // 进入临界区
-	// 创建消息队列KEY_Msg
+	OS_CRITICAL_ENTER();
+	// Create a message queue UART Msg
 	OSQCreate((OS_Q *)&UART_Msg,	  // 消息队列
 			  (CPU_CHAR *)"UART Msg", // 消息队列名称
 			  (OS_MSG_QTY)UART_Q_NUM, // 消息队列长度，这里设置为100
 			  (OS_ERR *)&err);		  // 错误码
 
-	// 创建互斥锁——串口资源访问（暂时未用）
+	// Create a mutex - serial port resource access (temporarily unused)
 	OSMutexCreate(&UARTMutex, "USART_Mutex", &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
 
-	/*--------------------------------------------UI相关信号量--------------------------------------------*/
-	// 创建页面更新信号
+	/*--------------------------------------------SEM use for UI--------------------------------------------*/
+	// Page update signals
 	OSSemCreate(&PAGE_UPDATE_SEM, "page update", 0, &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
-
-	// 专门用于获取组件属性值的信号量
+	// semaphore specifically used to obtain the value of a component's attributes
 	OSSemCreate(&COMP_VAL_GET_SEM, "comp val get", 0, &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
 	OSSemCreate(&COMP_STR_GET_SEM, "comp str get", 0, &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
-
-	// 热电偶校准信号
+	// Thermocouple calibration signal
 	OSSemCreate(&SENSOR_UPDATE_SEM, "SENSOR_UPDATE_SEM", 0, &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
 
-	/*--------------------------------------------上位机信号量------------------------------------------*/
+	/*--------------------------------------------SEM use for host computer-----------------------------------*/
 	// 创建上位机数据同步信号
 	OSSemCreate(&COMPUTER_DATA_SYN_SEM, "data sync", 0, &err);
 	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
-
-	// 创建上位机开启焊接信号量
-	OSSemCreate(&HOST_WELD_CTRL_SEM, "HOST_WELD_CTRL_SEM", 0, &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
-
-	/*--------------------------------------------其他信号量--------------------------------------------*/
+		// 创建上位机开启焊接信号量
+		OSSemCreate(&HOST_WELD_CTRL_SEM, "HOST_WELD_CTRL_SEM", 0, &err);
+	/*--------------------------------------------other SEM----------------------------------------------------*/
 	//  创建报警复位信号量
 	OSSemCreate(&ALARM_RESET_SEM, "alarm reset", 0, &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
-
 	// 创建绘图信号
 	OSSemCreate(&TEMP_DISPLAY_SEM, "temp draw sem", 0, &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
-
 	// 创建报错信号
 	OSSemCreate(&ERROR_HANDLE_SEM, "err sem", 0, &err);
-	if (err != OS_ERR_NONE)
-	{
-		;
-		// 创建失败
-	}
 
 	// 错误处理任务——最高优先级
-	// 优先级：4
 	// 50ms调度——50ms时间片
 	OSTaskCreate((OS_TCB *)&ErrorTaskTCB,
 				 (CPU_CHAR *)"error task",
@@ -522,7 +474,6 @@ void start_task(void *p_arg)
 				 (OS_ERR *)&err);
 
 	// 创建主任务
-	// 优先级：5
 	// 30ms调度
 	OSTaskCreate((OS_TCB *)&Main_TaskTCB,
 				 (CPU_CHAR *)"Main task",
@@ -540,7 +491,6 @@ void start_task(void *p_arg)
 
 	// 创建触摸屏通讯任务
 	// 20ms调度
-	// 优先级：6
 	OSTaskCreate((OS_TCB *)&READ_TaskTCB,
 				 (CPU_CHAR *)"Read task",
 				 (OS_TASK_PTR)read_task,
@@ -556,7 +506,6 @@ void start_task(void *p_arg)
 				 (OS_ERR *)&err);
 
 	// USB任务
-	// 优先级：6
 	OSTaskCreate((OS_TCB *)&USB_TaskTCB,
 				 (CPU_CHAR *)"usb task",
 				 (OS_TASK_PTR)usb_task,
@@ -572,7 +521,6 @@ void start_task(void *p_arg)
 				 (OS_ERR *)&err);
 
 	// 创建上位机通讯任务
-	// 优先级：7
 	OSTaskCreate((OS_TCB *)&COMPUTER_TaskTCB,
 				 (CPU_CHAR *)"computer read task",
 				 (OS_TASK_PTR)computer_read_task,
@@ -655,8 +603,19 @@ static bool Temp_up_check(void)
 }
 #endif
 
+/*---------------------------------callback functions---------------------------------*/
+static bool Temp_up_err_callback(uint8_t index);
+static bool Temp_down_err_callback(uint8_t index);
+static bool Current_out_of_ctrl_callback(uint8_t index);
+static bool Thermocouple_recheck_callback(uint8_t index);
+static bool Thermocouple_reset_callback(uint8_t index);
+static bool Current_out_of_ctrl_reset_callback(uint8_t index);
+static bool Temp_up_reset_callback(uint8_t index);
+static bool Temp_down_reset_callback(uint8_t index);
+
+static void Thermocouple_check(void);
 /*--------------------------------------------------------------------------------------*/
-/*--------------------------------------错误回调API--------------------------------------*/
+/*--------------------------------------err callback------------------------------------*/
 /*--------------------------------------------------------------------------------------*/
 
 static bool Temp_up_err_callback(uint8_t index)
@@ -684,16 +643,15 @@ static bool Thermocouple_recheck_callback(uint8_t index)
 }
 
 /*---------------------------------------------------------------------------------------*/
-/*--------------------------------------复位回调API--------------------------------------*/
+/*--------------------------------------reset callback-----------------------------------*/
 /*---------------------------------------------------------------------------------------*/
-static void Thermocouple_check(void);
 
 static bool Thermocouple_reset_callback(uint8_t index)
 {
 	bool ret;
-	/*热电偶恢复正常,复位*/
+
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
-	err_ctrl->err_list[index]->state = false; // 清除错误状态
+	err_ctrl->err_list[index]->state = false; // clear error state
 	ret = true;
 
 	return ret;
@@ -702,53 +660,41 @@ static bool Current_out_of_ctrl_reset_callback(uint8_t index)
 {
 
 	bool ret = false;
-	if (EXTI_GetITStatus(EXTI_Line0) == RESET)
-	{
-		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
-		err_ctrl->err_list[index]->state = false; // 清除错误状态
-		ret = true;
-		// NVIC_SystemReset();
-	}
-	else
-	{
-		/*仍旧异常*/
-		Page_to(page_param, ALARM_PAGE);
-		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
-		ret = false;
-	}
+	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
+	err_ctrl->err_list[index]->state = false; // clear error state
+	ret = true;
+
 	return ret;
 }
 static bool Temp_up_reset_callback(uint8_t index)
 {
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
-	err_ctrl->err_list[index]->state = false; // 清除错误状态
-	// NVIC_SystemReset();
+	err_ctrl->err_list[index]->state = false; // clear error state
+
 	return true;
 }
 static bool Temp_down_reset_callback(uint8_t index)
 {
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
-	err_ctrl->err_list[index]->state = false; // 清除错误状态
-	// NVIC_SystemReset();
+	err_ctrl->err_list[index]->state = false; // clear error state
+
 	return true;
 }
 
 /*-------------------------------------------------------------------------------------------------------------------------*/
-/*------------------------------------------------------错误处理线程--------------------------------------------------------*/
+/*------------------------------------------------------err task-----------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
 
 void error_task(void *p_arg)
 {
 	OS_ERR err;
-	/*重新配置串口*/
-	uart_init(115200);
+
 	while (1)
 	{
-		/*订阅报错信号*/
 		OSSemPend(&ERROR_HANDLE_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
 		if (OS_ERR_NONE == err)
 		{
-			/*1、关闭输出*/
+			/*pwm off*/
 			TIM_SetCompare1(TIM1, 0);
 			TIM_SetCompare1(TIM4, 0);
 			TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
@@ -756,20 +702,21 @@ void error_task(void *p_arg)
 			TIM_Cmd(TIM4, DISABLE);
 			TIM_Cmd(TIM1, DISABLE);
 
-			TIM_Cmd(TIM3, DISABLE);						// 计数定时器3关闭
-			TIM_ClearITPendingBit(TIM3, TIM_IT_Update); // 清除中断3标志位
+			/*timer reset*/
+			TIM_Cmd(TIM3, DISABLE);
+			TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
 			TIM3->CNT = 0;
-			TIM_Cmd(TIM5, DISABLE);						// 中断定时器5关闭
-			TIM_ClearITPendingBit(TIM5, TIM_IT_Update); // 清除中断5标志位
+			TIM_Cmd(TIM5, DISABLE);
+			TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
 			TIM5->CNT = 0;
 
-			/*2、关闭气阀*/
-			ERROR1 = 1; // 出错信号置1
-			RLY10 = 0;	// 气阀1关
-			RLY11 = 0;	// 气阀2关
-			RLY12 = 0;	// 气阀3关
+			/*Valve off*/
+			ERROR1 = 1; // error signal
+			RLY10 = 0;	// Valve1 off
+			RLY11 = 0;	// Valve2 off
+			RLY12 = 0;	// Valve3 off
 
-			/*3、错误处理*/
+			/*3、err handle*/
 			OSTimeDlyHMSM(0, 0, 0, 20, OS_OPT_TIME_PERIODIC, &err);
 			Page_to(page_param, ALARM_PAGE);
 			OSTimeDlyHMSM(0, 0, 0, 20, OS_OPT_TIME_PERIODIC, &err);
@@ -782,7 +729,7 @@ void error_task(void *p_arg)
 			}
 		}
 
-		/*等待用户复位操作*/
+		/*wait until user reset*/
 		OSSemPend(&ALARM_RESET_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
@@ -791,24 +738,19 @@ void error_task(void *p_arg)
 				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->reset_callback != NULL)
 					err_ctrl->err_list[i]->reset_callback(i);
 			}
-
-			/*重新配置*/
-			uart_init(115200);
-			/*串口屏复位*/
-			// Touchscreen_init();
-			/*加载数据*/
-			Load_data_from_mem();
-			/*上位机复位*/
-			Host_computer_reset();
 		}
 
-		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err); // 休眠
+		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err);
 	}
 }
 
 /*-------------------------------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------------------主线程---------------------------------------------------------*/
+/*-------------------------------------------------------main task---------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------*/
+/*------------------------------Condition Monitoring API--------------------------------*/
+/*--------------------------------------------------------------------------------------*/
 static void voltage_check(void);
 
 static void Power_on_check(void)
@@ -849,15 +791,14 @@ static void Power_on_check(void)
 		}
 	}
 
+	/*no Thermocouple detect*/
 	if (current_Thermocouple == NULL)
 	{
-		// 未检测出热电偶接线，报警
 		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-		/*唤醒错误处理线程*/
 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 	}
 
-	/*读取出上次保存的热电偶校准值*/
+	/*load last time adjust data*/
 	if (current_Thermocouple->type == E_TYPE)
 	{
 		current_Thermocouple->Bias = SPI_Load_Word(CARLIBRATION_BASE(remember_array));
@@ -894,15 +835,12 @@ static void Thermocouple_check(void)
 		IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_J, CHECKIN_PIN_J);
 		if (IO_val == 0)
 		{
-			// 热电偶依旧异常，报警
 			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-			/*唤醒错误处理线程*/
 			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 		}
 		GPIO_ResetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
 		break;
 
-		// 现在的版本主板接线不方便，因此暂时不检测主板的热电偶
 	case K_TYPE:
 		IO_val = 0;
 		GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
@@ -910,9 +848,7 @@ static void Thermocouple_check(void)
 		IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_K, CHECKIN_PIN_K);
 		if (IO_val == 0)
 		{
-			// 热电偶依旧异常，报警
 			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-			/*唤醒错误处理线程*/
 			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 		}
 		GPIO_ResetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
@@ -923,12 +859,9 @@ static void Thermocouple_check(void)
 		GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
 		delay_ms(KEJ_CHECK_DUTY);
 		uint8_t IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E);
-		// 断路报警
 		if (IO_val == 0)
 		{
-			// 热电偶依旧异常，报警
 			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-			/*唤醒错误处理线程*/
 			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 		}
 		GPIO_ResetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
@@ -941,19 +874,19 @@ static void voltage_check(void)
 	uint16_t ADC_Voltage = 0;
 	OS_ERR err;
 	ADC_Voltage = ADC_Value_avg(ADC_Channel_6);
-	//  如果过压
+	//  voltage too high
 	if (ADC_Voltage > OVER_VOLTAGE)
 	{
 		err_get_type(err_ctrl, VOLTAGE_TOO_HIGH)->state = true;
-		/*唤醒错误处理线程*/
+
 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 	}
-	// 如果欠压
+	// voltage too low
 	if (ADC_Voltage < DOWN_VOLTAGE)
 	{
 
 		err_get_type(err_ctrl, VOLTAGE_TOO_LOW)->state = true;
-		/*唤醒错误处理线程*/
+
 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 	}
 }
@@ -967,7 +900,7 @@ static void Overload_check(void)
 		if (GPIO_ReadInputDataBit(CURRENT_OVERLOAD_GPIO, CURRENT_PIN) == 0)
 		{
 			err_get_type(err_ctrl, CURRENT_OUT_OT_CTRL)->state = true;
-			/*唤醒错误处理线程*/
+
 			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 		}
 	}
@@ -978,7 +911,7 @@ static void Overload_check(void)
 	// 	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 0)
 	// 	{
 	// 		err_get_type(err_ctrl, MCU_OVER_HEAT)->state = true;
-	// 		/*唤醒错误处理线程*/
+	//
 	// 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 	// 	}
 	// }
@@ -989,21 +922,17 @@ static void Overload_check(void)
 	// 	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 0)
 	// 	{
 	// 		err_get_type(err_ctrl, MCU_OVER_HEAT)->state = true;
-	// 		/*唤醒错误处理线程*/
+	//
 	// 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 	// 	}
 	// }
 }
 
-/*
-	焊接主任务
-	功能描述：
-	1、开机自检
-	2、热电偶监测
-	3、电压监测
-	4、执行焊接任务
-	5、实时温度更新
-*/
+/**
+ * @description: main task
+ * @param {void} *p_arg
+ * @return {*}
+ */
 void main_task(void *p_arg)
 {
 
@@ -1013,18 +942,12 @@ void main_task(void *p_arg)
 	{
 
 #if OVER_LOAD_CHECK
-		/*part1：过流/过温度保护*/
 		Overload_check();
 #endif
-
 #if VOLTAGE_CHECK
-		/*part2:空闲时过欠压监测*/
 		voltage_check();
 #endif
-		/*part3:热电偶监测*/
 		Thermocouple_check();
-
-		/*part4：主焊接任务*/
 		welding_process();
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err); // 休眠
@@ -1032,11 +955,14 @@ void main_task(void *p_arg)
 }
 
 /*-------------------------------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------------触摸屏通信线程--------------------------------------------------------*/
+/*----------------------------------------------------touch screan task----------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
 
+/*--------------------------------------------------------------------------------------*/
+/*----------------------Touchscreen communication thread internal API-------------------*/
+/*--------------------------------------------------------------------------------------*/
 /**
- * @description: 消除热电偶偏置
+ * @description: Thermocouple adjust
  * @return {*}
  */
 static void Thermocouple_err_eliminate()
@@ -1046,7 +972,8 @@ static void Thermocouple_err_eliminate()
 	uint16_t ADC_channel_init_val = 0;
 	float adc_channel_data[SAMPLE_LEN] = {0};
 	float adc_channel_fliter_buf[SAMPLE_LEN] = {0};
-	/*根据当前热电偶类型采样对应的电压值*/
+
+	/*select channel according to different type of thermocouple*/
 	switch (current_Thermocouple->type)
 	{
 	case E_TYPE:
@@ -1074,14 +1001,15 @@ static void Thermocouple_err_eliminate()
 		}
 		break;
 	}
-	// 低通滤波
+
+	/*filter*/
 	low_pass_Filter((float *)adc_channel_data,
 					SAMPLE_LEN,
 					(float *)adc_channel_fliter_buf,
 					1000,
 					1000);
 
-	/*均值滤波——计算初始偏置*/
+	/*calculate average*/
 	sum = 0;
 	for (uint16_t i = 0; i < SAMPLE_LEN; i++)
 	{
@@ -1091,35 +1019,33 @@ static void Thermocouple_err_eliminate()
 
 	if (ADC_channel_init_val > ADC_BIAS_MAX)
 	{
-		/*偏置过高，异常报警*/
+		/*voltage too high*/
 		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
 		OS_ERR err;
 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 	}
 	else
 	{
-		// 常温对应的电压
+
 		uint16_t room_temp_voltage = 0;
 
-		// 更新对应的热电偶参数值
 		for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
 		{
 			if (current_Thermocouple->type == Thermocouple_Lists[i].type)
 			{
-				// 常温下热点偶曲线计算出的理论电压值
+				// Theoretical voltage value at room temperature
 				room_temp_voltage = (ROOM_TEMP - Thermocouple_Lists[i].intercept) / Thermocouple_Lists[i].slope;
-				// 曲线修正
-				/*！！！！！由于测试机的主板使用的是e型热电偶，因此不可以按照k型方式校准！！！！！！*/
+				// update calibration parameters
 				Thermocouple_Lists[i].Bias = ADC_channel_init_val - room_temp_voltage;
-				// 更新当前热电偶
+				// update current Thermocouple
 				current_Thermocouple = &Thermocouple_Lists[i];
 			}
 		}
 
-		/*校准完成，开启进度条动画*/
+		/*adjust finished start animation*/
 		command_set_comp_val("tm0", "en", 1);
 
-		/*存储热电偶校准参数到eeprom*/
+		/*Store thermocouple calibration parameters to EEPROM*/
 		uint8_t group = get_comp(param_page_list, "GP")->val;
 		switch (current_Thermocouple->type)
 		{
@@ -1133,7 +1059,6 @@ static void Thermocouple_err_eliminate()
 	}
 }
 
-/*通信任务API*/
 static void key_action_callback_param(Component_Queue *page_list);
 static void key_action_callback_temp(Component_Queue *page_list);
 static void parse_key_action(Page_ID id);
@@ -1622,12 +1547,12 @@ static void page_process(Page_ID id)
 }
 static bool data_syn(Page_ID id)
 {
-	/*1、按键状态同步*/
-	RDY_SCH = (page_param->key1 == SCH) ? 1 : 0;  // RDY_SCH==0时为RDY
-	ION_IOF = (page_param->key2 == IOFF) ? 1 : 0; // ION_IOF==0为ION
-	SGW_CTW = (page_param->key3 == CTW) ? 1 : 0;  // SGW_CTW==0为SGW
+	/*key state sync*/
+	RDY_SCH = (page_param->key1 == SCH) ? 1 : 0;
+	ION_IOF = (page_param->key2 == IOFF) ? 1 : 0;
+	SGW_CTW = (page_param->key3 == CTW) ? 1 : 0;
 
-	/*2、参数同步*/
+	/*weld_controller sync*/
 	switch (id)
 	{
 	case PARAM_PAGE:
@@ -1646,7 +1571,7 @@ static bool data_syn(Page_ID id)
 			if (comp != NULL)
 				weld_controller->weld_temp[i] = comp->val;
 		}
-		/*同步计数值（用户可能修改）*/
+		/*Synchronization Count Values (User Subject to Change)*/
 		comp = get_comp(param_page_list, "count");
 		if (comp != NULL)
 			weld_controller->weld_count = comp->val;
@@ -1674,7 +1599,7 @@ static bool data_syn(Page_ID id)
 			float gain = get_comp(temp_page_list, "GAIN2")->val / 100.0;
 			weld_controller->temp_gain2 = gain;
 		}
-		/*同步计数值（用户可能修改）*/
+		/*Synchronization Count Values (User Subject to Change)*/
 		comp = get_comp(param_page_list, "count");
 		if (comp != NULL)
 			weld_controller->weld_count = comp->val;
@@ -1685,25 +1610,18 @@ static bool data_syn(Page_ID id)
 	case UART_PAGE:
 	{
 		Component *comp = NULL;
-		/*更新机号*/
+		/*update machine id*/
 		comp = get_comp(setting_page_list, "adress");
 		if (comp != NULL)
 			ID_OF_MAS = comp->val;
 
-		/*更新波特率*/
+		/*update baudrate*/
 		comp = get_comp(setting_page_list, "baudrate");
 		if (comp != NULL)
 		{
 			uint8_t index = get_comp(setting_page_list, "baudrate")->val;
 			usart3_set_bound(baud_list[index - 1]);
 		}
-
-		/*更新热电偶类型*/
-		// for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple_Lists[0]); i++)
-		// {
-		// 	if (get_comp(setting_page_list, "sensortype")->val == Thermocouple_Lists[i].type)
-		// 		current_Thermocouple = &Thermocouple_Lists[i]; // 更新当前热电偶类型
-		// }
 	}
 
 	default:
@@ -1713,36 +1631,39 @@ static bool data_syn(Page_ID id)
 	return true;
 }
 
-/*
-	触摸屏的通讯任务
-	功能描述：
-	触摸屏读写任务，完成页面查询/更新，页面组件属性值更新，响应不同页面的动作
-*/
+/**
+ * @description: Touchscreen communication threads
+ * @param {void} *p_arg
+ * @return {*}
+ */
 void read_task(void *p_arg)
 {
 
 	OS_ERR err;
 	while (1)
 	{
-		/*part1:处理页面逻辑*/
+		/*query page id*/
 		if (Page_id_get() == true)
 		{
 			page_process(page_param->id);
 			data_syn(page_param->id);
 		}
-		/*part2：空闲温度显示*/
+		/*display Real-time temperature*/
 		Temp_updata_realtime();
-		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
+		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err);
 	}
 }
 
 /*-------------------------------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------------上位机通信线程--------------------------------------------------------*/
+/*----------------------------------------------The upper computer communication thread------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
 
-static void data_sync_from_computer()
+/**
+ * @description: Data synchronization
+ * @return {*}
+ */
+static void Hsot_Computer_Data_Sync()
 {
-	/*数据同步：上位机——>新数据接口*/
 	char *time_name[] = {
 		"time1",
 		"time2",
@@ -1781,53 +1702,57 @@ static void data_sync_from_computer()
 }
 
 /**
- * @description: 上位机通信任务
+ * @description: The upper computer communication thread
  * @param {void} *p_arg
  * @return {*}
  */
 void computer_read_task(void *p_arg)
 {
 	/*
-	上位机维护的数据：
-	ModBus_time ModBus_temp ModBus_alarm_temp Host_GP Host_gain1_raw Host_gain1 Host_gain2_raw Host_gain2
-	用户维护的数据：
-	weld_controller->weld_time 	weld_controller->weld_temp weld_controller->alarm_temp
-	上位机修改数据后
-	（1）更新用户维护的数据
-	（2）完成数据同步
+	Data receive from host computer:
+	ModBus_time||ModBus_temp||ModBus_alarm_temp||Host_GP||Host_gain1_raw||Host_gain1||Host_gain2_raw||Host_gain2
+	User-maintained data:
+	weld_controller->weld_time||weld_controller->weld_temp||weld_controller->alarm_temp
 	*/
 	OS_ERR err;
 	usart3_init(115200);
 	while (1)
 	{
 
-		/*订阅上位机的数据更新信号*/
+		/*Subscribe to data update signals*/
 		OSSemPend(&COMPUTER_DATA_SYN_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
 		if (OS_ERR_NONE == err)
 		{
 
-			/*1、Host_action不为0时为处理上位机数据，并将数据刷新到触摸屏*/
+			/*
+			When the Host_action is not 0, it is to process the data of the host computer and refresh the data to the touch screen
+			*/
 			if (Host_action == 1)
 			{
-				/*1、数据更新*/
-				remember_array = Host_GP; // ：上位机维护的数据 remember_array：全局维护的GP值
-				/*2、屏幕刷新*/
+				/*data update*/
+				remember_array = Host_GP;
+				/*screan refresh*/
 				for (int i = 0; i < 2; i++)
 				{
-					command_set_comp_val("GP", "val", remember_array); // 将上一次的GP值发给从机
+					/*The GP value of the previous time is sent to the slave*/
+					command_set_comp_val("GP", "val", remember_array);
 					Load_param(weld_controller, remember_array);
 					Load_param_alarm(weld_controller, remember_array);
 				}
 				SPI_Save_Word(0, 40 * (remember_array + 1) + 4);
 				Host_action = 0;
 			}
-			else if ((Host_action >= 2) && (Host_action <= 17)) // Host_action 为2 - 17 ，表示上位机修改单个数据，同步修改控制板参数数组和触摸屏数据
+			/*
+			Host_action is 2 - 17, which means that the host computer modifies a single data,
+			and synchronously modifies the parameter array of the control board and the touch screen data
+			*/
+			else if ((Host_action >= 2) && (Host_action <= 17))
 			{
-				/*1、数据更新*/
+				/*data update*/
 				switch (Host_action)
 				{
 
-				/*6个焊接时间（实际上只用五个）ModBus_time[2]弃用*/
+				/*weld time*/
 				case 2:
 					weld_controller->weld_time[0] = ModBus_time[0];
 					break;
@@ -1843,7 +1768,7 @@ void computer_read_task(void *p_arg)
 				case 6:
 					weld_controller->weld_time[4] = ModBus_time[5];
 					break;
-				/*三段焊接温度*/
+				/*weld temp*/
 				case 7:
 					weld_controller->weld_temp[0] = ModBus_temp[0];
 					break;
@@ -1853,7 +1778,7 @@ void computer_read_task(void *p_arg)
 				case 9:
 					weld_controller->weld_temp[2] = ModBus_temp[2];
 					break;
-				/*6段警报温度*/
+				/*alarm temp*/
 				case 10:
 					weld_controller->alarm_temp[0] = ModBus_alarm_temp[0];
 					break;
@@ -1872,7 +1797,7 @@ void computer_read_task(void *p_arg)
 				case 15:
 					weld_controller->alarm_temp[5] = ModBus_alarm_temp[5];
 					break;
-				/*两个增益系数*/
+				/*gain*/
 				case 16:
 					weld_controller->temp_gain1 = Host_gain1;
 					break;
@@ -1881,33 +1806,28 @@ void computer_read_task(void *p_arg)
 					break;
 				}
 
-				/*保存焊接时间*/
+				/*save param*/
 				/*time1-time5*/
 				for (uint8_t i = 0; i < TIME_NUM; i++)
 				{
 					SPI_Save_Word(weld_controller->weld_time[i], TIME_BASE(remember_array) + ADDR_OFFSET * i);
 				}
-
-				/*保存三段温度设定值*/
 				/*temp1-temp3*/
 				for (uint8_t i = 0; i < TEMP_NUM; i++)
 				{
 					SPI_Save_Word(weld_controller->weld_temp[i], TEMP_BASE(remember_array) + ADDR_OFFSET * i);
 				}
-				/*保存限制温度*/
 				/*alarm1-alarm6*/
 				for (uint8_t i = 0; i < ALARM_NUM; i++)
 				{
 					SPI_Save_Word(weld_controller->alarm_temp[i], ALARM_BASE(remember_array) + ADDR_OFFSET * i);
 				}
 
-				/*保存增益*/
 				/*gain1-gain2*/
 				SPI_Save_Word(weld_controller->temp_gain1 * 100, GAIN_BASE(remember_array));
 				SPI_Save_Word(weld_controller->temp_gain2 * 100, GAIN_BASE(remember_array) + ADDR_OFFSET);
 
-				/*2、屏幕刷新*/
-				/*时间刷新*/
+				/*screan refresh*/
 				char *time_name_list[] = {
 					"param_page.time1",
 					"param_page.time2",
@@ -1919,7 +1839,6 @@ void computer_read_task(void *p_arg)
 				{
 					command_set_comp_val(time_name_list[i], "val", weld_controller->weld_time[i]);
 				}
-				/*温度刷新*/
 				char *temp_name_list[] = {"param_page.temp1", "param_page.temp2", "param_page.temp3"};
 				for (uint8_t i = 0; i < sizeof(temp_name_list) / sizeof(temp_name_list[0]); i++)
 				{
@@ -1939,15 +1858,19 @@ void computer_read_task(void *p_arg)
 					command_set_comp_val(alarm_name_list[i], "val", weld_controller->alarm_temp[i]);
 				}
 
-				/*增益刷新*/
 				command_set_comp_val("temp_page.GAIN1", "val", weld_controller->temp_gain1 * 100);
 				command_set_comp_val("temp_page.GAIN2", "val", weld_controller->temp_gain2 * 100);
 
+				/*reset host action*/
 				Host_action = 0;
 			}
-			else if (Host_action == 20) // Host_action= 20 表示改变整一页数据，将修改数据同步到参数数组和触摸屏，
+			/*
+			Host_action = 20 means that the whole page of data is changed,
+			and the modified data is synchronized to the parameter array and touch screen.
+			*/
+			else if (Host_action == 20)
 			{
-				/*1、数据更新*/
+				/*data update*/
 				remember_array = Host_GP;
 
 				for (uint8_t i = 0; i < sizeof(weld_controller->weld_time) / sizeof(uint16_t); i++)
@@ -1965,43 +1888,37 @@ void computer_read_task(void *p_arg)
 					weld_controller->alarm_temp[i] = ModBus_alarm_temp[i];
 				}
 
-				/*3、将用户数据更新至eeprom*/
-				/*保存焊接时间*/
+				/*save user data to EEPROM*/
 				/*time1-time5*/
 				for (uint8_t i = 0; i < TIME_NUM; i++)
 				{
 					SPI_Save_Word(weld_controller->weld_time[i], TIME_BASE(remember_array) + ADDR_OFFSET * i);
 				}
-
-				/*保存三段温度设定值*/
 				/*temp1-temp3*/
 				for (uint8_t i = 0; i < TEMP_NUM; i++)
 				{
 					SPI_Save_Word(weld_controller->weld_temp[i], TEMP_BASE(remember_array) + ADDR_OFFSET * i);
 				}
-				/*保存限制温度*/
 				/*alarm1-alarm6*/
 				for (uint8_t i = 0; i < ALARM_NUM; i++)
 				{
 					SPI_Save_Word(weld_controller->alarm_temp[i], ALARM_BASE(remember_array) + ADDR_OFFSET * i);
 				}
-
-				/*保存增益*/
 				/*gain1-gain2*/
 				SPI_Save_Word(weld_controller->temp_gain1 * 100, GAIN_BASE(remember_array));
 				SPI_Save_Word(weld_controller->temp_gain2 * 100, GAIN_BASE(remember_array) + ADDR_OFFSET);
 				Host_action = 0;
 			}
 
-			data_sync_from_computer();
+			Hsot_Computer_Data_Sync();
 		}
 
-		OSTimeDlyHMSM(0, 0, 0, 25, OS_OPT_TIME_PERIODIC, &err); // 休眠
+		OSTimeDlyHMSM(0, 0, 0, 25, OS_OPT_TIME_PERIODIC, &err);
 	}
 }
 
 /*-------------------------------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------------USB读写线程----------------------------------------------------------*/
+/*-------------------------------------------------USB read-write thread---------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
 
 void usb_task(void *p_arg)
@@ -2025,6 +1942,6 @@ void usb_task(void *p_arg)
 
 		/* Host Task handler */
 		USBH_Process(&USB_OTG_Core, &USB_Host);
-		OSTimeDlyHMSM(0, 0, 0, 40, OS_OPT_TIME_PERIODIC, &err); // 休眠
+		OSTimeDlyHMSM(0, 0, 0, 40, OS_OPT_TIME_PERIODIC, &err);
 	}
 }

@@ -13,46 +13,42 @@
 #include "tempcomp.h"
 #include "touchscreen.h"
 
-/*--------------------------------------------------旧版本接口---------------------------------------------------------*/
-volatile WELD_MODE welding_flag = IDEAL_MODE; // 焊接的标志
-extern uint16_t kalman_comp_temp;			  // 温度补偿值
+/*---------------------------------------------------Real-time control---------------------------------------------------------*/
+volatile WELD_MODE welding_flag = IDEAL_MODE; // Welding different stage markers
+extern uint16_t kalman_comp_temp;			  // Temperature compensation value
+extern weld_ctrl *weld_controller;			  // Welding controllers
+extern double fitting_curves[3];			  // pid Parameters dynamically fit curves ax*bx+x+c
+/*------------------------------------------------------------------------------------------------------------------------------*/
 
-/*-------------------------------------------------------新接口--------------------------------------------------------*/
-
-/*----------------------------------------------新版本实时控制---------------------------------------------------------*/
-extern weld_ctrl *weld_controller; // 焊接控制器
-extern double fitting_curves[3];   // pid 参数动态拟合曲线x*x+x+1
-/*-----------------------------------------------适配的触摸屏数据接口--------------------------------------------------*/
-extern Component_Queue *temp_page_list;	 // 温度限制界面UI队列
-extern Component_Queue *param_page_list; // 参数设定界面的组件列表
+/*-----------------------------------------------Compatible touchscreen data interface------------------------------------------*/
+extern Component_Queue *temp_page_list;	 // Queue in the UI of the Temperature Limit page
+extern Component_Queue *param_page_list; // A list of components on the parameter setting screen
 extern uint8_t ID_OF_MAS;
-/*--------------------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------------------------------------------------------*/
 
-/*--------------------------------------------------错误报警-----------------------------------------------------------*/
-extern OS_SEM ERROR_HANDLE_SEM; // 错误信号
-extern Error_ctrl *err_ctrl;	// 错误管理器
-/*--------------------------------------------------------------------------------------------------------------------*/
+/*-----------------------------------------------------False alarms--------------------------------------------------------------*/
+extern OS_SEM ERROR_HANDLE_SEM;
+extern Error_ctrl *err_ctrl;
+/*------------------------------------------------------------------------------------------------------------------------------*/
 
-/*--------------------------------------------------算法控制-----------------------------------------------------------*/
-/*卡尔曼滤波*/
+/*--------------------------------------------------Control algorithms-----------------------------------------------------------*/
+/*Kalman filtering*/
 Kalman kfp;
-dynamical_comp dynam_comp;		 // 动态补偿
-extern last_temp_sotre lasttemp; // 过往温度记录
+dynamical_comp dynam_comp;
+extern last_temp_sotre lasttemp;
 
-/*--------------------------------------------------------绘图---------------------------------------------------------*/
-extern OS_SEM TEMP_DISPLAY_SEM;						 // 绘图事件信号
-extern Temp_draw_ctrl *temp_draw_ctrl;				 // 绘图控制器
-extern Page_Param *page_param;						 // 实时页面参数
-extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN]; // 温度保存缓冲区
+/*-----------------------------------------------------temp plot-----------------------------------------------------------------*/
+extern OS_SEM TEMP_DISPLAY_SEM;						 // Plot event signals
+extern Temp_draw_ctrl *temp_draw_ctrl;				 // Drawing controllers
+extern Page_Param *page_param;						 // Real-time page parameters
+extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN]; // Temperature preservation buffer
+/*------------------------------------------------------------------------------------------------------------------------------*/
 
-/*热电偶*/
-extern Thermocouple *current_Thermocouple;
-
-/*上位机信号*/
-extern OS_SEM HOST_WELD_CTRL_SEM; // 上位机开启焊接信号
+extern Thermocouple *current_Thermocouple; // The current thermocouple object
+extern OS_SEM HOST_WELD_CTRL_SEM;		   // The upper computer turns on the welding signal
 
 /*--------------------------------------------------------------------------------------------------------------------*/
-/*													 数据对象API                                                       */
+/*													 Data Object API                                                  */
 /*--------------------------------------------------------------------------------------------------------------------*/
 static void stop_weld(void);
 WELD_MODE get_weld_flag()
@@ -203,7 +199,7 @@ void user_value_convert_to_string(char *buffer, const uint8_t buf_len, const uin
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
-/*													 过程控制API                                                       */
+/*													 Process Control API                                              */
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 static void down_temp_line(void);
@@ -215,12 +211,12 @@ static void Load_Data()
 {
 	uint8_t GP_Temp = 0;
 	uint8_t key = 0;
-	/*扫描按键，根据启动模式对对应参数组数据进行读取，并将其发送至触摸屏*/
+	/*The scan button reads the corresponding parameter group data according to the startup mode and sends it to the touch screen*/
 	GP_Temp = get_comp(param_page_list, "GP")->val;
-	if ((GP_Temp % 2 == 0)) // 如果GP是双数
+	if ((GP_Temp % 2 == 0))
 	{
 		key = new_key_scan();
-		if (key == KEY_PC1_PRES) // 踩下单数
+		if (key == KEY_PC1_PRES)
 		{
 			GP_Temp += 1;
 			Load_param(weld_controller, GP_Temp);
@@ -228,10 +224,10 @@ static void Load_Data()
 			command_set_comp_val("GP", "val", GP_Temp);
 		}
 	}
-	else // 如果GP是单数
+	else
 	{
 		key = new_key_scan();
-		if ((key == KEY_PC0_PRES)) // 踩下双数
+		if ((key == KEY_PC0_PRES))
 		{
 			if (GP_Temp != 0)
 				GP_Temp -= 1;
@@ -243,7 +239,7 @@ static void Load_Data()
 }
 
 /**
- * @description: 借助增益调控pid参数以及预爬升点
+ * @description: The PID parameters as well as the pre-climb point can be controlled with the set of gain
  * @param {weld_ctrl} *ctrl
  * @return {*}
  */
@@ -255,7 +251,7 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 	double percent = 0;
 	uint16_t delta_temp = 0;
 
-	/*-------------------------------------------------------用户自定义模式-------------------------------------------------------*/
+	/*-------------------------------------------------------User-defined mode-------------------------------------------------------*/
 	if (get_comp(temp_page_list, "switch")->val == 0)
 	{
 		switch (current_Thermocouple->type)
@@ -281,7 +277,7 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 			break;
 		}
 	}
-	/*----------------------------------------------------------自动模式----------------------------------------------------------*/
+	/*----------------------------------------------------------auto mode------------------------------------------------------------*/
 	else
 	{
 		switch (current_Thermocouple->type)
@@ -1121,9 +1117,7 @@ static void down_temp_line()
 		temp_display = temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY; // 坐标放缩
 		draw_point(temp_display);								 // 绘图
 		command_set_comp_val("temp33", "val", temp_display);	 // 显示实时温度数值
-
-		// user_tim_delay(temp_draw_ctrl->delta_tick); // 采样间隔
-		delay_ms(temp_draw_ctrl->delta_tick);
+		delay_ms(temp_draw_ctrl->delta_tick);					 // 采样间隔
 
 		index++;
 	}
