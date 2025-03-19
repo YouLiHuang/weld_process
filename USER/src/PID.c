@@ -8,7 +8,7 @@
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
  */
 
-#include "PID.h"
+#include "pid.h"
 #include "tempcomp.h"
 
 pid_feedforword_ctrl *new_pid_forword_ctrl(float kp_f, float kp, float ki, float kd)

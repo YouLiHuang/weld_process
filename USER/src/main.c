@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-19 22:19:53
+ * @LastEditTime: 2025-03-19 22:21:25
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -23,9 +23,9 @@
 #include "pwm.h"
 #include "Kalman.h"
 #include "touchscreen.h"
-#include "PID.h"
+#include "pid.h"
 #include "filter.h"
-#include "ThermocoupleIO.h"
+#include "thermocoupleIO.h"
 #include "usbh_msc_usr.h"
 #include "log.h"
 

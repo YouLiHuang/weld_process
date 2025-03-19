@@ -32,7 +32,7 @@
         "tempcomp.h": "c",
         "string.h": "c",
         "kalman.h": "c",
-        "thermocoupleio.h": "c",
+        "thermocoupleIO.h": "c",
         "deque": "c",
         "exception": "c",
         "fstream": "c",

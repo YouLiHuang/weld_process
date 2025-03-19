@@ -12,7 +12,7 @@
 #define __WELDING_PROCESS_H
 
 #include "sys.h"
-#include "PID.h"
+#include "pid.h"
 
 void user_value_convert_to_string(char *buffer, const uint8_t buf_len, const uint16_t value);
 void welding_process(void);

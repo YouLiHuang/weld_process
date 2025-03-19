@@ -3,7 +3,7 @@
 #include "includes.h"
 #include "key.h"
 #include "pwm.h"
-#include "PID.h"
+#include "pid.h"
 #include "adc.h"
 #include "timer.h"
 #include "protect.h"
