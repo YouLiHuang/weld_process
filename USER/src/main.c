@@ -8,12 +8,12 @@
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
 
+#include "includes.h"
 #include "sys.h"
 #include "delay.h"
+
 #include "usart.h"
 #include "key.h"
-#include "includes.h"
-#include "HCSR04.h"
 #include "crc16.h"
 #include "welding_process.h"
 #include "spi.h"

@@ -10,14 +10,14 @@
       <TargetName>Template</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pCCUsed>5060960::V5.06 update 7 (build 960)::.\ARMCC</pCCUsed>
+      <pCCUsed>5060750::V5.06 update 6 (build 750)::ARMCC</pCCUsed>
       <uAC6>0</uAC6>
       <TargetOption>
         <TargetCommonOption>
           <Device>STM32F407ZG</Device>
           <Vendor>STMicroelectronics</Vendor>
-          <PackID>Keil.STM32F4xx_DFP.3.0.0</PackID>
-          <PackURL>https://www.keil.com/pack/</PackURL>
+          <PackID>Keil.STM32F4xx_DFP.2.13.0</PackID>
+          <PackURL>http://www.keil.com/pack</PackURL>
           <Cpu>IROM(0x08000000,0x100000) IRAM(0x20000000,0x20000) IRAM2(0x10000000,0x10000) CPUTYPE("Cortex-M4") FPU2 CLOCK(12000000) ELITTLE</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
           <StartupFile></StartupFile>
@@ -184,6 +184,7 @@
             <hadXRAM>0</hadXRAM>
             <uocXRam>0</uocXRam>
             <RvdsVP>2</RvdsVP>
+            <RvdsMve>0</RvdsMve>
             <hadIRAM2>1</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
@@ -337,7 +338,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F40_41xxx,USE_STDPERIPH_DRIVER,__FPU_USED=1</Define>
               <Undefine></Undefine>
-              <IncludePath>..\CORE;..\SYSTEM\delay;..\SYSTEM\sys;..\FWLIB\STM32F4xx_StdPeriph_Driver\inc;.\inc;..\UCOSIII\uC-CPU;..\UCOSIII\uC-LIB;..\UCOSIII\uCOS-III;..\UCOSIII\UCOS_BSP;..\UCOSIII\uCOS_CONFIG;..\UCOSIII\uCOS-III\Source;..\UCOSIII\uC-CPU\ARM-Cortex-M4\RealView;..\UCOSIII\uC-LIB\Ports\ARM-Cortex-M4\RealView;..\UCOSIII\uCOS-III\Ports\ARM-Cortex-M4\Generic\RealView;..\HARDWARE\HCSR04;..\HARDWARE\CRC16;..\HARDWARE\ADC;..\HARDWARE\PID;..\HARDWARE\PWM;..\HARDWARE\SPI;..\HARDWARE\TIMEC;..\HARDWARE\WELDING;..\HARDWARE\PROTECT;..\HARDWARE\Kalman;..\HARDWARE\KEY;..\HARDWARE\TEMPCOMPA;..\SYSTEM\usart;..\HARDWARE\TOUCH_SCREEN;..\HARDWARE\FILTER;..\HARDWARE\PINCTRL;..\FWLIB\STM32_USB_Device_Library\Core\inc;..\FWLIB\STM32_USB_Device_Library\Class\msc\inc;..\FWLIB\STM32_USB_HOST_Library\Core\inc;..\FWLIB\STM32_USB_HOST_Library\Class\MSC\inc;..\FWLIB\STM32_USB_OTG_Driver\inc;..\HARDWARE\SDIO;..\FWLIB\fat_fs\src</IncludePath>
+              <IncludePath>..\CORE;..\SYSTEM\delay;..\SYSTEM\sys;..\FWLIB\STM32F4xx_StdPeriph_Driver\inc;.\inc;..\UCOSIII\uC-CPU;..\UCOSIII\uC-LIB;..\UCOSIII\uCOS-III;..\UCOSIII\UCOS_BSP;..\UCOSIII\uCOS_CONFIG;..\UCOSIII\uCOS-III\Source;..\UCOSIII\uC-CPU\ARM-Cortex-M4\RealView;..\UCOSIII\uC-LIB\Ports\ARM-Cortex-M4\RealView;..\UCOSIII\uCOS-III\Ports\ARM-Cortex-M4\Generic\RealView;..\HARDWARE\CRC16;..\HARDWARE\ADC;..\HARDWARE\PWM;..\HARDWARE\SPI;..\HARDWARE\TIMEC;..\HARDWARE\PROTECT;..\HARDWARE\KEY;..\SYSTEM\usart;..\HARDWARE\TOUCH_SCREEN;..\HARDWARE\PINCTRL;..\FWLIB\STM32_USB_Device_Library\Core\inc;..\FWLIB\STM32_USB_Device_Library\Class\msc\inc;..\FWLIB\STM32_USB_HOST_Library\Core\inc;..\FWLIB\STM32_USB_HOST_Library\Class\MSC\inc;..\FWLIB\STM32_USB_OTG_Driver\inc;..\FWLIB\fat_fs\src;..\HARDWARE\SDIO</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -378,116 +379,6 @@
         </TargetArmAds>
       </TargetOption>
       <Groups>
-        <Group>
-          <GroupName>USER</GroupName>
-          <Files>
-            <File>
-              <FileName>log.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\log.c</FilePath>
-            </File>
-            <File>
-              <FileName>usb_bsp.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\usb_bsp.c</FilePath>
-            </File>
-            <File>
-              <FileName>usbh_msc_usr.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\usbh_msc_usr.c</FilePath>
-            </File>
-            <File>
-              <FileName>main.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\main.c</FilePath>
-            </File>
-            <File>
-              <FileName>stm32f4xx_it.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\stm32f4xx_it.c</FilePath>
-            </File>
-            <File>
-              <FileName>system_stm32f4xx.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\system_stm32f4xx.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>HARDWARE</GroupName>
-          <Files>
-            <File>
-              <FileName>key.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\KEY\key.c</FilePath>
-            </File>
-            <File>
-              <FileName>HCSR04.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\HCSR04\HCSR04.c</FilePath>
-            </File>
-            <File>
-              <FileName>crc16.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\CRC16\crc16.c</FilePath>
-            </File>
-            <File>
-              <FileName>PID.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\PID\PID.c</FilePath>
-            </File>
-            <File>
-              <FileName>spi.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\SPI\spi.c</FilePath>
-            </File>
-            <File>
-              <FileName>timer.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\TIMEC\timer.c</FilePath>
-            </File>
-            <File>
-              <FileName>adc.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\ADC\adc.c</FilePath>
-            </File>
-            <File>
-              <FileName>pwm.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\PWM\pwm.c</FilePath>
-            </File>
-            <File>
-              <FileName>protect.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\PROTECT\protect.c</FilePath>
-            </File>
-            <File>
-              <FileName>welding_process.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\WELDING\welding_process.c</FilePath>
-            </File>
-            <File>
-              <FileName>Kalman.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\Kalman\Kalman.c</FilePath>
-            </File>
-            <File>
-              <FileName>tempcompa.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\TEMPCOMPA\tempcompa.c</FilePath>
-            </File>
-            <File>
-              <FileName>touchscreen.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\TOUCH_SCREEN\touchscreen.c</FilePath>
-            </File>
-            <File>
-              <FileName>ThermocoupleIO.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\PINCTRL\ThermocoupleIO.c</FilePath>
-            </File>
-          </Files>
-        </Group>
         <Group>
           <GroupName>CORE</GroupName>
           <Files>
@@ -570,6 +461,56 @@
               <FileName>stm32f4xx_i2c.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\FWLIB\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_i2c.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>HARDWARE</GroupName>
+          <Files>
+            <File>
+              <FileName>key.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\KEY\key.c</FilePath>
+            </File>
+            <File>
+              <FileName>crc16.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\CRC16\crc16.c</FilePath>
+            </File>
+            <File>
+              <FileName>spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\SPI\spi.c</FilePath>
+            </File>
+            <File>
+              <FileName>timer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\TIMEC\timer.c</FilePath>
+            </File>
+            <File>
+              <FileName>adc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\ADC\adc.c</FilePath>
+            </File>
+            <File>
+              <FileName>pwm.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\PWM\pwm.c</FilePath>
+            </File>
+            <File>
+              <FileName>protect.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\PROTECT\protect.c</FilePath>
+            </File>
+            <File>
+              <FileName>touchscreen.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\TOUCH_SCREEN\touchscreen.c</FilePath>
+            </File>
+            <File>
+              <FileName>ThermocoupleIO.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\PINCTRL\ThermocoupleIO.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -819,16 +760,6 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>FILTER</GroupName>
-          <Files>
-            <File>
-              <FileName>filter.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\FILTER\filter.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
           <GroupName>USB_HOST_CORE</GroupName>
           <Files>
             <File>
@@ -874,16 +805,6 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>FATFS</GroupName>
-          <Files>
-            <File>
-              <FileName>ff.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\FWLIB\fat_fs\src\ff.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
           <GroupName>USB_HOST_CLASS_MSC</GroupName>
           <Files>
             <File>
@@ -905,6 +826,76 @@
               <FileName>usbh_msc_scsi.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\FWLIB\STM32_USB_HOST_Library\Class\MSC\src\usbh_msc_scsi.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>FATFS</GroupName>
+          <Files>
+            <File>
+              <FileName>ff.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\fat_fs\src\ff.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>USER</GroupName>
+          <Files>
+            <File>
+              <FileName>log.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\log.c</FilePath>
+            </File>
+            <File>
+              <FileName>usb_bsp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\usb_bsp.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbh_msc_usr.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\usbh_msc_usr.c</FilePath>
+            </File>
+            <File>
+              <FileName>main.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\main.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_it.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\stm32f4xx_it.c</FilePath>
+            </File>
+            <File>
+              <FileName>system_stm32f4xx.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\system_stm32f4xx.c</FilePath>
+            </File>
+            <File>
+              <FileName>Kalman.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\Kalman.c</FilePath>
+            </File>
+            <File>
+              <FileName>PID.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\PID.c</FilePath>
+            </File>
+            <File>
+              <FileName>welding_process.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\welding_process.c</FilePath>
+            </File>
+            <File>
+              <FileName>tempcompa.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\tempcompa.c</FilePath>
+            </File>
+            <File>
+              <FileName>filter.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\filter.c</FilePath>
             </File>
           </Files>
         </Group>
