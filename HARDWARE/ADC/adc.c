@@ -214,7 +214,7 @@ uint16_t temp_convert(Thermocouple *thermocouple)
 		break;
 	}
 	return temp;
-}
+} 
 
 /**
  * @description:

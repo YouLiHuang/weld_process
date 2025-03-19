@@ -302,7 +302,7 @@ void TIM5_IRQHandler(void)
 
 			if (weld_controller->pid_ctrl->stable_flag == false)
 			{
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + STABLE_ERR,
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->first_step_set,
 															 current_temp_comp,
 															 weld_controller->Duty_Cycle,
 															 weld_controller->pid_ctrl);
@@ -324,25 +324,6 @@ void TIM5_IRQHandler(void)
 			TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
 			TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
 
-			/*3：错误检测*/
-			/*注意：阶段之间需要将错误计数值清空(此处为了报警的实时性，暂时不使用阈值模式)*/
-			if (current_temp_comp < weld_controller->first_step_start_temp && weld_controller->step_time_tick > weld_controller->weld_time[1] * 0.5)
-			{
-#if PROTECT_ON == 1
-				err_get_type(err_ctrl, TEMP_DOWN)->state = true;
-				OS_ERR err;
-				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-#endif
-			}
-			if (current_temp_comp > weld_controller->alarm_temp[0])
-			{
-#if PROTECT_ON == 1
-				err_get_type(err_ctrl, TEMP_UP)->state = true;
-				OS_ERR err;
-				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-#endif
-			}
-
 			break;
 
 			/*--------------------------------------------------------------------二阶段----------------------------------------------------------------------*/
@@ -358,7 +339,7 @@ void TIM5_IRQHandler(void)
 
 			if (weld_controller->pid_ctrl->stable_flag == false)
 			{
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->second_step_set,
 															 current_temp_comp,
 															 weld_controller->Duty_Cycle,
 															 weld_controller->pid_ctrl);
@@ -381,25 +362,6 @@ void TIM5_IRQHandler(void)
 			TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
 			TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
 
-			/*3、错误检测*/
-			if (current_temp_comp < weld_controller->second_step_start_temp && weld_controller->step_time_tick > weld_controller->weld_time[2] * 0.1)
-			{
-#if PROTECT_ON == 1
-				err_get_type(err_ctrl, TEMP_DOWN)->state = true;
-				OS_ERR err;
-				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-#endif
-			}
-			if (current_temp_comp > weld_controller->alarm_temp[2])
-			{
-
-#if PROTECT_ON == 1
-				err_get_type(err_ctrl, TEMP_UP)->state = true;
-				OS_ERR err;
-				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-#endif
-			}
-
 			break;
 
 			/*--------------------------------------------------------------------三阶段----------------------------------------------------------------------*/
@@ -415,15 +377,6 @@ void TIM5_IRQHandler(void)
 			/*2、执行*/
 			TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
 			TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
-			/*3、：错误检测*/
-			if (current_temp_comp > weld_controller->alarm_temp[4])
-			{
-#if PROTECT_ON == 1
-				err_get_type(err_ctrl, TEMP_UP)->state = true;
-				OS_ERR err;
-				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-#endif
-			}
 
 			break;
 		}

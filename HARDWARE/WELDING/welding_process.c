@@ -569,7 +569,7 @@ static void First_Step()
 				weld_controller->pid_ctrl->stable_flag = true;
 			}
 
-			// 过温保护
+			/*失温报警*/
 			if (weld_controller->realtime_temp > weld_controller->alarm_temp[0])
 			{
 				stop_weld();
@@ -577,6 +577,17 @@ static void First_Step()
 				OS_ERR err;
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 				break;
+			}
+			if (weld_controller->realtime_temp > weld_controller->weld_time[1] * 0.5)
+			{
+				if (weld_controller->realtime_temp < weld_controller->first_step_start_temp)
+				{
+					stop_weld();
+					err_get_type(err_ctrl, TEMP_DOWN)->state = true;
+					OS_ERR err;
+					OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+					break;
+				}
 			}
 
 #if REALTIME_TEMP_DISPLAY == 1
@@ -633,7 +644,7 @@ static void Second_Step()
 					weld_controller->pid_ctrl->stable_threshold_cnt++;
 			}
 
-			/*过温保护*/
+			/*失温报警*/
 			if (weld_controller->realtime_temp > weld_controller->alarm_temp[2])
 			{
 				stop_weld();
@@ -641,6 +652,17 @@ static void Second_Step()
 				OS_ERR err;
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 				break;
+			}
+			if (weld_controller->realtime_temp > weld_controller->weld_time[2] * 0.5)
+			{
+				if (weld_controller->realtime_temp < weld_controller->second_step_start_temp)
+				{
+					stop_weld();
+					err_get_type(err_ctrl, TEMP_DOWN)->state = true;
+					OS_ERR err;
+					OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+					break;
+				}
 			}
 
 #if REALTIME_TEMP_DISPLAY == 1

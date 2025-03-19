@@ -125,7 +125,7 @@ char MSG_DEV_ERROR[] = "> Device fault \n";
 char MSG_MSC_CLASS[] = "> Mass storage device connected\n";
 char MSG_DISK_SIZE[] = "> Size of the disk in MBytes: \n";
 char MSG_LUN[] = "> LUN Available in the device:\n";
-char MSG_ROOT_CONT[] = "> Exploring disk flash ...\n";
+char MSG_ROOT_CONT[] = "> Exploring disk\n";
 char MSG_WR_PROTECT[] = "> The disk is write protected\n";
 char MSG_MSC_UNREC_ERROR[] = "> UNRECOVERED ERROR STATE\n";
 
@@ -363,15 +363,14 @@ int USBH_USR_MSC_Application(void)
   case USH_USR_FS_INIT:
 
     /* Initialises the File System */
-    if (f_mount(&fatfs, "", 0) != FR_OK)
+    if (f_mount(&fatfs, "0:/", 0) != FR_OK)
     {
       /* efs initialisation fails */
       printf("> Cannot initialize File System.\n");
       return (-1);
     }
     printf("> File System initialized.\n");
-    printf("> Disk capacity : %lu Bytes\n",
-           USBH_MSC_Param.MSCapacity * USBH_MSC_Param.MSPageLength);
+    printf("> Disk capacity : %lu Bytes\n", USBH_MSC_Param.MSCapacity * USBH_MSC_Param.MSPageLength);
 
     if (USBH_MSC_Param.MSWriteProtect == DISK_WRITE_PROTECTED)
     {
@@ -392,12 +391,13 @@ int USBH_USR_MSC_Application(void)
 
   case USH_USR_FS_WRITEFILE:
 
-    printf("write file test\r\n");
+    printf("> write file test\r\n");
     USB_OTG_BSP_mDelay(100);
 
     /* Key button in polling */
     while (HCD_IsDeviceConnected(&USB_OTG_Core))
     {
+      break;
     }
     /* Writes a text file, test.txt in the disk */
     printf("> Writing File to disk flash ...\n");
@@ -443,11 +443,11 @@ int USBH_USR_MSC_Application(void)
     break;
 
   case USH_USR_FS_DRAW:
-
     /* Key button in polling */
     while (HCD_IsDeviceConnected(&USB_OTG_Core))
     {
-      printf("simulate Toggle Leds\n");
+      printf("......\n");
+      USB_OTG_BSP_mDelay(500);
     }
 
     while (HCD_IsDeviceConnected(&USB_OTG_Core))
@@ -457,8 +457,9 @@ int USBH_USR_MSC_Application(void)
         /* fat_fs initialisation fails */
         return (-1);
       }
-        }
+    }
     break;
+
   default:
     break;
   }
@@ -496,6 +497,7 @@ uint8_t Explore_Disk(char *path, uint8_t recu_level)
   {
     while (HCD_IsDeviceConnected(&USB_OTG_Core))
     {
+#if 0
       res = f_readdir(&dir, &fno);
       if (res != FR_OK || fno.fname[0] == 0)
       {
@@ -505,12 +507,9 @@ uint8_t Explore_Disk(char *path, uint8_t recu_level)
       {
         continue;
       }
+
       fn = fno.fname;
       strcpy(tmp, fn);
-      while ((HCD_IsDeviceConnected(&USB_OTG_Core)))
-      {
-        printf("...");
-      }
 
       if (recu_level == 1)
       {
@@ -523,20 +522,46 @@ uint8_t Explore_Disk(char *path, uint8_t recu_level)
       if ((fno.fattrib & AM_MASK) == AM_DIR)
       {
         strcat(tmp, "\n");
-        printf((void *)tmp);
+        printf(tmp);
       }
       else
       {
         strcat(tmp, "\n");
-        printf((void *)tmp);
+        printf(tmp);
       }
 
       if (((fno.fattrib & AM_MASK) == AM_DIR) && (recu_level == 1))
       {
         Explore_Disk(fn, 2);
       }
+#endif
+
+      res = f_readdir(&dir, &fno); // 读取目录项
+
+      if (res != FR_OK || fno.fname[0] == 0)
+      {
+        break; // 遍历结束
+      }
+
+      if (fno.fname[0] == '.')
+      {
+        continue; // 跳过当前目录和父目录
+      }
+
+      // 判断是文件还是目录
+      if (fno.fattrib & AM_DIR)
+        printf("Directory:  %s\n", fno.fname);
+      else
+        printf("file:  %s\n", fno.fname);
     }
   }
+  else
+    printf("> open dir fail\n");
+
+  f_closedir(&dir);
+  f_mount(NULL, "", 0);
+  printf("> explore finished\n");
+
   return res;
 }
 

@@ -268,6 +268,8 @@ extern uint16_t remember_array;
 extern int ION_IOF;
 extern int SGW_CTW;
 extern int RDY_SCH;
+extern USBH_HOST USB_Host __ALIGN_END;
+extern USB_OTG_CORE_HANDLE USB_OTG_Core __ALIGN_END;
 
 int main(void)
 {
@@ -349,12 +351,22 @@ int main(void)
 	Host_computer_reset();
 
 	/*硬件测试代码段*/
-	/*...*/
-	//	while (1)
-	//	{
-	//		printf("log test...\r\n");
-	//		delay_ms(500);
-	//	}
+	// 	USBH_Init(&USB_OTG_Core,
+	// #ifdef USE_USB_OTG_FS
+	// 			  USB_OTG_FS_CORE_ID,
+	// #elif defined USE_USB_OTG_HS
+	// 			  USB_OTG_HS_CORE_ID,
+	// #endif
+	// 			  &USB_Host,
+	// 			  &USBH_MSC_cb,
+	// 			  &USR_USBH_MSC_cb);
+
+	// 	USB_OTG_BSP_mDelay(500);
+	// 	while (1)
+	// 	{
+	// 		/* Host Task handler */
+	// 		USBH_Process(&USB_OTG_Core, &USB_Host);
+	// 	}
 
 	/*------------------------------------------------------System level data objects-----------------------------------------------------------*/
 	/*UCOSIII init*/
@@ -538,7 +550,7 @@ void start_task(void *p_arg)
 				 (CPU_STK_SIZE)READ_STK_SIZE / 10,
 				 (CPU_STK_SIZE)READ_STK_SIZE,
 				 (OS_MSG_QTY)0,
-				 (OS_TICK)50, // 设置最大连续运行时长（时间片）
+				 (OS_TICK)20, // 设置最大连续运行时长（时间片）
 				 (void *)0,
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
@@ -554,7 +566,7 @@ void start_task(void *p_arg)
 				 (CPU_STK_SIZE)USB_STK_SIZE / 10,
 				 (CPU_STK_SIZE)USB_STK_SIZE,
 				 (OS_MSG_QTY)0,
-				 (OS_TICK)20,
+				 (OS_TICK)40,
 				 (void *)0,
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
@@ -779,7 +791,7 @@ void error_task(void *p_arg)
 				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->reset_callback != NULL)
 					err_ctrl->err_list[i]->reset_callback(i);
 			}
-#if 0
+
 			/*重新配置*/
 			uart_init(115200);
 			/*串口屏复位*/
@@ -788,7 +800,7 @@ void error_task(void *p_arg)
 			Load_data_from_mem();
 			/*上位机复位*/
 			Host_computer_reset();
-#endif
+
 		}
 
 		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err); // 休眠
@@ -2020,8 +2032,7 @@ void computer_read_task(void *p_arg)
 /*-------------------------------------------------------------------------------------------------------------------------*/
 /*----------------------------------------------------USB读写线程----------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
-extern USBH_HOST USB_Host __ALIGN_END;
-extern USB_OTG_CORE_HANDLE USB_OTG_Core __ALIGN_END;
+
 void usb_task(void *p_arg)
 {
 
@@ -2037,11 +2048,12 @@ void usb_task(void *p_arg)
 			  &USR_USBH_MSC_cb);
 
 	USB_OTG_BSP_mDelay(500);
+
 	while (1)
 	{
 
 		/* Host Task handler */
 		USBH_Process(&USB_OTG_Core, &USB_Host);
-		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
+		OSTimeDlyHMSM(0, 0, 0, 40, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
 }

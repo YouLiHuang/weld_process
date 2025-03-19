@@ -443,7 +443,7 @@ void USB_OTG_BSP_ConfigVBUS(USB_OTG_CORE_HANDLE *pdev)
 #endif
 
   /* By Default, DISABLE is needed on output of the Power Switch */
-  GPIO_ResetBits(HOST_POWERSW_PORT, HOST_POWERSW_VBUS);
+  GPIO_SetBits(HOST_POWERSW_PORT, HOST_POWERSW_VBUS);
 
   USB_OTG_BSP_mDelay(200); /* Delay is need for stabilising the Vbus Low
                             * in Reset Condition, when Vbus=1 and
