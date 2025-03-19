@@ -2,10 +2,10 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-19 09:12:24
- * @Description: 
- * 
- * Copyright (c) 2025 by huangyouli, All Rights Reserved. 
+ * @LastEditTime: 2025-03-19 09:17:57
+ * @Description:
+ *
+ * Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
 
 #include "sys.h"
@@ -30,15 +30,17 @@
 #include "log.h"
 
 /*user config*/
-#define ROOM_TEMP 20	 // 默认室温
-#define SAMPLE_LEN 100	 // 采样深度
-#define ADC_BIAS_MAX 650 // 最大偏置值
+#define KEJ_CHECK_DUTY 25 // 热电偶检测滤波周期
+#define ROOM_TEMP 20	  // 默认室温
+#define SAMPLE_LEN 100	  // 采样深度
+#define ADC_BIAS_MAX 500  // 最大偏置值
 
 /*debug option*/
-#define TEMP_ADJUST 1	 // 温度校准
-#define VOLTAGE_CHECK 1	 // 过欠压报警
-#define JK_TEMP_SHOW 0	 // JK热电偶显示
-#define POWER_ON_CHECK 1 // 开机自检
+#define TEMP_ADJUST 1	  // 温度校准
+#define VOLTAGE_CHECK 1	  // 过欠压报警
+#define OVER_LOAD_CHECK 1 // 过载保护
+#define JK_TEMP_SHOW 0	  // JK热电偶显示
+#define POWER_ON_CHECK 1  // 开机自检
 
 // 任务优先级
 #define START_TASK_PRIO 3
@@ -880,7 +882,7 @@ static void Thermocouple_check(void)
 	case J_TYPE:
 		IO_val = 0;
 		GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
-		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
+		OSTimeDlyHMSM(0, 0, 0, KEJ_CHECK_DUTY, OS_OPT_TIME_PERIODIC, &err);
 		IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_J, CHECKIN_PIN_J);
 		if (IO_val == 0)
 		{
@@ -896,7 +898,7 @@ static void Thermocouple_check(void)
 	case K_TYPE:
 		IO_val = 0;
 		GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
-		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
+		OSTimeDlyHMSM(0, 0, 0, KEJ_CHECK_DUTY, OS_OPT_TIME_PERIODIC, &err);
 		IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_K, CHECKIN_PIN_K);
 		if (IO_val == 0)
 		{
@@ -911,7 +913,7 @@ static void Thermocouple_check(void)
 	case E_TYPE:
 		IO_val = 0;
 		GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
-		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
+		OSTimeDlyHMSM(0, 0, 0, KEJ_CHECK_DUTY, OS_OPT_TIME_PERIODIC, &err);
 		uint8_t IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E);
 		// 断路报警
 		if (IO_val == 0)
@@ -934,20 +936,17 @@ static void voltage_check(void)
 	//  如果过压
 	if (ADC_Voltage > OVER_VOLTAGE)
 	{
-#if VOLTAGE_CHECK
 		err_get_type(err_ctrl, VOLTAGE_TOO_HIGH)->state = true;
 		/*唤醒错误处理线程*/
 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-#endif
 	}
 	// 如果欠压
 	if (ADC_Voltage < DOWN_VOLTAGE)
 	{
-#if VOLTAGE_CHECK
+
 		err_get_type(err_ctrl, VOLTAGE_TOO_LOW)->state = true;
 		/*唤醒错误处理线程*/
 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-#endif
 	}
 }
 
@@ -1005,10 +1004,15 @@ void main_task(void *p_arg)
 	while (1)
 	{
 
+#if OVER_LOAD_CHECK
 		/*part1：过流/过温度保护*/
-		// Overload_check();
+		Overload_check();
+#endif
+
+#if VOLTAGE_CHECK
 		/*part2:空闲时过欠压监测*/
-		// voltage_check();
+		voltage_check();
+#endif
 		/*part3:热电偶监测*/
 		Thermocouple_check();
 
