@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-19 22:21:25
+ * @LastEditTime: 2025-03-20 09:37:22
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -29,136 +29,82 @@
 #include "usbh_msc_usr.h"
 #include "log.h"
 
+/* Private define ------------------------------------------------------------*/
 /*user config*/
-#define USE_STM32_DEMO 0  // USB 测试代码
-#define KEJ_CHECK_DUTY 25 // 热电偶检测滤波周期
-#define ROOM_TEMP 20	  // 默认室温
-#define SAMPLE_LEN 100	  // 采样深度
-#define ADC_BIAS_MAX 500  // 最大偏置值
+#define USE_STM32_DEMO 0  // USB test code
+#define KEJ_CHECK_DUTY 25 // Thermocouple detection filter cycles
+#define ROOM_TEMP 20	  // Default room temperature
+#define SAMPLE_LEN 100	  // Sampling depth
+#define ADC_BIAS_MAX 500  // Maximum offset value
 
 /*debug option*/
-#define TEMP_ADJUST 1	  // 温度校准
-#define VOLTAGE_CHECK 1	  // 过欠压报警
-#define OVER_LOAD_CHECK 1 // 过载保护
-#define JK_TEMP_SHOW 0	  // JK热电偶显示
-#define POWER_ON_CHECK 1  // 开机自检
+#define TEMP_ADJUST 1	  // Temperature calibration
+#define VOLTAGE_CHECK 1	  // Overvoltage and undervoltage alarm
+#define OVER_LOAD_CHECK 1 // Overload protection
+#define JK_TEMP_SHOW 0	  // JK thermocouple display
+#define POWER_ON_CHECK 1  // Boot detection
 
-// 任务优先级
+/* Private macro -------------------------------------------------------------*/
 #define START_TASK_PRIO 3
-// 任务堆栈大小
 #define START_STK_SIZE 128
-// 任务控制块
 OS_TCB StartTaskTCB;
-// 任务堆栈
 CPU_STK START_TASK_STK[START_STK_SIZE];
-// 任务函数
 void start_task(void *p_arg);
 
-// 任务优先级
 #define ERROR_TASK_PRIO 4
-// 任务堆栈大小
 #define ERROR_STK_SIZE 1024
-// 任务控制块
 OS_TCB ErrorTaskTCB;
-// 任务堆栈
 CPU_STK ERROR_TASK_STK[ERROR_STK_SIZE];
-// 任务函数
 void error_task(void *p_arg);
 
-// 任务优先级
 #define MAIN_TASK_PRIO 5
-// 任务堆栈大小
 #define MAIN_STK_SIZE 3072
-// 任务控制块
 OS_TCB Main_TaskTCB;
-// 任务堆栈
 CPU_STK MAIN_TASK_STK[MAIN_STK_SIZE];
 void main_task(void *p_arg);
 
-// 任务优先级
 #define READ_TASK_PRIO 6
-// 任务堆栈大小
 #define READ_STK_SIZE 2048
-// 任务控制块
 OS_TCB READ_TaskTCB;
-// 任务堆栈
 CPU_STK READ_TASK_STK[READ_STK_SIZE];
-// 任务函数
+
 void read_task(void *p_arg);
 
-// 任务优先级
 #define COMPUTER_TASK_PRIO 7
-// 任务堆栈大小
 #define COMPUTER_STK_SIZE 512
-// 任务控制块
 OS_TCB COMPUTER_TaskTCB;
-// 任务堆栈
 CPU_STK COMPUTER_TASK_STK[COMPUTER_STK_SIZE];
-// 任务函数
 void computer_read_task(void *p_arg);
 
-// 任务优先级
 #define USB_TASK_PRIO 6
-// 任务堆栈大小
 #define USB_STK_SIZE 2048
-// 任务控制块
 OS_TCB USB_TaskTCB;
-// 任务堆栈
 CPU_STK USB_TASK_STK[USB_STK_SIZE];
-// 任务函数
 void usb_task(void *p_arg);
 
-/*--------------------------------------------------------新触摸屏界面部分------------------------------------------------------------------*/
-////////////////////////RS485的消息队列/////////////////////////////////////////
-extern uint32_t baud_list[11];
-extern uint8_t USART_RX_BUF[USART_REC_LEN];			 // 触摸屏串口接收缓冲
-extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN]; // 温度保存缓冲区
-#define UART_Q_NUM 100								 // 按键消息队列的数量
-OS_Q UART_Msg;										 // 串口数据队列
-////////////////////////UART3资源保护：互斥锁（暂时未用）////////////////////////
-OS_MUTEX UARTMutex;
-////////////////////////线程同步：信号量////////////////////////////////////////
-OS_SEM PAGE_UPDATE_SEM;	  // 页面刷新信号
-OS_SEM COMP_VAL_GET_SEM;  // 组件属性值成功获取信号
-OS_SEM COMP_STR_GET_SEM;  // 组件属性值(字符串型)成功获取信号
-OS_SEM ALARM_RESET_SEM;	  // 报警复位信号
-OS_SEM SENSOR_UPDATE_SEM; // 热电偶校准信号
+/* Private function prototypes -----------------------------------------------*/
 
-OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
-OS_SEM HOST_WELD_CTRL_SEM;	  // 上位机开启焊接信号
-/*主线程使用*/
-OS_SEM ERROR_HANDLE_SEM; // 错误信号
-OS_SEM TEMP_DISPLAY_SEM; // 绘图信号
-
-////////////////////////新界面组件列表///////////////////////////////////////////
-Page_Param *page_param = NULL;			   // 记录当前所在界面id及三个按钮的状态
-Component_Queue *param_page_list = NULL;   // 参数设定界面的组件列表
-Component_Queue *temp_page_list = NULL;	   // 温度限制界面的组件列表
-Component_Queue *setting_page_list = NULL; // 通讯界面组件列表
-Component_Queue *wave_page_list = NULL;	   // 波形页面组件列表
-Error_ctrl *err_ctrl = NULL;			   // 错误注册表
-Temp_draw_ctrl *temp_draw_ctrl = NULL;	   // 绘图控制器
-weld_ctrl *weld_controller = NULL;		   // 焊接实时控制器
-pid_feedforword_ctrl *pid_ctrl = NULL;
-Thermocouple *current_Thermocouple = NULL;
-/*用户可自行根据需要添加需要的组件列表*/
-/*......*/
-/////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////错误处理回调//////////////////////////////
-static bool Thermocouple_recheck_callback(uint8_t index);
-static bool Current_out_of_ctrl_callback(uint8_t index);
+/*Error handling callbacks*/
 static bool Temp_up_err_callback(uint8_t index);
 static bool Temp_down_err_callback(uint8_t index);
-
-/////////////////////////////////////错误复位回调/////////////////////////////////
+static bool Current_out_of_ctrl_callback(uint8_t index);
+static bool Thermocouple_recheck_callback(uint8_t index);
+/*Error reset callback*/
 static bool Thermocouple_reset_callback(uint8_t index);
 static bool Current_out_of_ctrl_reset_callback(uint8_t index);
 static bool Temp_up_reset_callback(uint8_t index);
 static bool Temp_down_reset_callback(uint8_t index);
+/*main task functions*/
+static void Power_on_check(void);
+static void Power_on_check(void);
+static void Temp_updata_realtime(void);
+static void Thermocouple_check(void);
+static void voltage_check(void);
+static void Overload_check(void);
 
-/*采用硬件校准模式，不同的热电偶的板级放大系数不同，
-需要单独进行校准，但是软件层是一致的*/
+/*Using hardware calibration mode,
+different thermocouples have different board-level amplification coefficients.
+Calibration is required separately, but the software layer is consistent*/
 // E：0.222*3300/4096=0.1788
 // J：0.2189*3300/4096=0.1763
 // K：0.218*3300/4096=0.1756
@@ -206,6 +152,63 @@ static char *gain_name_list[] = {
 	"GAIN2",
 	"GAIN3"};
 
+/* Private variables ---------------------------------------------------------*/
+// 11 default baud rates
+extern uint32_t baud_list[11];
+// The serial port of the touch screen receives buffering
+extern uint8_t USART_RX_BUF[USART_REC_LEN];
+// Temperature preservation buffer
+extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN];
+// The maximum length of a serial message queue
+#define UART_Q_NUM 100
+// Serial data queue
+OS_Q UART_Msg;
+/*UART3 Resource Protection: Mutex (Temporarily Unused)*/
+OS_MUTEX UARTMutex;
+
+/*Thread Synchronization: Semaphore*/
+// Page refresh signal
+OS_SEM PAGE_UPDATE_SEM;
+// The component property value successfully obtains the signal
+OS_SEM COMP_VAL_GET_SEM;
+// The component property value (string) successfully obtains the signal
+OS_SEM COMP_STR_GET_SEM;
+// Alarm reset signal
+OS_SEM ALARM_RESET_SEM;
+// Thermocouple calibration signal
+OS_SEM SENSOR_UPDATE_SEM;
+// Host computer data synchronization signal
+OS_SEM COMPUTER_DATA_SYN_SEM;
+// The upper computer turns on the welding signal
+OS_SEM HOST_WELD_CTRL_SEM;
+// err sem
+OS_SEM ERROR_HANDLE_SEM;
+// draw sem
+OS_SEM TEMP_DISPLAY_SEM;
+
+/*A list of new interface components*/
+// Record the ID of the current screen and the status of the three buttons
+Page_Param *page_param = NULL;
+// A list of components on the parameter setting screen
+Component_Queue *param_page_list = NULL;
+// A list of components for the temperature limit interface
+Component_Queue *temp_page_list = NULL;
+// A list of communication interface components
+Component_Queue *setting_page_list = NULL;
+// A list of components on the Waveform page
+Component_Queue *wave_page_list = NULL;
+/*Users can add the required component list as needed*/
+/*......*/
+
+// error controller
+Error_ctrl *err_ctrl = NULL;
+// Drawing controllers
+Temp_draw_ctrl *temp_draw_ctrl = NULL;
+// Welding real-time controller
+weld_ctrl *weld_controller = NULL;
+pid_feedforword_ctrl *pid_ctrl = NULL;
+// Current thermocouple
+Thermocouple *current_Thermocouple = NULL;
 /*list init name*/
 static char *temp_page_name_list[] = {
 	"alarm1",
@@ -248,23 +251,22 @@ static char *wave_page_name_list[] = {
 	"ki",
 	"kd"};
 
-/*--------------------------------------------------------全局变量------------------------------------------------------------------*/
-/*上位机485参数*/
-uint8_t ID_OF_MAS = 0;		// 焊机485通讯机号，默认是零,最大可设置15
-uint8_t last_id_of_mas = 0; // 机号存储
-uint32_t BOUND_SET = 0;		// 从机波特率设定
-/*上位机通信参数*/
+/*host computer 485 param*/
+/*max to 15*/
+uint8_t ID_OF_MAS = 0;
+uint8_t last_id_of_mas = 0;
+uint32_t BOUND_SET = 0;
+/*Communication parameters of the host computer*/
 extern int Host_action;
 extern int Host_GP;
-extern uint16_t ModBus_time[6];		  // 焊接时间6段
-extern uint16_t ModBus_temp[3];		  // 焊接温度3段
-extern uint16_t ModBus_alarm_temp[6]; // 限制温度6段
-
+extern uint16_t ModBus_time[6];
+extern uint16_t ModBus_temp[3];
+extern uint16_t ModBus_alarm_temp[6];
 extern float Host_gain1;
 extern float Host_gain2;
 extern int Host_gain1_raw;
 extern int Host_gain2_raw;
-/*触摸屏通信参数*/
+/*Touchscreen communication parameters*/
 extern uint16_t remember_array;
 extern int ION_IOF;
 extern int SGW_CTW;
@@ -588,16 +590,6 @@ static bool Temp_up_check(void)
 }
 #endif
 
-/*---------------------------------callback functions---------------------------------*/
-static bool Temp_up_err_callback(uint8_t index);
-static bool Temp_down_err_callback(uint8_t index);
-static bool Current_out_of_ctrl_callback(uint8_t index);
-static bool Thermocouple_recheck_callback(uint8_t index);
-static bool Thermocouple_reset_callback(uint8_t index);
-static bool Current_out_of_ctrl_reset_callback(uint8_t index);
-static bool Temp_up_reset_callback(uint8_t index);
-static bool Temp_down_reset_callback(uint8_t index);
-
 static void Thermocouple_check(void);
 /*--------------------------------------------------------------------------------------*/
 /*--------------------------------------err callback------------------------------------*/
@@ -667,7 +659,7 @@ static bool Temp_down_reset_callback(uint8_t index)
 }
 
 /*-------------------------------------------------------------------------------------------------------------------------*/
-/*------------------------------------------------------err task-----------------------------------------------------------*/
+/*------------------------------------------------------err Thread---------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
 
 void error_task(void *p_arg)
@@ -730,13 +722,12 @@ void error_task(void *p_arg)
 }
 
 /*-------------------------------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------main task---------------------------------------------------------*/
+/*-------------------------------------------------------main Thread-------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------------------*/
 /*------------------------------Condition Monitoring API--------------------------------*/
 /*--------------------------------------------------------------------------------------*/
-static void voltage_check(void);
 
 static void Power_on_check(void)
 {
@@ -940,7 +931,7 @@ void main_task(void *p_arg)
 }
 
 /*-------------------------------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------------touch screan task----------------------------------------------------*/
+/*----------------------------------------------------touch screan Thread--------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------------------*/
