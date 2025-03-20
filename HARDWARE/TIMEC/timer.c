@@ -26,13 +26,13 @@
 
 /*实时控制*/
 extern weld_ctrl *weld_controller;
-double fitting_curves[3] = {-0.00004, 0.0159, 12.756}; // 二次曲线拟合系数
+double fitting_curves[3] = {0.0002, -0.23, 76}; // 二次曲线拟合系数
 
 /*温度补偿部分*/
 extern Kalman kfp;
 extern dynamical_comp dynam_comp;
 last_temp_sotre lasttemp;
-uint16_t kalman_comp_temp = 0; 
+uint16_t kalman_comp_temp = 0;
 
 /*错误处理*/
 extern Error_ctrl *err_ctrl;	// 错误注册表
@@ -120,47 +120,63 @@ void reset_temp_draw_ctrl(Temp_draw_ctrl *ctrl, const uint16_t welding_time[])
  */
 void pid_param_dynamic_reload(void *controller, double *fitting_curves, uint16_t setting)
 {
-#if 0
 
-	/*pid调试模式关闭时才动态调整*/
+#if PID_DEBUG != 1
 	weld_ctrl *ctrl = (weld_ctrl *)controller;
-	double new_kp = 0;
-	if (setting < 650 && setting > 150)
-	{
+	ctrl->pid_ctrl->stable_flag = false;
+	uint8_t new_kd = 0;
 
-		new_kp = fitting_curves[0] * setting * setting +
+	switch (ctrl->state)
+	{
+	case FIRST_STATE:
+		new_kd = fitting_curves[0] * setting * setting +
 				 fitting_curves[1] * setting +
 				 fitting_curves[2];
 
-		if (new_kp > 15)
-			new_kp = 15;
-		if (new_kp <= 6)
-			new_kp = 6;
+		if (new_kd > 25)
+			new_kd = 25;
+		if (new_kd <= 12)
+			new_kd = 12;
 
-		ctrl->pid_ctrl->kp = new_kp;
-		ctrl->pid_ctrl->ki = 0.02;
-		ctrl->pid_ctrl->kd = 0.5 * new_kp;
+		ctrl->pid_ctrl->kp = 15;
+		ctrl->pid_ctrl->ki = 0.028;
+		ctrl->pid_ctrl->kd = new_kd;
 		/*稳态标志复位*/
 		weld_controller->pid_ctrl->stable_flag = false;
-	}
-#endif
 
-	weld_ctrl *ctrl = (weld_ctrl *)controller;
-	ctrl->pid_ctrl->stable_flag = false;
-	// 多阶段d增大抑制超调
-	if (ctrl->weld_time[1] > 0 && ctrl->weld_time[2] > 0)
-	{
-		ctrl->pid_ctrl->kp = 12;
-		ctrl->pid_ctrl->ki = 0.02;
-		ctrl->pid_ctrl->kd = 22;
+		break;
+
+	case SECOND_STATE:
+
+		if (ctrl->weld_time[1] == 0)
+		{
+			new_kd = fitting_curves[0] * setting * setting +
+					 fitting_curves[1] * setting +
+					 fitting_curves[2];
+		}
+		else
+		{
+			uint16_t delta_temp = ctrl->weld_temp[1] - ctrl->second_step_start_temp;
+
+			new_kd = fitting_curves[0] * delta_temp * delta_temp +
+					 fitting_curves[1] * delta_temp +
+					 fitting_curves[2];
+		}
+		if (new_kd > 25)
+			new_kd = 25;
+		if (new_kd <= 12)
+			new_kd = 12;
+
+		ctrl->pid_ctrl->kp = (float)ctrl->pid_ctrl->kp * 0.8;
+		ctrl->pid_ctrl->ki = (float)ctrl->pid_ctrl->ki * 0.9;
+		ctrl->pid_ctrl->kd = new_kd;
+		/*稳态标志复位*/
+		weld_controller->pid_ctrl->stable_flag = false;
+
+		break;
 	}
-	// 但阶段d无需太大-快速性
-	else
-	{
-		ctrl->pid_ctrl->kp = 12;
-		ctrl->pid_ctrl->ki = 0.02;
-		ctrl->pid_ctrl->kd = 11;
-	}
+
+#endif
 }
 
 /**
@@ -169,7 +185,7 @@ void pid_param_dynamic_reload(void *controller, double *fitting_curves, uint16_t
  */
 void TIM3_Int_Init(void)
 {
-	uint16_t arr = 2000 - 1; 
+	uint16_t arr = 2000 - 1;
 	uint16_t psc = 84 - 1;
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
@@ -338,8 +354,8 @@ void TIM5_IRQHandler(void)
 
 			/*--------------------------------------------------------------------third step----------------------------------------------------------------------*/
 			/*
-			In the cooling process, the temperature control requirements are not high, 
-			and it should be possible to give a descending curve with a specified slope, 
+			In the cooling process, the temperature control requirements are not high,
+			and it should be possible to give a descending curve with a specified slope,
 			and the starting value of the PDC refers to the end value of the previous stage
 			*/
 		case THIRD_STATE:

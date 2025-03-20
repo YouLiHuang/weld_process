@@ -627,8 +627,6 @@ bool Page_id_get(void)
  */
 bool Page_to(const Page_Param *page_param, const Page_ID id)
 {
-
-  uart_init(115200);
   /*清缓存*/
   for (uint16_t i = 0; i < USART_REC_LEN; i++)
     USART_RX_BUF[i] = 0;

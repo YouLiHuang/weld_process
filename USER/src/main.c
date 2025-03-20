@@ -279,7 +279,7 @@ int main(void)
 
 	/*------------------------------------------------------User layer data objects-----------------------------------------------------------*/
 	/*pid controller*/
-	pid_ctrl = new_pid_forword_ctrl(0, 12, 0.02, 23);
+	pid_ctrl = new_pid_forword_ctrl(0, 15, 0.028, 15);
 	/*Welding controller*/
 	weld_controller = new_weld_ctrl(pid_ctrl);
 	/*New interface component list initialization*/
@@ -668,7 +668,7 @@ void error_task(void *p_arg)
 
 	while (1)
 	{
-		OSSemPend(&ERROR_HANDLE_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+		OSSemPend(&ERROR_HANDLE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (OS_ERR_NONE == err)
 		{
 			/*pwm off*/
@@ -694,9 +694,6 @@ void error_task(void *p_arg)
 			RLY12 = 0;	// Valve3 off
 
 			/*3、err handle*/
-			OSTimeDlyHMSM(0, 0, 0, 20, OS_OPT_TIME_PERIODIC, &err);
-			Page_to(page_param, ALARM_PAGE);
-			OSTimeDlyHMSM(0, 0, 0, 20, OS_OPT_TIME_PERIODIC, &err);
 			Page_to(page_param, ALARM_PAGE);
 			page_param->id = ALARM_PAGE;
 			for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
@@ -704,16 +701,15 @@ void error_task(void *p_arg)
 				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
 					err_ctrl->err_list[i]->error_callback(i);
 			}
-		}
-
-		/*wait until user reset*/
-		OSSemPend(&ALARM_RESET_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
-		if (err == OS_ERR_NONE)
-		{
-			for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
+			/*wait until user reset*/
+			OSSemPend(&ALARM_RESET_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+			if (err == OS_ERR_NONE)
 			{
-				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->reset_callback != NULL)
-					err_ctrl->err_list[i]->reset_callback(i);
+				for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
+				{
+					if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->reset_callback != NULL)
+						err_ctrl->err_list[i]->reset_callback(i);
+				}
 			}
 		}
 
@@ -775,13 +771,20 @@ static void Power_on_check(void)
 	}
 
 	/*load last time adjust data*/
-	if (current_Thermocouple->type == E_TYPE)
+	switch (current_Thermocouple->type)
 	{
+	case K_TYPE:
 		current_Thermocouple->Bias = SPI_Load_Word(CARLIBRATION_BASE(remember_array));
-	}
-	else if (current_Thermocouple->type == J_TYPE)
-	{
+		break;
+	case E_TYPE:
 		current_Thermocouple->Bias = SPI_Load_Word(CARLIBRATION_BASE(remember_array) + ADDR_OFFSET);
+		break;
+	case J_TYPE:
+		current_Thermocouple->Bias = SPI_Load_Word(CARLIBRATION_BASE(remember_array) + 2 * ADDR_OFFSET);
+		break;
+
+	default:
+		break;
 	}
 
 #endif
@@ -812,7 +815,8 @@ static void Thermocouple_check(void)
 		if (IO_val == 0)
 		{
 			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
+			Page_to(page_param, ALARM_PAGE);
 		}
 		GPIO_ResetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
 		break;
@@ -825,7 +829,8 @@ static void Thermocouple_check(void)
 		if (IO_val == 0)
 		{
 			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
+			Page_to(page_param, ALARM_PAGE);
 		}
 		GPIO_ResetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
 		break;
@@ -838,7 +843,8 @@ static void Thermocouple_check(void)
 		if (IO_val == 0)
 		{
 			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
+			Page_to(page_param, ALARM_PAGE);
 		}
 		GPIO_ResetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
 		break;
@@ -1025,11 +1031,14 @@ static void Thermocouple_err_eliminate()
 		uint8_t group = get_comp(param_page_list, "GP")->val;
 		switch (current_Thermocouple->type)
 		{
-		case E_TYPE:
+		case K_TYPE:
 			SPI_Save_Word(current_Thermocouple->Bias, CARLIBRATION_BASE(group));
 			break;
-		case J_TYPE:
+		case E_TYPE:
 			SPI_Save_Word(current_Thermocouple->Bias, CARLIBRATION_BASE(group) + ADDR_OFFSET);
+			break;
+		case J_TYPE:
+			SPI_Save_Word(current_Thermocouple->Bias, CARLIBRATION_BASE(group) + 2 * ADDR_OFFSET);
 			break;
 		}
 	}
@@ -1398,7 +1407,7 @@ static void page_process(Page_ID id)
 		if (pid_param_get(pid_param) == true)
 		{
 			weld_controller->pid_ctrl->kp = pid_param[0] / 100.0;
-			weld_controller->pid_ctrl->ki = pid_param[1] / 100.0;
+			weld_controller->pid_ctrl->ki = pid_param[1] / 1000.0;
 			weld_controller->pid_ctrl->kd = pid_param[2] / 100.0;
 		}
 
