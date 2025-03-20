@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-20 09:37:22
+ * @LastEditTime: 2025-03-20 09:39:33
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -355,7 +355,7 @@ int main(void)
 	/*Hardware test snippet*/
 	/*...*/
 
-	/*------------------------------------------------------System level data objects-----------------------------------------------------------*/
+	/*-----------------------------------------------------------System level data objects-----------------------------------------------------------------*/
 	/*UCOSIII init*/
 	OS_ERR err;
 	CPU_SR_ALLOC();
