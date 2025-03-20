@@ -167,8 +167,8 @@ void pid_param_dynamic_reload(void *controller, double *fitting_curves, uint16_t
 		if (new_kd <= 12)
 			new_kd = 12;
 
-		ctrl->pid_ctrl->kp = (float)ctrl->pid_ctrl->kp * 0.8;
-		ctrl->pid_ctrl->ki = (float)ctrl->pid_ctrl->ki * 0.9;
+		ctrl->pid_ctrl->kp = 15;
+		ctrl->pid_ctrl->ki = 0.028;
 		ctrl->pid_ctrl->kd = new_kd;
 		/*稳态标志复位*/
 		weld_controller->pid_ctrl->stable_flag = false;
@@ -281,7 +281,7 @@ void TIM5_IRQHandler(void)
 		case FIRST_STATE:
 			/*Time updates*/
 			weld_controller->step_time_tick++;
-#if 0
+#if 1
 			if (current_temp_comp >= weld_controller->first_step_turn && weld_controller->pid_ctrl->stable_flag == false)
 			{
 				/*到达刹车点，转阶段*/
@@ -290,7 +290,7 @@ void TIM5_IRQHandler(void)
 
 			if (weld_controller->pid_ctrl->stable_flag == false)
 			{
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->first_step_set,
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->first_step_set + STABLE_ERR,
 															 current_temp_comp,
 															 weld_controller->Duty_Cycle,
 															 weld_controller->pid_ctrl);
@@ -304,10 +304,10 @@ void TIM5_IRQHandler(void)
 															 weld_controller->pid_ctrl);
 			}
 #endif
-			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + STABLE_ERR,
-														 current_temp_comp,
-														 weld_controller->Duty_Cycle,
-														 weld_controller->pid_ctrl);
+			// weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + STABLE_ERR,
+			// 											 current_temp_comp,
+			// 											 weld_controller->Duty_Cycle,
+			// 											 weld_controller->pid_ctrl);
 			/*2、执行*/
 			TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
 			TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
@@ -318,7 +318,7 @@ void TIM5_IRQHandler(void)
 		case SECOND_STATE:
 			/*Time updates*/
 			weld_controller->step_time_tick++;
-#if 0
+#if 1
 			if (current_temp_comp >= weld_controller->second_step_turn && weld_controller->pid_ctrl->stable_flag == false)
 			{
 				/*到达刹车点，转阶段*/
@@ -327,7 +327,7 @@ void TIM5_IRQHandler(void)
 
 			if (weld_controller->pid_ctrl->stable_flag == false)
 			{
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->second_step_set,
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->second_step_set + STABLE_ERR,
 															 current_temp_comp,
 															 weld_controller->Duty_Cycle,
 															 weld_controller->pid_ctrl);
@@ -341,10 +341,10 @@ void TIM5_IRQHandler(void)
 															 weld_controller->pid_ctrl);
 			}
 #endif
-			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
-														 current_temp_comp,
-														 weld_controller->Duty_Cycle,
-														 weld_controller->pid_ctrl);
+			// weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
+			// 											 current_temp_comp,
+			// 											 weld_controller->Duty_Cycle,
+			// 											 weld_controller->pid_ctrl);
 
 			/*execute*/
 			TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
@@ -362,13 +362,10 @@ void TIM5_IRQHandler(void)
 			/*Time updates*/
 			weld_controller->step_time_tick++;
 			/*Algorithm control - slow down, temporarily do not implement, directly close the output*/
-			weld_controller->Duty_Cycle = PI_ctrl_output(0,
-														 current_temp_comp,
-														 weld_controller->Duty_Cycle,
-														 weld_controller->pid_ctrl);
+
 			/*execute*/
-			TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
-			TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
+			TIM_SetCompare1(TIM1, 1);
+			TIM_SetCompare1(TIM4, 1);
 
 			break;
 		}

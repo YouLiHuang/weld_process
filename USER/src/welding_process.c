@@ -327,7 +327,7 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 				break;
 			case SECOND_STATE:
 /*二阶段参数*/
-#if 0
+#if 1
 				/*1、和设定点较近，改进pid，加速升温*/
 				delta_temp = ctrl->weld_temp[1] - ctrl->second_step_start_temp;
 				if (delta_temp < 0.8 * DELTA_COMPENSATE_MAX && delta_temp > DETTA_COMPENSATE_MIN)
@@ -354,6 +354,8 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 					ctrl->second_step_turn = 0.95 * ctrl->second_step_set;										// 刹车点
 				}
 #endif
+
+#if 0
 				/*根据起始温度调节设定值，起始温度越低，设定点就越低，防止过大的超调*/
 				percent = (double)ctrl->second_step_start_temp / (double)ctrl->weld_temp[1]; // 起始温度对最终温度占比
 				set_gain = 0.3969 * log(percent) + 1.0021;									 // 参见excel表格
@@ -369,6 +371,7 @@ static void ctrl_param_config(weld_ctrl *ctrl)
 				ctrl->second_step_set = (set_gain * 0.1 + 0.9) * (double)(ctrl->weld_temp[1] + STABLE_ERR); // 阶跃目标
 				ctrl->second_step_turn = 0.95 * ctrl->second_step_set;										// 刹车点
 				break;
+#endif
 
 			case THIRD_STATE:
 				break;
@@ -544,7 +547,7 @@ static void First_Step()
 
 	weld_controller->state = FIRST_STATE; // 进入一阶段标志
 
-	// ctrl_param_config(weld_controller);															// 参数动态配置
+	ctrl_param_config(weld_controller);															// 参数动态配置
 	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[0]); // kp动态调整
 	if ((page_param->key2 == ION) && (weld_controller->weld_time[1] != 0))					  // ION_IOF==0开PWM
 	{
@@ -614,7 +617,7 @@ static void Second_Step()
 {
 	weld_controller->state = SECOND_STATE; // 进入二阶段
 
-	// ctrl_param_config(weld_controller);															 // 参数动态配置
+	ctrl_param_config(weld_controller);															 // 参数动态配置
 	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[1]); // kp动态调整
 	if ((page_param->key2 == ION) && (weld_controller->weld_time[2] != 0))
 	{

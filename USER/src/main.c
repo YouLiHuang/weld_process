@@ -32,7 +32,7 @@
 /* Private define ------------------------------------------------------------*/
 /*user config*/
 #define USE_STM32_DEMO 0  // USB test code
-#define KEJ_CHECK_DUTY 25 // Thermocouple detection filter cycles
+#define KEJ_CHECK_DUTY 40 // Thermocouple detection filter cycles
 #define ROOM_TEMP 20	  // Default room temperature
 #define SAMPLE_LEN 100	  // Sampling depth
 #define ADC_BIAS_MAX 500  // Maximum offset value
@@ -734,7 +734,7 @@ static void Power_on_check(void)
 	GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
 	GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
 
-	delay_ms(100);
+	OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err);
 
 	if (GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E) != 0)
 	{
@@ -810,13 +810,18 @@ static void Thermocouple_check(void)
 	case J_TYPE:
 		IO_val = 0;
 		GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
-		delay_ms(KEJ_CHECK_DUTY);
+		OSTimeDlyHMSM(0, 0, 0, KEJ_CHECK_DUTY, OS_OPT_TIME_PERIODIC, &err);
 		IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_J, CHECKIN_PIN_J);
 		if (IO_val == 0)
 		{
 			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
 			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
 			Page_to(page_param, ALARM_PAGE);
+			for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
+			{
+				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
+					err_ctrl->err_list[i]->error_callback(i);
+			}
 		}
 		GPIO_ResetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
 		break;
@@ -824,13 +829,18 @@ static void Thermocouple_check(void)
 	case K_TYPE:
 		IO_val = 0;
 		GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
-		delay_ms(KEJ_CHECK_DUTY);
+		OSTimeDlyHMSM(0, 0, 0, KEJ_CHECK_DUTY, OS_OPT_TIME_PERIODIC, &err);
 		IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_K, CHECKIN_PIN_K);
 		if (IO_val == 0)
 		{
 			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
 			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
 			Page_to(page_param, ALARM_PAGE);
+			for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
+			{
+				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
+					err_ctrl->err_list[i]->error_callback(i);
+			}
 		}
 		GPIO_ResetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
 		break;
@@ -838,13 +848,18 @@ static void Thermocouple_check(void)
 	case E_TYPE:
 		IO_val = 0;
 		GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
-		delay_ms(KEJ_CHECK_DUTY);
+		OSTimeDlyHMSM(0, 0, 0, KEJ_CHECK_DUTY, OS_OPT_TIME_PERIODIC, &err);
 		uint8_t IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E);
 		if (IO_val == 0)
 		{
 			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
 			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
 			Page_to(page_param, ALARM_PAGE);
+			for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
+			{
+				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
+					err_ctrl->err_list[i]->error_callback(i);
+			}
 		}
 		GPIO_ResetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
 		break;
