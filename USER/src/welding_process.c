@@ -547,7 +547,7 @@ static void First_Step()
 
 	weld_controller->state = FIRST_STATE; // 进入一阶段标志
 
-	ctrl_param_config(weld_controller);															// 参数动态配置
+	// ctrl_param_config(weld_controller);														  // 参数动态配置
 	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[0]); // kp动态调整
 	if ((page_param->key2 == ION) && (weld_controller->weld_time[1] != 0))					  // ION_IOF==0开PWM
 	{
@@ -617,7 +617,7 @@ static void Second_Step()
 {
 	weld_controller->state = SECOND_STATE; // 进入二阶段
 
-	ctrl_param_config(weld_controller);															 // 参数动态配置
+	ctrl_param_config(weld_controller);														  // 参数动态配置
 	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[1]); // kp动态调整
 	if ((page_param->key2 == ION) && (weld_controller->weld_time[2] != 0))
 	{

@@ -281,7 +281,7 @@ void TIM5_IRQHandler(void)
 		case FIRST_STATE:
 			/*Time updates*/
 			weld_controller->step_time_tick++;
-#if 1
+#if 0
 			if (current_temp_comp >= weld_controller->first_step_turn && weld_controller->pid_ctrl->stable_flag == false)
 			{
 				/*到达刹车点，转阶段*/
@@ -304,10 +304,10 @@ void TIM5_IRQHandler(void)
 															 weld_controller->pid_ctrl);
 			}
 #endif
-			// weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + STABLE_ERR,
-			// 											 current_temp_comp,
-			// 											 weld_controller->Duty_Cycle,
-			// 											 weld_controller->pid_ctrl);
+			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + STABLE_ERR,
+														 current_temp_comp,
+														 weld_controller->Duty_Cycle,
+														 weld_controller->pid_ctrl);
 			/*2、执行*/
 			TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
 			TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
