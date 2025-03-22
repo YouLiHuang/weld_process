@@ -38,6 +38,9 @@ void welding_process(void);
 #define DETTA_COMPENSATE_MIN 100
 #define DEFAULT_GAIN 0.85
 
+#define STEADY_STATE_COEFFICIENT 0.95 
+#define BASIC_STEP 50
+
 /*
  *焊接状态
  */
@@ -92,6 +95,9 @@ typedef struct weld_realtime_controller
     double temp_gain1;
     double temp_gain2;
     double temp_gain3;
+
+    /*Switch to closed-loop control*/
+    bool Switch_Control;
 
     /*pid ctrl*/
     pid_feedforword_ctrl *pid_ctrl;
