@@ -36,21 +36,22 @@ void welding_process(void);
 #define MAX_WELD_TIME 9999      // 最长焊接用时
 #define DELTA_COMPENSATE_MAX 250
 #define DETTA_COMPENSATE_MIN 100
-#define DEFAULT_GAIN 0.85
 
-#define STEADY_STATE_COEFFICIENT 0.95 
+#define DEFAULT_GAIN1 0.3
+#define DEFAULT_GAIN2 0.3
+
+#define STEADY_STATE_COEFFICIENT 0.95
 #define BASIC_STEP 50
 
-/*
- *焊接状态
- */
+/*state*/
 typedef enum WELD_STATE
 {
     IDEAL_STATE = 0,
-    PRE_STATE = 1,
-    FIRST_STATE = 2,
-    SECOND_STATE = 3,
-    THIRD_STATE = 4
+    PRE_LOAD,
+    PRE_STATE,
+    FIRST_STATE,
+    SECOND_STATE,
+    THIRD_STATE
 } WELD_STATE;
 
 typedef enum WELD_MODE
@@ -91,17 +92,14 @@ typedef struct weld_realtime_controller
 
     uint16_t second_step_set;
     uint16_t second_step_turn;
+
+    /*pre heat param*/
+    uint16_t final_duty;
+    /*pid ctrl*/
+    pid_feedforword_ctrl *pid_ctrl;
     /*gain param*/
     double temp_gain1;
     double temp_gain2;
-    double temp_gain3;
-
-    /*Switch to closed-loop control*/
-    bool Switch_Control;
-
-    /*pid ctrl*/
-    pid_feedforword_ctrl *pid_ctrl;
-
     /*hook*/
     void (*user_hook_callback)(void);
 } weld_ctrl;
