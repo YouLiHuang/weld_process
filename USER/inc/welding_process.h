@@ -17,31 +17,22 @@
 void user_value_convert_to_string(char *buffer, const uint8_t buf_len, const uint16_t value);
 void welding_process(void);
 
-/*调试接口*/
+/*user config*/
 #define PID_DEBUG 0             // pid调试模式
 #define COMMUNICATE 0           // 上位机通信接口
 #define REALTIME_TEMP_DISPLAY 1 // 实时温度绘制开关
-#define PRE_HEAT 0              // 预热
-#define STEP_CTRL 0             // 多阶段调节
-
-#define HOST_WELD_CTRL 1 // 上位机控制焊接
+#define HOST_WELD_CTRL 1        // 上位机控制焊接
 
 /*温升控制*/
 #define STABLE_ERR 20           // 稳态误差补偿
-#define BASE_TEMP 120           // 基值温度
-#define PRE_HEAT_MAX_TIME 250   // 最大预热时长
-#define PRE_HEAT_MIN_TIME 1     // 最小预热时长
 #define USER_SET_MAX_TEMP 650.0 // 允许用户设定的最大温度
 #define USER_SET_MIN_TEMP 200.0 // 允许用户设定的最小温度
 #define MAX_WELD_TIME 9999      // 最长焊接用时
-#define DELTA_COMPENSATE_MAX 250
-#define DETTA_COMPENSATE_MIN 100
 
+/*user param*/
+#define TRANSITION_TIME 100
 #define DEFAULT_GAIN1 0.3
 #define DEFAULT_GAIN2 0.3
-
-#define STEADY_STATE_COEFFICIENT 0.95
-#define BASIC_STEP 50
 
 /*state*/
 typedef enum WELD_STATE
@@ -78,7 +69,6 @@ typedef struct weld_realtime_controller
     uint16_t first_step_start_temp;
     uint16_t second_step_start_temp;
     uint16_t third_step_start_temp;
-    uint16_t third_step_start_duty_cycle;
     uint16_t realtime_temp;
 
     /*user parameter*/
@@ -87,19 +77,15 @@ typedef struct weld_realtime_controller
     uint16_t alarm_temp[6];
 
     /*ctrl param*/
-    uint16_t first_step_set;
-    uint16_t first_step_turn;
-
-    uint16_t second_step_set;
-    uint16_t second_step_turn;
-
-    /*pre heat param*/
     uint16_t final_duty;
     /*pid ctrl*/
     pid_feedforword_ctrl *pid_ctrl;
     /*gain param*/
     double temp_gain1;
     double temp_gain2;
+    /**/
+    bool enter_transition_flag;
+    uint16_t enter_transition_time;
     /*hook*/
     void (*user_hook_callback)(void);
 } weld_ctrl;

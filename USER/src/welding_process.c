@@ -69,6 +69,7 @@ weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl)
 		/*control parameter*/
 		ctrl->Duty_Cycle = PD_MIN;
 		ctrl->pid_ctrl = pid_ctrl;
+		ctrl->enter_transition_flag = false;
 		/*realtime parameter*/
 		ctrl->first_step_start_temp = 0;
 		ctrl->second_step_start_temp = 0;
@@ -322,8 +323,8 @@ static void Weld_Preparation()
 	Kalman_Init(&kfp);							   // 卡尔曼滤波器初始化，初始值归零
 	kalman_comp_temp = 0;						   // 卡尔曼估计值初始化
 
-	/*pid*/
-	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->first_step_set);
+	/*绘图部分*/
+	reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
 
 	/*IO控制*/
 	OVER = 0;  // 1为焊接结束信号
@@ -331,9 +332,6 @@ static void Weld_Preparation()
 	RLY11 = 1; // 气阀2启动
 	RLY12 = 1; // 气阀3启动
 	CUNT = 0;  // 1为计数，0清除计数信号
-
-	/*绘图部分*/
-	reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
 
 	/*pwm部分*/
 	uint16_t tmp_ccmr1 = 0; // 重新设定pwm模式
@@ -403,30 +401,27 @@ static void Preload()
 static void First_Step()
 {
 
-	/*进入一阶段标志*/
+	/*enter first step*/
 	weld_controller->state = FIRST_STATE;
 	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[0]);
-	/*稳态估计输出*/
-	weld_controller->final_duty = -0.0063 * weld_controller->weld_temp[0] * weld_controller->weld_temp[0] +
-								  6.725 * weld_controller->weld_temp[0] +
-								  702.5;
+	/*Steady-state estimation output (coefficients can be added here for correction)*/
+	weld_controller->final_duty = (0.85 + 0.15 * weld_controller->temp_gain2) * (2.05 * weld_controller->weld_temp[0] + 1680.0);
 
 	if ((page_param->key2 == ION) && (weld_controller->weld_time[1] != 0))
 	{
-		/*1、一阶段采样开始*/
+		/*start sample*/
 		temp_draw_ctrl->first_step_index_start = 0;
-		/*2、实时控制部分*/
-		weld_controller->Duty_Cycle = 0;	 // 占空比复位
-		weld_controller->weld_time_tick = 0; // 总时长计数值复位
-		TIM_Cmd(TIM3, ENABLE);				 // 焊接周期统计开启
-		weld_controller->step_time_tick = 0; // 阶段计数值复位
-		TIM_Cmd(TIM5, ENABLE);				 // 开启是实时控制器
+		/*reset cotroller*/
+		weld_controller->Duty_Cycle = 0;
+		weld_controller->weld_time_tick = 0;
+		/*reset timer*/
+		TIM_Cmd(TIM3, ENABLE);
+		weld_controller->step_time_tick = 0;
+		TIM_Cmd(TIM5, ENABLE);
+		/*real-time control*/
 		while (weld_controller->step_time_tick < weld_controller->weld_time[1])
 		{
-			/*Open loop control*/
-			weld_controller->realtime_temp = temp_convert(current_Thermocouple);
-
-			/*talarm*/
+			/*alarm*/
 			if (weld_controller->realtime_temp > weld_controller->alarm_temp[0])
 			{
 				stop_weld();
@@ -435,32 +430,52 @@ static void First_Step()
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 				break;
 			}
+			/*enter transition area*/
+			weld_controller->realtime_temp = temp_convert(current_Thermocouple);
+			if (weld_controller->realtime_temp > 0.95 * weld_controller->weld_temp[0])
+			{
+				/*only execute the code below one time*/
+				if (weld_controller->enter_transition_flag == false && weld_controller->enter_transition_time == 0)
+				{
+					weld_controller->enter_transition_flag = true;
+					weld_controller->enter_transition_time = weld_controller->step_time_tick;
+				}
+			}
+
+			/*in transition area hold the temp*/
+			if (weld_controller->enter_transition_flag == true)
+			{
+				if (weld_controller->step_time_tick - weld_controller->enter_transition_time < (1 + 2 * weld_controller->temp_gain1) * TRANSITION_TIME)
+				{
+
+					if (weld_controller->Duty_Cycle < weld_controller->final_duty)
+						weld_controller->Duty_Cycle = weld_controller->final_duty;
+				}
+			}
+
+			/*limit output*/
+			if (weld_controller->Duty_Cycle > PD_MAX)
+				weld_controller->Duty_Cycle = PD_MAX;
+			TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
+			TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
 
 #if REALTIME_TEMP_DISPLAY == 1
 			if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
 				draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
 #endif
-
-			/*limit output execute*/
-			if (weld_controller->realtime_temp > weld_controller->weld_temp[0] * 0.95)
-			{
-				if (weld_controller->Duty_Cycle < weld_controller->final_duty)
-					weld_controller->Duty_Cycle = weld_controller->final_duty;
-			}
-
-			/*protect*/
-			if (weld_controller->Duty_Cycle > PD_MAX)
-				weld_controller->Duty_Cycle = PD_MAX;
-			TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
-			TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
 		}
 
 		/*end of first step*/
-		TIM_Cmd(TIM5, DISABLE);													  // 关闭实时控制器
-		TIM5->CNT = 0;															  // 计数值复位
-		weld_controller->step_time_tick = 0;									  // 实时控制器阶段性时间刻度复位
-		weld_controller->state = IDEAL_STATE;									  // 焊接状态复位
-		temp_draw_ctrl->first_step_index_end = temp_draw_ctrl->current_index - 1; // 记录一阶段结束绘图坐标
+		/*timer reset*/
+		TIM_Cmd(TIM5, DISABLE);
+		TIM5->CNT = 0;
+		/*controller reset*/
+		weld_controller->step_time_tick = 0;
+		weld_controller->state = IDEAL_STATE;
+		weld_controller->enter_transition_flag = false;
+		weld_controller->enter_transition_time = 0;
+		/*draw controller reset*/
+		temp_draw_ctrl->first_step_index_end = temp_draw_ctrl->current_index - 1;
 	}
 }
 
@@ -470,35 +485,23 @@ static void First_Step()
  */
 static void Second_Step()
 {
-	uint8_t stable_cnt = 0;
-
-	/*进入二阶段*/
+	/*enter first step*/
 	weld_controller->state = SECOND_STATE;
 	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[1]);
+	/*Steady-state estimation output (coefficients can be added here for correction)*/
+	weld_controller->final_duty = (0.85 + 0.15 * weld_controller->temp_gain2) * (2.05 * weld_controller->weld_temp[1] + 1680.0);
 
 	if ((page_param->key2 == ION) && (weld_controller->weld_time[2] != 0))
 	{
-		/*1、进入二阶段采样*/
-		temp_draw_ctrl->second_step_index_start = temp_draw_ctrl->current_index;
-		/*均值温度计算索引复位*/
-		temp_draw_ctrl->second_step_stable_index = 0;
-		/*2、实时控制部分*/
-		weld_controller->step_time_tick = 0; // 计数值复位
-		TIM_Cmd(TIM5, ENABLE);				 // 开启实时控制器
+		/*start sample*/
+		temp_draw_ctrl->second_step_index_start = 0;
+		/*reset timer*/
+		weld_controller->step_time_tick = 0;
+		TIM_Cmd(TIM5, ENABLE);
+		/*real-time control*/
 		while (weld_controller->step_time_tick < weld_controller->weld_time[2])
 		{
-
-			weld_controller->realtime_temp = temp_convert(current_Thermocouple);
-			/*Index used to calculate stable temperature value*/
-			if (weld_controller->realtime_temp >= 0.98 * weld_controller->weld_temp[1])
-			{
-				if (stable_cnt >= weld_controller->pid_ctrl->stable_threshold)
-					temp_draw_ctrl->second_step_stable_index = temp_draw_ctrl->current_index;
-				else
-					stable_cnt++;
-			}
-
-			/*Temperature out of control*/
+			/*alarm*/
 			if (weld_controller->realtime_temp > weld_controller->alarm_temp[2])
 			{
 				stop_weld();
@@ -507,28 +510,52 @@ static void Second_Step()
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 				break;
 			}
+			/*enter transition area*/
+			weld_controller->realtime_temp = temp_convert(current_Thermocouple);
+			if (weld_controller->realtime_temp > 0.95 * weld_controller->weld_temp[1])
+			{
+				/*only execute the code below one time*/
+				if (weld_controller->enter_transition_flag == false && weld_controller->enter_transition_time == 0)
+				{
+					weld_controller->enter_transition_flag = true;
+					weld_controller->enter_transition_time = weld_controller->step_time_tick;
+				}
+			}
 
-#if REALTIME_TEMP_DISPLAY == 1
-			/*Real-time temperature display*/
-			if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
-				draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
-#endif
+			/*in transition area hold the temp*/
+			if (weld_controller->enter_transition_flag == true)
+			{
+				if (weld_controller->step_time_tick - weld_controller->enter_transition_time < (1 + 2 * weld_controller->temp_gain1) * TRANSITION_TIME)
+				{
 
-			/*protect*/
+					if (weld_controller->Duty_Cycle < weld_controller->final_duty)
+						weld_controller->Duty_Cycle = weld_controller->final_duty;
+				}
+			}
+
+			/*limit output*/
 			if (weld_controller->Duty_Cycle > PD_MAX)
 				weld_controller->Duty_Cycle = PD_MAX;
 			TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
 			TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
+
+#if REALTIME_TEMP_DISPLAY == 1
+			if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
+				draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
+#endif
 		}
 
-		/*3、第二段结束后，对变量进行复位*/
-		TIM_Cmd(TIM5, DISABLE);													   // 关闭实时控制器
-		TIM5->CNT = 0;															   // 计数值复位
-		TIM_SetCompare1(TIM1, 0);												   // 关闭pwm 输出
-		TIM_SetCompare1(TIM4, 0);												   // 关闭pwm 输出
-		weld_controller->step_time_tick = 0;									   // 计数值复位
-		weld_controller->state = IDEAL_STATE;									   // 焊接状态复位
-		temp_draw_ctrl->second_step_index_end = temp_draw_ctrl->current_index - 1; // 二阶段结束，记录绘图坐标
+		/*end of first step*/
+		/*timer reset*/
+		TIM_Cmd(TIM5, DISABLE);
+		TIM5->CNT = 0;
+		/*controller reset*/
+		weld_controller->step_time_tick = 0;
+		weld_controller->state = IDEAL_STATE;
+		weld_controller->enter_transition_flag = false;
+		weld_controller->enter_transition_time = 0;
+		/*draw controller reset*/
+		temp_draw_ctrl->second_step_index_end = temp_draw_ctrl->current_index - 1;
 	}
 }
 /**
