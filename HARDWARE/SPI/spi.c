@@ -135,7 +135,7 @@ uint16_t SPI_Load_Word(uint16_t addr)
 
 void Load_data_from_mem(void)
 {
-#if RESET_SPI_DATA == 1
+#if RESET_SPI_DATA == 0
 	/*数据初始化*/
 	int time_init[] = {100, 300, 2500, 200, 50};
 	int temp_init[] = {200, 450, 150};

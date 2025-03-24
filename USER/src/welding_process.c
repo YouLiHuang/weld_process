@@ -512,6 +512,14 @@ static void Second_Step()
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 				break;
 			}
+			/*second step temp avg*/
+			if (weld_controller->realtime_temp >= weld_controller->weld_temp[1] && temp_draw_ctrl->second_step_stable_index == 0)
+			{
+				if (weld_controller->pid_ctrl->stable_threshold_cnt >= weld_controller->pid_ctrl->stable_threshold)
+					temp_draw_ctrl->second_step_stable_index = temp_draw_ctrl->current_index;
+				else
+					weld_controller->pid_ctrl->stable_threshold_cnt++;
+			}
 
 			/*enter transition area*/
 			weld_controller->realtime_temp = temp_convert(current_Thermocouple);
@@ -604,11 +612,11 @@ static void Third_Step()
 		}
 
 		/*end of step*/
-		TIM_Cmd(TIM5, DISABLE);													   // 关闭实时控制器
-		TIM5->CNT = 0;															   // 计数值复位
-		weld_controller->step_time_tick = 0;									   // 实时控制器阶段性时间刻度复位
-		weld_controller->state = IDEAL_STATE;									   // 焊接状态复位
-		temp_draw_ctrl->second_step_index_end = temp_draw_ctrl->current_index - 1; // 记录阶段结束绘图坐标
+		TIM_Cmd(TIM5, DISABLE);													  // 关闭实时控制器
+		TIM5->CNT = 0;															  // 计数值复位
+		weld_controller->step_time_tick = 0;									  // 实时控制器阶段性时间刻度复位
+		weld_controller->state = IDEAL_STATE;									  // 焊接状态复位
+		temp_draw_ctrl->third_step_index_end = temp_draw_ctrl->current_index - 1; // 记录阶段结束绘图坐标
 	}
 }
 
