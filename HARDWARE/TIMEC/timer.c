@@ -287,20 +287,11 @@ void TIM5_IRQHandler(void)
 		case FIRST_STATE:
 			/*Time updates*/
 			weld_controller->step_time_tick++;
-			if (weld_controller->enter_transition_flag == false)
-			{
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0],
-															 current_temp_comp,
-															 weld_controller->Duty_Cycle,
-															 weld_controller->pid_ctrl);
-			}
-			else
-			{
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + STABLE_ERR,
-															 current_temp_comp,
-															 weld_controller->Duty_Cycle,
-															 weld_controller->pid_ctrl);
-			}
+			
+			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0],
+														 current_temp_comp,
+														 weld_controller->Duty_Cycle,
+														 weld_controller->pid_ctrl);
 
 			break;
 
@@ -308,36 +299,6 @@ void TIM5_IRQHandler(void)
 		case SECOND_STATE:
 			/*Time updates*/
 			weld_controller->step_time_tick++;
-			// if (weld_controller->weld_time[1] == 0)
-			// {
-			// 	/*one step*/
-			// 	weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1],
-			// 												 current_temp_comp,
-			// 												 weld_controller->Duty_Cycle,
-			// 												 weld_controller->pid_ctrl);
-			// 	/*观测稳态输出值*/
-			// 	if (debug_index > 1999)
-			// 		debug_index = 0;
-			// 	debug_sample[debug_index++] = weld_controller->Duty_Cycle;
-			// }
-			// else
-			// {
-			// 	/*two step*/
-			// 	if (weld_controller->realtime_temp < 0.95 * weld_controller->weld_temp[1])
-			// 	{
-			// 		weld_controller->Duty_Cycle += PD_MAX / 100;
-			// 		if (weld_controller->Duty_Cycle > PD_MAX * (0.3 + 0.15 * weld_controller->temp_gain2))
-			// 			weld_controller->Duty_Cycle = PD_MAX * (0.3 + 0.15 * weld_controller->temp_gain2);
-			// 	}
-			// 	else
-			// 	{
-			// 		weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1],
-			// 													 current_temp_comp,
-			// 													 weld_controller->Duty_Cycle,
-			// 													 weld_controller->pid_ctrl);
-			// 	}
-			// }
-
 			if (weld_controller->enter_transition_flag == false)
 			{
 				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1],

@@ -284,12 +284,12 @@ static void Weld_Preparation()
 	weld_controller->weld_time_tick = 0; // 单段焊接时间计数
 
 	/*参数限制*/
-	if (weld_controller->weld_time[1] > MAX_WELD_TIME)
-		weld_controller->weld_time[1] = MAX_WELD_TIME;
-	if (weld_controller->weld_time[2] > MAX_WELD_TIME)
-		weld_controller->weld_time[2] = MAX_WELD_TIME;
-	if (weld_controller->weld_time[3] > MAX_WELD_TIME)
-		weld_controller->weld_time[3] = MAX_WELD_TIME;
+	if (weld_controller->weld_time[1] > 999)
+		weld_controller->weld_time[1] = 999;
+	if (weld_controller->weld_time[2] > 9999)
+		weld_controller->weld_time[2] = 9999;
+	if (weld_controller->weld_time[3] > 999)
+		weld_controller->weld_time[3] = 999;
 
 	if (weld_controller->weld_temp[0] < USER_SET_MIN_TEMP)
 		weld_controller->weld_temp[0] = USER_SET_MIN_TEMP;
@@ -405,7 +405,7 @@ static void First_Step()
 	weld_controller->state = FIRST_STATE;
 	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[0]);
 	/*Steady-state estimation output (coefficients can be added here for correction)*/
-	weld_controller->final_duty = (0.85 + 0.15 * weld_controller->temp_gain2) * (2.05 * weld_controller->weld_temp[0] + 1680.0);
+	weld_controller->final_duty = (0.75 + 0.5 * weld_controller->temp_gain2) * (2.05 * weld_controller->weld_temp[0] + 1680.0);
 
 	if ((page_param->key2 == ION) && (weld_controller->weld_time[1] != 0))
 	{
@@ -430,6 +430,7 @@ static void First_Step()
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 				break;
 			}
+#if 0
 			/*enter transition area*/
 			weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 			if (weld_controller->realtime_temp > 0.95 * weld_controller->weld_temp[0])
@@ -445,13 +446,14 @@ static void First_Step()
 			/*in transition area hold the temp*/
 			if (weld_controller->enter_transition_flag == true)
 			{
-				if (weld_controller->step_time_tick - weld_controller->enter_transition_time < (1 + 2 * weld_controller->temp_gain1) * TRANSITION_TIME)
+				if (weld_controller->step_time_tick - weld_controller->enter_transition_time < (0.5 + 2.5 * weld_controller->temp_gain1) * TRANSITION_TIME)
 				{
 
 					if (weld_controller->Duty_Cycle < weld_controller->final_duty)
 						weld_controller->Duty_Cycle = weld_controller->final_duty;
 				}
 			}
+#endif
 
 			/*limit output*/
 			if (weld_controller->Duty_Cycle > PD_MAX)
@@ -489,7 +491,7 @@ static void Second_Step()
 	weld_controller->state = SECOND_STATE;
 	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[1]);
 	/*Steady-state estimation output (coefficients can be added here for correction)*/
-	weld_controller->final_duty = (0.85 + 0.15 * weld_controller->temp_gain2) * (2.05 * weld_controller->weld_temp[1] + 1680.0);
+	weld_controller->final_duty = (0.75 + 0.5 * weld_controller->temp_gain2) * (2.05 * weld_controller->weld_temp[1] + 1680.0);
 
 	if ((page_param->key2 == ION) && (weld_controller->weld_time[2] != 0))
 	{
@@ -510,6 +512,7 @@ static void Second_Step()
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 				break;
 			}
+
 			/*enter transition area*/
 			weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 			if (weld_controller->realtime_temp > 0.95 * weld_controller->weld_temp[1])
@@ -525,7 +528,7 @@ static void Second_Step()
 			/*in transition area hold the temp*/
 			if (weld_controller->enter_transition_flag == true)
 			{
-				if (weld_controller->step_time_tick - weld_controller->enter_transition_time < (1 + 2 * weld_controller->temp_gain1) * TRANSITION_TIME)
+				if (weld_controller->step_time_tick - weld_controller->enter_transition_time < (0.5 + 2.5 * weld_controller->temp_gain1) * TRANSITION_TIME)
 				{
 
 					if (weld_controller->Duty_Cycle < weld_controller->final_duty)

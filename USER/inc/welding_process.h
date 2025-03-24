@@ -31,8 +31,8 @@ void welding_process(void);
 
 /*user param*/
 #define TRANSITION_TIME 100
-#define DEFAULT_GAIN1 0.3
-#define DEFAULT_GAIN2 0.3
+#define DEFAULT_GAIN1 0.2
+#define DEFAULT_GAIN2 0.4
 
 /*state*/
 typedef enum WELD_STATE
