@@ -21,7 +21,7 @@ volatile WELD_MODE welding_flag = IDEAL_MODE;						 // Welding different stage m
 extern weld_ctrl *weld_controller;									 // Welding controllers
 static pid_fitting_curve fitting_curves = {0.0002, -0.23, 76};		 // pid Parameters dynamically fit curves ax*bx+x+c
 static Steady_state_coefficient steady_coefficient = {2.05, 1680.0}; // Steady-state fitting curve coefficient
-static Correction_factor corrrct_factor = {0.75, 0.5};				 // Steady-state fitting curve correction coefficient
+static Correction_factor corrct_factor = {0.75, 0.5};				 // Steady-state fitting curve correction coefficient
 /*------------------------------------------------------------------------------------------------------------------------------*/
 
 /*-----------------------------------------------Compatible touchscreen data interface------------------------------------------*/
@@ -494,7 +494,7 @@ static void First_Step()
 	weld_controller->enter_transition_flag = false;
 	weld_controller->enter_transition_time = 0;
 	/*Steady-state estimation output (coefficients can be added here for correction)*/
-	// weld_controller->final_duty = (corrrct_factor.base + corrrct_factor.amplitude * weld_controller->temp_gain2) *
+	// weld_controller->final_duty = (corrct_factor.base + corrct_factor.amplitude * weld_controller->temp_gain2) *
 	// 							  (steady_coefficient.slope * weld_controller->weld_temp[0] + steady_coefficient.intercept);
 	/*pid reload*/
 	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[0]);
@@ -556,7 +556,7 @@ static void Second_Step()
 	weld_controller->enter_transition_flag = false;
 	weld_controller->enter_transition_time = 0;
 	/*Steady-state estimation output (coefficients can be added here for correction)*/
-	weld_controller->final_duty = (corrrct_factor.base + corrrct_factor.amplitude * weld_controller->temp_gain2) *
+	weld_controller->final_duty = (corrct_factor.base + corrct_factor.amplitude * weld_controller->temp_gain2) *
 								  (steady_coefficient.slope * weld_controller->weld_temp[1] + steady_coefficient.intercept);
 	/*pid reload*/
 	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[1]);
