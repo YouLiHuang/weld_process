@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-15 19:17:48
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-22 09:52:56
+ * @LastEditTime: 2025-03-25 10:22:11
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -21,13 +21,8 @@
 #include "tempcomp.h"
 #include "touchscreen.h"
 
-#define TIME_CHECH 0 // 超时监测
-#define PROTECT_ON 1 // 保护开关
-
 /*实时控制*/
 extern weld_ctrl *weld_controller;
-double fitting_curves[3] = {0.0002, -0.23, 76}; // 二次曲线拟合系数
-
 /*温度补偿部分*/
 extern Kalman kfp;
 extern dynamical_comp dynam_comp;
@@ -109,78 +104,6 @@ void reset_temp_draw_ctrl(Temp_draw_ctrl *ctrl, const uint16_t welding_time[])
 	{
 		ctrl->temp_buf[i] = 0;
 	}
-}
-
-/**
- * @description: Dynamically adjust pid parameters according to set values
- * @param {void} *controller
- * @param {double} *fitting_curves
- * @param {uint16_t} setting
- * @return {*}
- */
-void pid_param_dynamic_reload(void *controller, double *fitting_curves, uint16_t setting)
-{
-
-#if PID_DEBUG != 1
-	weld_ctrl *ctrl = (weld_ctrl *)controller;
-	ctrl->pid_ctrl->stable_flag = false;
-	uint8_t new_kd = 0;
-	switch (ctrl->state)
-	{
-	case FIRST_STATE:
-		new_kd = fitting_curves[0] * setting * setting +
-				 fitting_curves[1] * setting +
-				 fitting_curves[2];
-
-		if (new_kd > 25)
-			new_kd = 25;
-		if (new_kd <= 10)
-			new_kd = 10;
-
-		ctrl->pid_ctrl->kp = 15;
-		ctrl->pid_ctrl->ki = 0.028;
-		ctrl->pid_ctrl->kd = new_kd;
-		break;
-	case SECOND_STATE:
-		if (ctrl->weld_time[1] <= 100)
-		{
-			new_kd = fitting_curves[0] * setting * setting +
-					 fitting_curves[1] * setting +
-					 fitting_curves[2];
-
-			if (new_kd > 25)
-				new_kd = 25;
-			if (new_kd <= 10)
-				new_kd = 10;
-
-			ctrl->pid_ctrl->kp = 15;
-			ctrl->pid_ctrl->ki = 0.028;
-			ctrl->pid_ctrl->kd = new_kd;
-		}
-		else
-		{
-			uint16_t delta_temp = ctrl->weld_temp[1] - ctrl->second_step_start_temp;
-			new_kd = fitting_curves[0] * delta_temp * delta_temp +
-					 fitting_curves[1] * delta_temp +
-					 fitting_curves[2];
-
-			if (new_kd > 25)
-				new_kd = 25;
-			if (new_kd <= 10)
-				new_kd = 10;
-
-			ctrl->pid_ctrl->kp = 15;
-			ctrl->pid_ctrl->ki = 0.025;
-			ctrl->pid_ctrl->kd = new_kd;
-		}
-
-		/*稳态标志复位*/
-		weld_controller->pid_ctrl->stable_flag = false;
-
-		break;
-	}
-
-#endif
 }
 
 /**
@@ -287,7 +210,7 @@ void TIM5_IRQHandler(void)
 		case FIRST_STATE:
 			/*Time updates*/
 			weld_controller->step_time_tick++;
-			
+
 			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0],
 														 current_temp_comp,
 														 weld_controller->Duty_Cycle,
@@ -305,6 +228,9 @@ void TIM5_IRQHandler(void)
 															 current_temp_comp,
 															 weld_controller->Duty_Cycle,
 															 weld_controller->pid_ctrl);
+				/*fast rise heat compensate*/
+				// if (weld_controller->Duty_Cycle < weld_controller->final_duty)
+				// 	weld_controller->Duty_Cycle = weld_controller->final_duty;
 			}
 			else
 			{

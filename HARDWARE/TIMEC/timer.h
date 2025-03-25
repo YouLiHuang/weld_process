@@ -14,6 +14,8 @@
 
 #define COMPENSATION 0
 #define KALMAN_FILTER 0
+#define TIME_CHECH 0 // 超时监测
+#define PROTECT_ON 1 // 保护开关
 
 #define WIN_WIDTH 525        // 显示区域宽度
 #define DRAW_RESERVE 10      // 绘图余量
@@ -48,7 +50,5 @@ typedef struct Temp_draw_controller
 } Temp_draw_ctrl;
 Temp_draw_ctrl *new_temp_draw_ctrl(uint16_t *buf, uint16_t len1, uint16_t len2, uint16_t len3);
 void reset_temp_draw_ctrl(Temp_draw_ctrl *ctrl, const uint16_t welding_time[]);
-
-void pid_param_dynamic_reload(void *controller, double *fitting_curves, uint16_t setting);
 
 #endif

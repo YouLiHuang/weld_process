@@ -31,6 +31,8 @@ void welding_process(void);
 
 /*user param*/
 #define TRANSITION_TIME 100
+#define TRANSITION_TIME_BASE 0.5
+#define TRANSITION_TIME_CORRECT 2.5
 #define DEFAULT_GAIN1 0.2
 #define DEFAULT_GAIN2 0.4
 
@@ -56,6 +58,26 @@ typedef struct temp_setting_point
     uint16_t time;
     uint16_t temp;
 } temp_setting_point;
+
+typedef struct Correction_factor
+{
+    float base;
+    float amplitude;
+} Correction_factor;
+
+typedef struct Steady_state_coefficient
+{
+    float slope;
+    float intercept;
+
+} Steady_state_coefficient;
+
+typedef struct pid_fitting_curve
+{
+    float a;
+    float b;
+    float c;
+} pid_fitting_curve;
 
 typedef struct weld_realtime_controller
 {
@@ -93,5 +115,7 @@ typedef struct weld_realtime_controller
 weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl);
 
 WELD_MODE get_weld_flag(void);
+
+void pid_param_dynamic_reload(void *controller, pid_fitting_curve fitting_curves, uint16_t setting);
 
 #endif
