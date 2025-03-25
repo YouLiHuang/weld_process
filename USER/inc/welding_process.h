@@ -36,6 +36,9 @@ void welding_process(void);
 #define DEFAULT_GAIN1 0.2
 #define DEFAULT_GAIN2 0.4
 
+#define DEFAULT_RISE_TIME 250
+#define DEFAULT_RISE_DUTY (PD_MAX * 0.8)
+
 /*state*/
 typedef enum WELD_STATE
 {
@@ -100,14 +103,16 @@ typedef struct weld_realtime_controller
 
     /*ctrl param*/
     uint16_t final_duty;
-    /*pid ctrl*/
-    pid_feedforword_ctrl *pid_ctrl;
+    uint16_t fast_rise_time;
+    uint16_t fast_rise_duty;
+    /*Heat compensation*/
+    uint16_t enter_transition_time;
+    bool enter_transition_flag;
     /*gain param*/
     double temp_gain1;
     double temp_gain2;
-    /**/
-    bool enter_transition_flag;
-    uint16_t enter_transition_time;
+    /*pid ctrl*/
+    pid_feedforword_ctrl *pid_ctrl;
     /*hook*/
     void (*user_hook_callback)(void);
 } weld_ctrl;

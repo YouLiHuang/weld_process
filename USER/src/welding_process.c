@@ -74,6 +74,8 @@ weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl)
 		ctrl->Duty_Cycle = PD_MIN;
 		ctrl->pid_ctrl = pid_ctrl;
 		ctrl->enter_transition_flag = false;
+		ctrl->fast_rise_duty = DEFAULT_RISE_DUTY;
+		ctrl->fast_rise_time = DEFAULT_RISE_TIME;
 		/*realtime parameter*/
 		ctrl->first_step_start_temp = 0;
 		ctrl->second_step_start_temp = 0;

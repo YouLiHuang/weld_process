@@ -1483,8 +1483,9 @@ static void page_process(Page_ID id)
 
 			/*绘图控制器复位*/
 			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
-			/*绘图结束清空缓存*/
-			memset(temp_draw_ctrl->temp_buf, 0, sizeof(temp_draw_ctrl->temp_buf) / sizeof(uint16_t));
+
+			
+
 		}
 	}
 	break;
