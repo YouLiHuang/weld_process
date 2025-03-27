@@ -170,6 +170,7 @@ void TIM5_Int_Init(void)
 static volatile uint16_t current_temp_comp = 0;
 
 uint16_t debug_index = 0;
+uint16_t stable_cnt = 0;
 extern uint16_t debug_sample[2000];
 
 /**
@@ -195,6 +196,7 @@ void TIM5_IRQHandler(void)
 		current_temp_comp = kalman_comp_temp;						// 获取当前温度估计值
 #else
 		current_temp_comp = kalman_filter_temp;
+		weld_controller->realtime_temp = current_temp_comp;
 #endif
 #else
 		current_temp_comp = weld_controller->realtime_temp;
@@ -228,9 +230,6 @@ void TIM5_IRQHandler(void)
 															 current_temp_comp,
 															 weld_controller->Duty_Cycle,
 															 weld_controller->pid_ctrl);
-				/*fast rise heat compensate*/
-				// if (weld_controller->Duty_Cycle < weld_controller->final_duty)
-				// 	weld_controller->Duty_Cycle = weld_controller->final_duty;
 			}
 			else
 			{
@@ -238,6 +237,18 @@ void TIM5_IRQHandler(void)
 															 current_temp_comp,
 															 weld_controller->Duty_Cycle,
 															 weld_controller->pid_ctrl);
+
+				if (weld_controller->pid_ctrl->err < 5)
+				{
+					if (stable_cnt > 30)
+					{
+						if (debug_index > sizeof(debug_sample) / sizeof(uint16_t))
+							debug_index = 0;
+						debug_sample[debug_index++] = weld_controller->Duty_Cycle;
+					}
+					else
+						stable_cnt++;
+				}
 			}
 
 			break;

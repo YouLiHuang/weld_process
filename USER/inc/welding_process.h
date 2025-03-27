@@ -36,8 +36,11 @@ void welding_process(void);
 #define DEFAULT_GAIN1 0.2
 #define DEFAULT_GAIN2 0.4
 
-#define DEFAULT_RISE_TIME 250
-#define DEFAULT_RISE_DUTY (PD_MAX * 0.8)
+#define MIN_FAST_RISE_TIME 100
+#define MAX_FAST_RISE_TIME 400
+#define DEFAULT_RISE_TIME 200
+#define DEFAULT_RISE_DUTY (PD_MAX * 0.5)
+#define MAX_RISE_STEP_DUTY (PD_MAX * 0.82)
 
 /*state*/
 typedef enum WELD_STATE
@@ -105,6 +108,7 @@ typedef struct weld_realtime_controller
     uint16_t final_duty;
     uint16_t fast_rise_time;
     uint16_t fast_rise_duty;
+    uint16_t final_temp_record;
     /*Heat compensation*/
     uint16_t enter_transition_time;
     bool enter_transition_flag;

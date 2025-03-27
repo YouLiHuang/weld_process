@@ -59,7 +59,9 @@
         "diskio.h": "c",
         "usbh_msc_core.h": "c",
         "stm32f4xx_it.h": "c",
-        "usb_hcd_int.h": "c"
+        "usb_hcd_int.h": "c",
+        "dynamic_correct.h": "c",
+        "stdint.h": "c"
     },
     // 头部注释
     "fileheader.customMade": {
