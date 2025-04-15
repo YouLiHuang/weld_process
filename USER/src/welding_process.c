@@ -361,13 +361,18 @@ static void Weld_Preparation()
 
 	/*表示进入焊接过程*/
 	welding_flag = BUSY_MODE;
-	/*时间刻度复位*/
+	/*----------------------------------------时间刻度复位----------------------------------------*/
 	weld_controller->step_time_tick = 0; // 焊接周期计数值
 	weld_controller->weld_time_tick = 0; // 单段焊接时间计数
 
-	/*参数限制*/
+	/*------------------------------------------参数限制------------------------------------------*/
 	if (weld_controller->weld_time[1] > 999)
+	{
 		weld_controller->weld_time[1] = 999;
+		/*send to screen*/
+		command_set_comp_val("param_page.time2", "val", 999);
+	}
+
 	if (weld_controller->weld_time[2] > 9999)
 		weld_controller->weld_time[2] = 9999;
 	if (weld_controller->weld_time[3] > 999)
@@ -398,26 +403,29 @@ static void Weld_Preparation()
 	if (weld_controller->temp_gain2 <= 0)
 		weld_controller->temp_gain2 = 0;
 
-	/*算法部分*/
+	/*------------------------------------------算法部分------------------------------------------*/
 	reset_forword_ctrl(weld_controller->pid_ctrl); // pid控制器初始化
-	dynamic_init(&dynam_comp, 100);				   // 动态补偿初始化
-	window_init(&lasttemp);						   // 滑动窗口初始化
-	Kalman_Init(&kfp);							   // 卡尔曼滤波器初始化，初始值归零
+#if COMPENSATION == 1
+	dynamic_init(&dynam_comp, 100); // 动态补偿初始化
+	window_init(&lasttemp);			// 滑动窗口初始化
+#endif
+
 #if KALMAN_FILTER == 1
+	Kalman_Init(&kfp);	  // 卡尔曼滤波器初始化，初始值归零
 	kalman_comp_temp = 0; // 卡尔曼估计值初始化
 #endif
 
-	/*绘图部分*/
+	/*------------------------------------------绘图部分------------------------------------------*/
 	reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
 
-	/*IO控制*/
+	/*------------------------------------------IO控制-------------------------------------------*/
 	OVER = 0;  // 1为焊接结束信号
 	RLY10 = 1; // 气阀1启动
 	RLY11 = 1; // 气阀2启动
 	RLY12 = 1; // 气阀3启动
 	CUNT = 0;  // 1为计数，0清除计数信号
 
-	/*pwm部分*/
+	/*------------------------------------------pwm部分-------------------------------------------*/
 	uint16_t tmp_ccmr1 = 0; // 重新设定pwm模式
 	tmp_ccmr1 = TIM1->CCMR1;
 	tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
@@ -538,10 +546,10 @@ static void First_Step()
 	temp_draw_ctrl->first_step_index_end = temp_draw_ctrl->current_index - 1;
 }
 
-extern best_param best;
-
 extern uint16_t debug_index;
 extern uint16_t stable_cnt;
+
+#if 0
 static void fast_rise_step(void)
 {
 
@@ -608,6 +616,7 @@ static void fast_rise_step(void)
 	/*end of step*/
 	weld_controller->state = IDEAL_STATE;
 }
+#endif
 
 /**
  * @description: In the second stage of welding, the temperature is maintained

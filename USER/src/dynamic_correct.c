@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-25 10:31:52
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-25 11:53:27
+ * @LastEditTime: 2025-04-15 09:53:28
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -20,33 +20,33 @@ extern Temp_draw_ctrl *temp_draw_ctrl;
 // Welding real-time controller
 extern weld_ctrl *weld_controller;
 
-static int16_t findMax(uint16_t arr[], uint16_t size)
-{
-    if (size <= 0)
-        return -1;
+// static int16_t findMax(uint16_t arr[], uint16_t size)
+// {
+//     if (size <= 0)
+//         return -1;
 
-    uint16_t max = arr[0];
-    for (uint16_t i = 1; i < size; i++)
-    {
-        if (arr[i] > max)
-            max = arr[i];
-    }
-    return max;
-}
+//     uint16_t max = arr[0];
+//     for (uint16_t i = 1; i < size; i++)
+//     {
+//         if (arr[i] > max)
+//             max = arr[i];
+//     }
+//     return max;
+// }
 
-static int16_t findMin(uint16_t arr[], uint16_t size)
-{
-    if (size <= 0)
-        return -1;
+// static int16_t findMin(uint16_t arr[], uint16_t size)
+// {
+//     if (size <= 0)
+//         return -1;
 
-    uint16_t min = arr[0];
-    for (uint16_t i = 1; i < size; i++)
-    {
-        if (arr[i] < min)
-            min = arr[i];
-    }
-    return min;
-}
+//     uint16_t min = arr[0];
+//     for (uint16_t i = 1; i < size; i++)
+//     {
+//         if (arr[i] < min)
+//             min = arr[i];
+//     }
+//     return min;
+// }
 
 /*Find the first target point that is closest to a given value*/
 static int16_t findValue(uint16_t arr[], uint16_t size, uint16_t val)
@@ -66,9 +66,8 @@ static int16_t findValue(uint16_t arr[], uint16_t size, uint16_t val)
     return -1;
 }
 
-static double cur_over_temp;
-static double last_over_temp;
-/*测试版本，先考虑一段加热*/
+
+#if 0
 void dynamic_rise_correct(float target)
 {
 
@@ -167,12 +166,14 @@ void dynamic_rise_correct(float target)
 
     memset(temp_draw_ctrl->temp_buf, 0, sizeof(temp_draw_ctrl->temp_buf) / sizeof(uint16_t));
 }
+#endif
 
+
+/*测试版本，先考虑一段加热*/
 extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN];
 #define LEARNING_RATE 3
 void dynamic_param_adjust(void)
 {
-    uint16_t step_start_time = temp_draw_ctrl->second_step_index_start;
     uint16_t step_end_time = temp_draw_ctrl->second_step_index_end;
     /*分析有温度曲线几个极值点*/
     int16_t left_err = 0;

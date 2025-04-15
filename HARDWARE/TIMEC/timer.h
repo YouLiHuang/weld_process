@@ -12,7 +12,7 @@
 #include "sys.h"
 #include "stdbool.h"
 
-#define COMPENSATION 1
+#define COMPENSATION 0
 #define KALMAN_FILTER 0
 #define TIME_CHECH 0 // 超时监测
 #define PROTECT_ON 1 // 保护开关
