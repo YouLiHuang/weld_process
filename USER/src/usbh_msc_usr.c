@@ -113,7 +113,7 @@ USBH_Usr_cb_TypeDef USR_USBH_MSC_cb = {
 /** @defgroup USBH_USR_Private_Constants
  * @{
  */
-/*--------------- LCD Messages ---------------*/
+/*--------------- printf Messages ---------------*/
 char MSG_DEV_ATTACHED[] = "> Device Attached \n";
 char MSG_DEV_DISCONNECTED[] = "> Device Disconnected\n";
 char MSG_DEV_ENUMERATED[] = "> Enumeration completed \n";
@@ -148,7 +148,7 @@ char MSG_MSC_UNREC_ERROR[] = "> UNRECOVERED ERROR STATE\n";
 
 /**
  * @brief  USBH_USR_Init
- *         Displays the message on LCD for host lib initialization
+ *         Displays the message on uart for host lib initialization
  * @param  None
  * @retval None
  */
@@ -170,7 +170,7 @@ void USBH_USR_Init(void)
 
 /**
  * @brief  USBH_USR_DeviceAttached
- *         Displays the message on LCD on device attached
+ *         Displays the message on uart on device attached
  * @param  None
  * @retval None
  */
@@ -214,7 +214,7 @@ void USBH_USR_ResetDevice(void)
 
 /**
  * @brief  USBH_USR_DeviceSpeedDetected
- *         Displays the message on LCD for device speed
+ *         Displays the message on uart for device speed
  * @param  Device speed
  * @retval None
  */
@@ -240,7 +240,7 @@ void USBH_USR_DeviceSpeedDetected(uint8_t DeviceSpeed)
 
 /**
  * @brief  USBH_USR_Device_DescAvailable
- *         Displays the message on LCD for device descriptor
+ *         Displays the message on uart for device descriptor
  * @param  device descriptor
  * @retval None
  */
@@ -265,7 +265,7 @@ void USBH_USR_DeviceAddressAssigned(void)
 
 /**
  * @brief  USBH_USR_Conf_Desc
- *         Displays the message on LCD for configuration descriptor
+ *         Displays the message on uart for configuration descriptor
  * @param  Configuration descriptor
  * @retval None
  */
@@ -289,7 +289,7 @@ void USBH_USR_Configuration_DescAvailable(USBH_CfgDesc_TypeDef *cfgDesc,
 
 /**
  * @brief  USBH_USR_Manufacturer_String
- *         Displays the message on LCD for Manufacturer String
+ *         Displays the message on uart for Manufacturer String
  * @param  Manufacturer String
  * @retval None
  */
@@ -300,7 +300,7 @@ void USBH_USR_Manufacturer_String(void *ManufacturerString)
 
 /**
  * @brief  USBH_USR_Product_String
- *         Displays the message on LCD for Product String
+ *         Displays the message on uart for Product String
  * @param  Product String
  * @retval None
  */
@@ -311,7 +311,7 @@ void USBH_USR_Product_String(void *ProductString)
 
 /**
  * @brief  USBH_USR_SerialNum_String
- *         Displays the message on LCD for SerialNum_String
+ *         Displays the message on uart for SerialNum_String
  * @param  SerialNum_String
  * @retval None
  */
