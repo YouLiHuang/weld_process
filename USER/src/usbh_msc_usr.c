@@ -48,7 +48,7 @@
 /** @defgroup USBH_USR_Private_Defines
  * @{
  */
-#define IMAGE_BUFFER_SIZE 512
+
 /**
  * @}
  */
@@ -383,6 +383,7 @@ int USBH_USR_MSC_Application(void)
   case USH_USR_FS_READLIST:
 
     printf(MSG_ROOT_CONT);
+    printf("> Explore_Disk...\n");
     Explore_Disk("0:/", 1);
 
     USBH_USR_ApplicationState = USH_USR_FS_WRITEFILE;
@@ -394,13 +395,8 @@ int USBH_USR_MSC_Application(void)
     printf("> write file test\r\n");
     USB_OTG_BSP_mDelay(100);
 
-    /* Key button in polling */
-    while (HCD_IsDeviceConnected(&USB_OTG_Core))
-    {
-      break;
-    }
     /* Writes a text file, test.txt in the disk */
-    printf("> Writing File to disk\n");
+    printf("> Writing File...\n");
     if (USBH_MSC_Param.MSWriteProtect == DISK_WRITE_PROTECTED)
     {
 
@@ -419,13 +415,9 @@ int USBH_USR_MSC_Application(void)
       res = f_write(&file, writeTextBuff, bytesToWrite, (void *)&bytesWritten);
 
       if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
-      {
         printf("> test.txt CANNOT be writen.\n");
-      }
       else
-      {
         printf("> 'test.txt' file created\n");
-      }
 
       /* close file and filesystem */
       f_close(&file);
@@ -433,9 +425,7 @@ int USBH_USR_MSC_Application(void)
     }
 
     else
-    {
       printf("> test.txt created in the disk\n");
-    }
     USB_OTG_BSP_mDelay(100);
 
     USBH_USR_ApplicationState = USH_USR_FS_DRAW;
@@ -443,14 +433,7 @@ int USBH_USR_MSC_Application(void)
     break;
 
   case USH_USR_FS_DRAW:
-    /* Key button in polling */
-    while (HCD_IsDeviceConnected(&USB_OTG_Core))
-    {
-      printf("......\n");
-      USB_OTG_BSP_mDelay(500);
-    }
-
-    while (HCD_IsDeviceConnected(&USB_OTG_Core))
+    if (HCD_IsDeviceConnected(&USB_OTG_Core))
     {
       if (f_mount(&fatfs, "", 0) != FR_OK)
       {
@@ -458,6 +441,7 @@ int USBH_USR_MSC_Application(void)
         return (-1);
       }
     }
+
     break;
 
   default:
