@@ -401,7 +401,7 @@ int USBH_USR_MSC_Application(void)
     {
 
       printf("> Disk flash is write protected \n");
-      USBH_USR_ApplicationState = USH_USR_FS_DRAW;
+      USBH_USR_ApplicationState = USH_USR_FS_IDEAL;
       break;
     }
 
@@ -428,16 +428,17 @@ int USBH_USR_MSC_Application(void)
       printf("> test.txt created in the disk\n");
     USB_OTG_BSP_mDelay(100);
 
-    USBH_USR_ApplicationState = USH_USR_FS_DRAW;
+    USBH_USR_ApplicationState = USH_USR_FS_IDEAL;
 
     break;
 
-  case USH_USR_FS_DRAW:
+  case USH_USR_FS_IDEAL:
     if (HCD_IsDeviceConnected(&USB_OTG_Core))
     {
       if (f_mount(&fatfs, "", 0) != FR_OK)
       {
         /* fat_fs initialisation fails */
+        printf("> Cannot mount disk.\n");
         return (-1);
       }
     }
@@ -551,4 +552,3 @@ uint8_t Explore_Disk(char *path, uint8_t recu_level)
   return res;
 }
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
