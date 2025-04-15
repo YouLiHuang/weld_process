@@ -123,6 +123,7 @@ char MSG_DEV_LOWSPEED[] = "> Low speed device detected\n";
 char MSG_DEV_ERROR[] = "> Device fault \n";
 
 char MSG_MSC_CLASS[] = "> Mass storage device connected\n";
+char MSG_HID_CLASS[] = "> HID device connected\n";
 char MSG_DISK_SIZE[] = "> Size of the disk in MBytes: \n";
 char MSG_LUN[] = "> LUN Available in the device:\n";
 char MSG_ROOT_CONT[] = "> Exploring disk\n";
@@ -153,7 +154,18 @@ char MSG_MSC_UNREC_ERROR[] = "> UNRECOVERED ERROR STATE\n";
  */
 void USBH_USR_Init(void)
 {
-  printf("usb2.0 driver init\n");
+
+#ifdef USE_USB_OTG_HS
+#ifdef USE_EMBEDDED_PHY
+  printf((uint8_t *)" USB OTG HS_IN_FS MSC Host");
+#else
+  printf((uint8_t *)" USB OTG HS MSC Host");
+#endif
+#else
+  printf((uint8_t *)" USB OTG FS MSC Host");
+#endif
+  printf("> USB Host library started.\n");
+  printf((uint8_t *)"     USB Host Library v2.2.1");
 }
 
 /**
@@ -234,6 +246,11 @@ void USBH_USR_DeviceSpeedDetected(uint8_t DeviceSpeed)
  */
 void USBH_USR_Device_DescAvailable(void *DeviceDesc)
 {
+  USBH_DevDesc_TypeDef *hs;
+  hs = DeviceDesc;
+
+  printf("VID : %04luh\n", (uint32_t)(*hs).idVendor);
+  printf("PID : %04luh\n", (uint32_t)(*hs).idProduct);
 }
 
 /**
@@ -262,7 +279,11 @@ void USBH_USR_Configuration_DescAvailable(USBH_CfgDesc_TypeDef *cfgDesc,
 
   if ((*id).bInterfaceClass == 0x08)
   {
-    printf(MSG_MSC_CLASS);
+    printf((char *)MSG_MSC_CLASS);
+  }
+  else if ((*id).bInterfaceClass == 0x03)
+  {
+    printf((char *)MSG_HID_CLASS);
   }
 }
 
@@ -347,7 +368,7 @@ void USBH_USR_OverCurrentDetected(void)
 
 /**
  * @brief  USBH_USR_MSC_Application
- *         Demo application for mass storage
+ *         Applications for user disk manipulation
  * @param  None
  * @retval Status
  */
@@ -551,4 +572,3 @@ uint8_t Explore_Disk(char *path, uint8_t recu_level)
 
   return res;
 }
-

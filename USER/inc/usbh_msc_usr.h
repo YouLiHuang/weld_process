@@ -102,7 +102,6 @@ void USBH_USR_Product_String(void *);
 void USBH_USR_SerialNum_String(void *);
 void USBH_USR_EnumerationDone(void);
 USBH_USR_Status USBH_USR_UserInput(void);
-void USBH_USR_DeInit(void);
 void USBH_USR_DeviceNotSupported(void);
 void USBH_USR_UnrecoveredError(void);
 int USBH_USR_MSC_Application(void);
