@@ -162,10 +162,10 @@ void USBH_USR_Init(void)
   printf((uint8_t *)" USB OTG HS MSC Host");
 #endif
 #else
-  printf((uint8_t *)" USB OTG FS MSC Host");
+  printf(" USB OTG FS MSC Host");
 #endif
   printf("> USB Host library started.\n");
-  printf((uint8_t *)"     USB Host Library v2.2.1");
+  printf("     USB Host Library v2.2.1");
 }
 
 /**
