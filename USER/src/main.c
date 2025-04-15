@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-20 09:39:33
+ * @LastEditTime: 2025-04-15 10:42:01
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -1172,6 +1172,8 @@ static void key_action_callback_param(Component_Queue *page_list)
 			/*参数读取*/
 			command_get_comp_val(page_list, weld_time_name_list[i], "val");
 		}
+		/*读取焊接计数值*/
+		command_get_comp_val(page_list, "count", "val");
 	}
 	// 状态同步
 	page_param->GP = get_comp(page_list, "GP")->val;
@@ -1287,6 +1289,9 @@ static void key_action_callback_temp(Component_Queue *page_list)
 			/*参数读取*/
 			command_get_comp_val(page_list, alarm_temp_name_list[i], "val");
 		}
+
+		/*读取焊接计数值*/
+		command_get_comp_val(page_list, "count", "val");
 	}
 
 	// 状态同步
@@ -1343,6 +1348,7 @@ static bool pid_param_get(uint16_t *pid_raw_param)
 		return false;
 }
 #endif
+
 static void page_process(Page_ID id)
 {
 	const char *tick_name[] = {"tick1", "tick2", "tick3", "tick4", "tick5"};
@@ -1457,9 +1463,14 @@ static void page_process(Page_ID id)
 			delta_tick = 5000;
 
 		/*绘图间隔*/
-		total_tick_len = 5 * delta_tick;						 // 横坐标总长度
-		win_width = WIN_WIDTH * total_time / total_tick_len;	 // 焊接周期绘图区域
-		temp_draw_ctrl->delta_tick = total_time / win_width + 1; // 绘点时间间隔
+		total_tick_len = 5 * delta_tick;					 // 横坐标总长度
+		win_width = WIN_WIDTH * total_time / total_tick_len; // 焊接周期绘图区域占全屏比例
+
+		if (total_time == win_width)
+			temp_draw_ctrl->delta_tick = 1;
+		else
+			temp_draw_ctrl->delta_tick = (total_time / win_width) + 1;
+
 		/*坐标发送到触摸屏*/
 		for (uint8_t i = 0; i < sizeof(tick_name) / sizeof(char *); i++)
 			command_set_comp_val(tick_name[i], "val", (1 + i) * delta_tick);
@@ -1483,9 +1494,6 @@ static void page_process(Page_ID id)
 
 			/*绘图控制器复位*/
 			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
-
-			
-
 		}
 	}
 	break;
@@ -1545,6 +1553,12 @@ static void page_process(Page_ID id)
 		break;
 	}
 }
+
+/**
+ * @description: sync data from screen to user data
+ * @param {Page_ID} id
+ * @return {*}
+ */
 static bool data_syn(Page_ID id)
 {
 	/*key state sync*/
@@ -1945,4 +1959,3 @@ void usb_task(void *p_arg)
 		OSTimeDlyHMSM(0, 0, 0, 40, OS_OPT_TIME_PERIODIC, &err);
 	}
 }
-
