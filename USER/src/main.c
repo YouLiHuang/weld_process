@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-04-15 10:42:01
+ * @LastEditTime: 2025-04-21 09:47:03
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -117,14 +117,14 @@ static Thermocouple Thermocouple_Lists[] = {
 };
 
 const error_match_list match_list[] = {
-	{CURRENT_OUT_OT_CTRL, "p4", Current_out_of_ctrl_callback, Current_out_of_ctrl_reset_callback},
-	{TEMP_UP, "p5", Temp_up_err_callback, Temp_up_reset_callback},
-	{TEMP_DOWN, "p6", Temp_down_err_callback, Temp_down_reset_callback},
-	{VOLTAGE_TOO_HIGH, "p7", NULL, NULL},
-	{VOLTAGE_TOO_LOW, "p8", NULL, NULL},
-	{MCU_OVER_HEAT, "p9", NULL, NULL},
-	{TRANSFORMER_OVER_HEAT, "p10", NULL, NULL},
-	{SENSOR_ERROR, "p11", Thermocouple_recheck_callback, Thermocouple_reset_callback},
+	{CURRENT_OUT_OT_CTRL, "f1", Current_out_of_ctrl_callback, Current_out_of_ctrl_reset_callback},
+	{TEMP_UP, "f2", Temp_up_err_callback, Temp_up_reset_callback},
+	{TEMP_DOWN, "f3", Temp_down_err_callback, Temp_down_reset_callback},
+	{VOLTAGE_TOO_HIGH, "f4", NULL, NULL},
+	{VOLTAGE_TOO_LOW, "f5", NULL, NULL},
+	{MCU_OVER_HEAT, "f6", NULL, NULL},
+	{TRANSFORMER_OVER_HEAT, "f7", NULL, NULL},
+	{SENSOR_ERROR, "f8", Thermocouple_recheck_callback, Thermocouple_reset_callback},
 };
 
 static char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "UP_DOWN"};
