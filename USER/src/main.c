@@ -37,7 +37,7 @@ uint16_t debug_sample[2000] = {0};
 #define KEJ_CHECK_DUTY 40 // Thermocouple detection filter cycles
 #define ROOM_TEMP 20	  // Default room temperature
 #define SAMPLE_LEN 100	  // Sampling depth
-#define ADC_BIAS_MAX 500  // Maximum offset value
+#define ADC_BIAS_MAX 650  // Maximum offset value
 
 /*debug option*/
 #define TEMP_ADJUST 1	  // Temperature calibration
@@ -1516,10 +1516,11 @@ static void page_process(Page_ID id)
 		if (OS_ERR_NONE == err)
 		{
 
-			if (weld_controller->realtime_temp < 2 * ROOM_TEMP && weld_controller->realtime_temp > 0.5 * ROOM_TEMP) // 在室温下才允许校准（10-40°C范围内才允许校准）
-				Thermocouple_err_eliminate();
-			else // 焊头尚未冷却，警报
-				command_set_comp_val("warning", "aph", 127);
+//			if (weld_controller->realtime_temp < 2 * ROOM_TEMP && weld_controller->realtime_temp > 0.5 * ROOM_TEMP) // 在室温下才允许校准（10-40°C范围内才允许校准）
+//				Thermocouple_err_eliminate();
+//			else // 焊头尚未冷却，警报
+//				command_set_comp_val("warning", "aph", 127);
+			Thermocouple_err_eliminate();
 		}
 		/*5、显示实时温度*/
 		command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
