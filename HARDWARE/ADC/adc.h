@@ -1,25 +1,25 @@
-/*** 
+/***
  * @Author: huangyouli.scut@gmail.com
- * @Date: 2025-03-12 19:48:36
+ * @Date: 2025-04-22 16:55:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-12 19:59:45
- * @Description: 
+ * @LastEditTime: 2025-04-24 16:58:03
+ * @Description:
  * @
- * @Copyright (c) 2025 by huangyouli, All Rights Reserved. 
+ * @Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
-
 
 #ifndef __ADC_H
 #define __ADC_H
 #include "sys.h"
 #include "touchscreen.h"
 
-#define ADC_SAMPLE_PNUM 15													// AD 采样点数数
-#define ADC_SAMPLE_CNUM 6													// AD 采样通道数
+#define ADC_SAMPLE_LIMIT 3250 // 温度传感器采样电压阈值
+#define ADC_SAMPLE_PNUM 15    // AD 采样点数数
+#define ADC_SAMPLE_CNUM 6     // AD 采样通道数
 
-#define THERMOCOUPLE_CHANNEL_E ADC_Channel_14
+#define THERMOCOUPLE_CHANNEL_E ADC_Channel_7
+#define THERMOCOUPLE_CHANNEL_K ADC_Channel_14
 #define THERMOCOUPLE_CHANNEL_J ADC_Channel_15
-#define THERMOCOUPLE_CHANNEL_K ADC_Channel_7
 
 #define TEMP_GAIN1 0.17
 #define TEMP_GAIN2 0

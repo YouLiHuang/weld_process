@@ -367,12 +367,7 @@ static void Weld_Preparation()
 
 	/*------------------------------------------参数限制------------------------------------------*/
 	if (weld_controller->weld_time[1] > 999)
-	{
 		weld_controller->weld_time[1] = 999;
-		/*send to screen*/
-		command_set_comp_val("param_page.time2", "val", 999);
-	}
-
 	if (weld_controller->weld_time[2] > 9999)
 		weld_controller->weld_time[2] = 9999;
 	if (weld_controller->weld_time[3] > 999)

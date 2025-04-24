@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-04-21 09:47:03
+ * @LastEditTime: 2025-04-24 17:22:09
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -527,70 +527,6 @@ and the time slice length is 1 system clock beat, 1 ms
 	OS_CRITICAL_EXIT();			  // 退出临界区
 	OSTaskDel((OS_TCB *)0, &err); // 删除start_task任务自身
 }
-#if 0
- /**
-  * @description: used to identufy differernt thermocouple 
-  * @return {*}
-  */
- static bool Temp_up_check(void)
- {
- 
-	 uint16_t Init_Temperature = 0;
-	 uint16_t New_Temperature = 0;
- 
-	 Init_Temperature = temp_convert(current_Thermocouple);
-	 TIM1_PWM_Init();
-	 TIM4_PWM_Init();
-	 TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
-	 TIM_ForcedOC1Config(TIM4, TIM_ForcedAction_InActive);
-	 TIM_Cmd(TIM1, DISABLE);
-	 TIM_Cmd(TIM4, DISABLE);
-	 /*开启定时器*/
-	 uint16_t tmp_ccmr1 = 0;
-	 tmp_ccmr1 = TIM1->CCMR1;
-	 tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
-	 tmp_ccmr1 |= ((uint16_t)0x0060);
-	 TIM1->CCMR1 = tmp_ccmr1;
- 
-	 tmp_ccmr1 = TIM4->CCMR1;
-	 tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
-	 tmp_ccmr1 |= ((uint16_t)0x0060);
-	 TIM4->CCMR1 = tmp_ccmr1;
-	 TIM_SetCompare1(TIM1, 0);
-	 TIM_SetCompare1(TIM4, 0);
-	 TIM_Cmd(TIM4, ENABLE);
-	 TIM_Cmd(TIM1, ENABLE);
- 
-	 // 重启定时器，固定脉宽pwm输出50ms，检测温升。
-	 TIM_SetCompare1(TIM1, PD_MAX / 2);
-	 TIM_SetCompare1(TIM4, PD_MAX / 2);
- 
-	 // 加热80ms
-	 delay_ms(100);
- 
-	 // 关闭
-	 TIM_SetCompare1(TIM1, 0);
-	 TIM_SetCompare1(TIM4, 0);
-	 TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
-	 TIM_ForcedOC1Config(TIM4, TIM_ForcedAction_InActive);
-	 TIM_Cmd(TIM4, DISABLE);
-	 TIM_Cmd(TIM1, DISABLE);
- 
-	 // 延时检测温度
-	 delay_ms(100);
-	 New_Temperature = temp_convert(current_Thermocouple);
- 
-	 /*判断温度变化*/
-	 if (New_Temperature < Init_Temperature + 5 || New_Temperature > 4 * Init_Temperature || New_Temperature > 200)
-		 return false;
-	 /*热电偶恢复正常*/
-	 else
-	 {
-		 return true;
-	 }
-	 return true;
- }
-#endif
 
 static void Thermocouple_check(void);
 /*--------------------------------------------------------------------------------------*/
@@ -901,27 +837,69 @@ static void Overload_check(void)
 		}
 	}
 
-	// if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 0)
-	// {
-	// 	OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
-	// 	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 0)
-	// 	{
-	// 		err_get_type(err_ctrl, MCU_OVER_HEAT)->state = true;
-	//
-	// 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-	// 	}
-	// }
+#if 0
+	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 0)
+	{
+		OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
+		if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 0)
+		{
+			err_get_type(err_ctrl, MCU_OVER_HEAT)->state = true;
+	
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		}
+	}
 
-	// if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 0)
-	// {
-	// 	OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
-	// 	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 0)
-	// 	{
-	// 		err_get_type(err_ctrl, MCU_OVER_HEAT)->state = true;
-	//
-	// 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-	// 	}
-	// }
+	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 0)
+	{
+		OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
+		if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 0)
+		{
+			err_get_type(err_ctrl, MCU_OVER_HEAT)->state = true;
+	
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		}
+	}
+
+#endif
+
+	/*temp overload protect 1*/
+	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
+	if (weld_controller->realtime_temp > USER_SET_MAX_TEMP)
+	{
+		err_get_type(err_ctrl, TEMP_UP)->state = true;
+		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+	}
+
+	/*temp overload protect 2*/
+	switch (current_Thermocouple->type)
+	{
+	case E_TYPE:
+		if (ADC_Value_avg(THERMOCOUPLE_CHANNEL_E) > ADC_SAMPLE_LIMIT)
+		{
+			err_get_type(err_ctrl, TEMP_UP)->state = true;
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		}
+
+		break;
+
+	case K_TYPE:
+		if (ADC_Value_avg(THERMOCOUPLE_CHANNEL_J) > ADC_SAMPLE_LIMIT)
+		{
+			err_get_type(err_ctrl, TEMP_UP)->state = true;
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		}
+
+		break;
+
+	case J_TYPE:
+		if (ADC_Value_avg(THERMOCOUPLE_CHANNEL_K) > ADC_SAMPLE_LIMIT)
+		{
+			err_get_type(err_ctrl, TEMP_UP)->state = true;
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		}
+
+		break;
+	}
 }
 
 /**
