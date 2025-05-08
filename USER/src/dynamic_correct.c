@@ -162,21 +162,21 @@ void dynamic_param_adjust(void)
     uint16_t Final_PWM = 0;
     if (record_cnt < STORAGE_DEPTH)
     {
-        low_pass_Filter((float *)PWM_Record, record_cnt, PWM_Filter_Buf, 1000, 1000);
+        // low_pass_Filter((float *)PWM_Record, record_cnt, PWM_Filter_Buf, 1000, 1000);
         /*Calculate the average*/
         for (uint16_t i = 0; i < record_cnt; i++)
         {
-            sum += PWM_Filter_Buf[i];
+            sum += PWM_Record[i];
         }
-        sum /= record_cnt;
+				Final_PWM = sum / record_cnt;
     }
     else
     {
-        low_pass_Filter((float *)PWM_Record, STORAGE_DEPTH, PWM_Filter_Buf, 1000, 1000);
+        // low_pass_Filter((float *)PWM_Record, STORAGE_DEPTH, PWM_Filter_Buf, 1000, 1000);
         /*Calculate the average*/
         for (uint16_t i = 0; i < STORAGE_DEPTH; i++)
         {
-            sum += PWM_Filter_Buf[i];
+            sum += PWM_Record[i];
         }
         Final_PWM = sum / STORAGE_DEPTH;
     }

@@ -23,6 +23,7 @@
 #include "dynamic_correct.h"
 
 #define PWM_SAMPLE 1
+#define REVERSE_CHECK 0
 
 /*实时控制*/
 extern weld_ctrl *weld_controller;
@@ -219,6 +220,7 @@ void TIM5_IRQHandler(void)
 			break;
 			/*--------------------------------------------------------------------first step----------------------------------------------------------------------*/
 		case FIRST_STATE:
+#if REVERSE_CHECK
 			/*reverse check*/
 			if (last_temp < weld_controller->realtime_temp)
 			{
@@ -232,6 +234,8 @@ void TIM5_IRQHandler(void)
 			}
 			/*record last time temp*/
 			last_temp = weld_controller->realtime_temp;
+#endif
+
 			/*Time updates*/
 			weld_controller->step_time_tick++;
 
@@ -244,6 +248,8 @@ void TIM5_IRQHandler(void)
 
 			/*--------------------------------------------------------------------second step----------------------------------------------------------------------*/
 		case SECOND_STATE:
+
+#if REVERSE_CHECK
 			/*reverse check*/
 			if (last_temp < weld_controller->realtime_temp)
 			{
@@ -257,6 +263,8 @@ void TIM5_IRQHandler(void)
 			}
 			/*record last time temp*/
 			last_temp = weld_controller->realtime_temp;
+
+#endif
 
 			/*Time updates*/
 			weld_controller->step_time_tick++;

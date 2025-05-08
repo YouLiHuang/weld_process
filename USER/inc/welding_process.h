@@ -24,7 +24,7 @@ void welding_process(void);
 #define HOST_WELD_CTRL 1        // 上位机控制焊接
 
 /*温升控制*/
-#define STABLE_ERR 10           // 稳态误差补偿
+#define STABLE_ERR 27           // 稳态误差补偿
 #define USER_SET_MAX_TEMP 650.0 // 允许用户设定的最大温度
 #define USER_SET_MIN_TEMP 200.0 // 允许用户设定的最小温度
 #define MAX_WELD_TIME 9999      // 最长焊接用时

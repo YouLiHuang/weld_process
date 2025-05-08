@@ -327,7 +327,7 @@ int main(void)
 	temp_draw_ctrl = new_temp_draw_ctrl(realtime_temp_buf, 500, 2000, 500);
 
 	/*默认e型热电偶*/
-	current_Thermocouple = &Thermocouple_Lists[1];
+	current_Thermocouple = &Thermocouple_Lists[0];
 
 	/*------------------------------------------------------Hardware layer data initialization-----------------------------------------------------------*/
 	/*Peripheral initialization*/
@@ -788,13 +788,13 @@ static void Thermocouple_check(void)
 		uint8_t IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E);
 		if (IO_val == 0)
 		{
-			if (err_ctrl->sensor_err_cnt++ > SENSOR_ERR_THRESHOLD)
-			{
-				err_ctrl->sensor_err_cnt = 0;
-				Page_to(page_param, ALARM_PAGE);
-				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
-			}
+			//			if (err_ctrl->sensor_err_cnt++ > SENSOR_ERR_THRESHOLD)
+			//			{
+			//				err_ctrl->sensor_err_cnt = 0;
+			//				Page_to(page_param, ALARM_PAGE);
+			//				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+			//				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
+			//			}
 		}
 		GPIO_ResetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
 		break;
@@ -1357,7 +1357,7 @@ static void page_process(Page_ID id)
 		if (err == OS_ERR_NONE)
 		{
 			uint16_t temp_display[3] = {0};
-			char *temp_display_name[] = {"step1", "step2", "step3"};
+			char *temp_display_name[] = {"temp11", "temp22", "temp33"};
 			/*三段均温显示*/
 			temp_display[0] = weld_controller->second_step_start_temp;
 			uint32_t sum = 0;
@@ -1453,18 +1453,18 @@ static void page_process(Page_ID id)
 		OSSemPend(&TEMP_DISPLAY_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
-			uint16_t temp_display[3] = {0};
-			char *temp_display_name[] = {"step1", "step2", "step3"};
-			/*三段均温显示*/
-			temp_display[0] = weld_controller->second_step_start_temp;
-			uint32_t sum = 0;
-			for (uint16_t i = temp_draw_ctrl->second_step_stable_index; i < temp_draw_ctrl->second_step_index_end; i++)
-				sum += temp_draw_ctrl->temp_buf[i];
-			temp_display[1] = sum / (temp_draw_ctrl->second_step_index_end - temp_draw_ctrl->second_step_stable_index + 1);
+			// uint16_t temp_display[3] = {0};
+			// char *temp_display_name[] = {"step1", "step2", "step3"};
+			// /*三段均温显示*/
+			// temp_display[0] = weld_controller->second_step_start_temp;
+			// uint32_t sum = 0;
+			// for (uint16_t i = temp_draw_ctrl->second_step_stable_index; i < temp_draw_ctrl->second_step_index_end; i++)
+			// 	sum += temp_draw_ctrl->temp_buf[i];
+			// temp_display[1] = sum / (temp_draw_ctrl->second_step_index_end - temp_draw_ctrl->second_step_stable_index + 1);
 
-			/*一二段均值发送到触摸屏*/
-			command_set_comp_val(temp_display_name[0], "val", temp_display[0]);
-			command_set_comp_val(temp_display_name[1], "val", temp_display[1]);
+			// /*一二段均值发送到触摸屏*/
+			// command_set_comp_val(temp_display_name[0], "val", temp_display[0]);
+			// command_set_comp_val(temp_display_name[1], "val", temp_display[1]);
 
 			/*绘图控制器复位*/
 			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);

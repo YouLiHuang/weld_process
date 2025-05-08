@@ -18,7 +18,7 @@
 #define PROTECT_ON 1 // 保护开关
 
 #define WIN_WIDTH 525        // 显示区域宽度
-#define DRAW_RESERVE 10      // 绘图余量
+#define DRAW_RESERVE 50      // 绘图余量
 #define DRAW_AREA_HIGH 210   // 绘图组件高度
 #define MAX_TEMP_DISPLAY 780 // 最大能显示的温度
 #define TEMP_BUF_MAX_LEN 3000

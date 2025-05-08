@@ -310,10 +310,10 @@ static void down_temp_line()
 		if (temp > MAX_TEMP_DISPLAY)			   // 限幅
 			temp = MAX_TEMP_DISPLAY;
 
-		temp_display = temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY; // 坐标放缩
-		draw_point(temp_display);								 // 绘图
-		command_set_comp_val("temp33", "val", temp_display);	 // 显示实时温度数值
-		delay_ms(temp_draw_ctrl->delta_tick);					 // 采样间隔
+		temp_display = temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY;			  // 坐标放缩
+		draw_point(temp_display);											  // 绘图
+		command_set_comp_val("step3", "val", weld_controller->realtime_temp); // 显示实时温度数值
+		delay_ms(temp_draw_ctrl->delta_tick);								  // 采样间隔
 		index++;
 	}
 }
@@ -529,6 +529,7 @@ static void First_Step()
 #if REALTIME_TEMP_DISPLAY == 1
 		if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
 			draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
+		command_set_comp_val("step1", "val", weld_controller->realtime_temp);
 #endif
 	}
 
@@ -558,6 +559,7 @@ static void Second_Step()
 	weld_controller->state = SECOND_STATE;
 	/*start sample*/
 	temp_draw_ctrl->second_step_index_start = temp_draw_ctrl->current_index;
+	temp_draw_ctrl->second_step_stable_index = 0;
 	/*reset timer*/
 	weld_controller->step_time_tick = 0;
 	/*heat compensation reset*/
@@ -583,7 +585,7 @@ static void Second_Step()
 			break;
 		}
 		/*second step temp avg*/
-		if (weld_controller->realtime_temp >= weld_controller->weld_temp[1] && temp_draw_ctrl->second_step_stable_index == 0)
+		if (weld_controller->realtime_temp >= weld_controller->weld_temp[1] * 0.95 && temp_draw_ctrl->second_step_stable_index == 0)
 		{
 			if (weld_controller->pid_ctrl->stable_threshold_cnt >= weld_controller->pid_ctrl->stable_threshold)
 				temp_draw_ctrl->second_step_stable_index = temp_draw_ctrl->current_index;
@@ -623,6 +625,7 @@ static void Second_Step()
 #if REALTIME_TEMP_DISPLAY == 1
 		if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
 			draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
+		command_set_comp_val("step2", "val", weld_controller->realtime_temp);
 #endif
 	}
 
@@ -665,6 +668,7 @@ static void Third_Step()
 #if REALTIME_TEMP_DISPLAY == 1
 		if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
 			draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
+		command_set_comp_val("step3", "val", weld_controller->realtime_temp);
 #endif
 
 		/*limit output execute*/
@@ -983,7 +987,10 @@ void welding_process(void)
 			weld_real_time_ctrl();
 
 			/*绘制降温曲线*/
-			down_temp_line();
+			if (page_param->id == WAVE_PAGE)
+			{
+				down_temp_line();
+			}
 
 			/*三段温度显示&计数值更新*/
 			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
@@ -1024,7 +1031,10 @@ void welding_process(void)
 			weld_real_time_ctrl();
 
 			/*绘制降温曲线*/
-			down_temp_line();
+			if (page_param->id == WAVE_PAGE)
+			{
+				down_temp_line();
+			}
 
 			/*三段温度显示&计数值更新*/
 			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
