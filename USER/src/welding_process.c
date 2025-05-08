@@ -22,7 +22,7 @@ volatile WELD_MODE welding_flag = IDEAL_MODE;				   // Welding different stage m
 extern weld_ctrl *weld_controller;							   // Welding controllers
 static pid_fitting_curve fitting_curves = {0.0002, -0.23, 76}; // pid Parameters dynamically fit curves ax*bx+x+c
 Steady_state_coefficient steady_coefficient = {2.05, 1680.0};  // Steady-state fitting curve coefficient
-Correction_factor corrct_factor = {0.75, 0.5};				   // Steady-state fitting curve correction coefficient
+Correction_factor corrct_factor = {0.5, 0.75};				   // Steady-state fitting curve correction coefficient
 /*------------------------------------------------------------------------------------------------------------------------------*/
 
 /*-----------------------------------------------Compatible touchscreen data interface------------------------------------------*/
@@ -223,7 +223,8 @@ static void pid_param_dynamic_reload(void *controller, pid_fitting_curve fitting
 	uint8_t new_kd = 0;
 	switch (ctrl->state)
 	{
-
+	case PRE_STATE:
+		break;
 	case FIRST_STATE:
 		new_kd = fitting_curves.a * setting * setting +
 				 fitting_curves.b * setting +
@@ -238,7 +239,7 @@ static void pid_param_dynamic_reload(void *controller, pid_fitting_curve fitting
 		ctrl->pid_ctrl->ki = 0.028;
 		ctrl->pid_ctrl->kd = new_kd;
 		break;
-	case PRE_STATE:
+
 	case SECOND_STATE:
 		if (ctrl->weld_time[1] <= 100)
 		{
