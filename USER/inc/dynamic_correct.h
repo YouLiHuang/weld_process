@@ -2,12 +2,9 @@
 #define DYNAMIC_H
 
 #include "stdint.h"
-typedef struct best_param
-{
-    uint16_t fast_rise_duty;
-    uint16_t fast_rise_time;
-    uint16_t start_temp;
-} best_param;
+
+#define STABLE_THRESHOLD 30
+#define TEMP_STABLE_ERR 5
 
 typedef struct point_save
 {

@@ -17,8 +17,8 @@
 #define ADC_SAMPLE_PNUM 15    // AD 采样点数数
 #define ADC_SAMPLE_CNUM 6     // AD 采样通道数
 
-#define THERMOCOUPLE_CHANNEL_E ADC_Channel_7
-#define THERMOCOUPLE_CHANNEL_K ADC_Channel_14
+#define THERMOCOUPLE_CHANNEL_K ADC_Channel_7
+#define THERMOCOUPLE_CHANNEL_E ADC_Channel_14
 #define THERMOCOUPLE_CHANNEL_J ADC_Channel_15
 
 #define TEMP_GAIN1 0.17

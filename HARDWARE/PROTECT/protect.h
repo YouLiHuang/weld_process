@@ -27,10 +27,12 @@
 #define DOWN_VOLTAGE 2600
 #define VOLTAGE_FLOW 2048
 #define ERR_LIST_MAX_LEN 16
+
 /*threshold kinds*/
 #define OVER_TEMP_THRESHOLD 20
 #define LOW_TEMP_THRESHOLD 20
 #define SENSOR_ERR_THRESHOLD 10
+#define REVERSE_ERR_THRESHOLD 20
 
 typedef bool (*err_callback)(u8 index);
 typedef bool (*err_reset_callback)(u8 index);
@@ -73,14 +75,16 @@ typedef struct error_ctrl
     uint8_t index;           /*point to current error handle*/
     uint8_t max_len;         /*the limit of error handle can be register*/
 
-    uint8_t temp_over_threshold;  /*High temperature count threshold*/
-    uint8_t temp_low_threshold;   /*Low temperature count threshold*/
-    uint8_t sensor_err_threshold; /*Sensor error threshold*/
+    uint8_t temp_over_threshold;          /*High temperature count threshold*/
+    uint8_t temp_low_threshold;           /*Low temperature count threshold*/
+    uint8_t sensor_err_threshold;         /*Sensor error threshold*/
+    uint8_t Reverse_connection_threshold; /*Reverse connection error threshold*/
 
     /*The number of occurrences of the three errors*/
     uint8_t temp_over_cnt;
     uint8_t temp_low_cnt;
     uint8_t sensor_err_cnt;
+    uint8_t Reverse_connection_cnt;
 
 } Error_ctrl;
 

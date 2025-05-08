@@ -18,11 +18,11 @@
 extern uint16_t kalman_comp_temp; // Temperature compensation value
 #endif
 /*---------------------------------------------------Real-time control---------------------------------------------------------*/
-volatile WELD_MODE welding_flag = IDEAL_MODE;						 // Welding different stage markers
-extern weld_ctrl *weld_controller;									 // Welding controllers
-static pid_fitting_curve fitting_curves = {0.0002, -0.23, 76};		 // pid Parameters dynamically fit curves ax*bx+x+c
-static Steady_state_coefficient steady_coefficient = {2.05, 1680.0}; // Steady-state fitting curve coefficient
-static Correction_factor corrct_factor = {0.75, 0.5};				 // Steady-state fitting curve correction coefficient
+volatile WELD_MODE welding_flag = IDEAL_MODE;				   // Welding different stage markers
+extern weld_ctrl *weld_controller;							   // Welding controllers
+static pid_fitting_curve fitting_curves = {0.0002, -0.23, 76}; // pid Parameters dynamically fit curves ax*bx+x+c
+Steady_state_coefficient steady_coefficient = {2.05, 1680.0};  // Steady-state fitting curve coefficient
+Correction_factor corrct_factor = {0.75, 0.5};				   // Steady-state fitting curve correction coefficient
 /*------------------------------------------------------------------------------------------------------------------------------*/
 
 /*-----------------------------------------------Compatible touchscreen data interface------------------------------------------*/
@@ -541,87 +541,12 @@ static void First_Step()
 	temp_draw_ctrl->first_step_index_end = temp_draw_ctrl->current_index - 1;
 }
 
-extern uint16_t debug_index;
-extern uint16_t stable_cnt;
-
-#if 0
-static void fast_rise_step(void)
-{
-
-	weld_controller->state = PRE_STATE;
-	/*Steady-state estimation output (coefficients can be added here for correction)*/
-	weld_controller->final_duty = (corrct_factor.base + corrct_factor.amplitude * weld_controller->temp_gain2) *
-								  (steady_coefficient.slope * weld_controller->weld_temp[1] + steady_coefficient.intercept);
-	/*pid reload*/
-	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[1]);
-
-	/*correct*/
-	if (best.fast_rise_duty != 0 && best.fast_rise_time != 0 && best.start_temp != 0)
-	{
-		if (weld_controller->second_step_start_temp > best.start_temp)
-		{
-			float percent = (float)(weld_controller->second_step_start_temp - best.start_temp) /
-							(float)(weld_controller->weld_temp[1] - best.start_temp);
-			weld_controller->fast_rise_time -= percent * best.fast_rise_time;
-		}
-		else
-		{
-			float percent = (float)(best.start_temp - weld_controller->second_step_start_temp) /
-							(float)(weld_controller->weld_temp[1] - best.start_temp);
-			weld_controller->fast_rise_time += percent * best.fast_rise_time;
-		}
-	}
-
-	uint16_t rise_time = weld_controller->fast_rise_time;
-	if (rise_time > MAX_FAST_RISE_TIME)
-		rise_time = MAX_FAST_RISE_TIME;
-
-	uint16_t rise_step_duty = weld_controller->fast_rise_duty;
-	if (rise_step_duty > PD_MAX)
-		rise_step_duty = PD_MAX;
-
-	weld_controller->weld_time_tick = 0;
-
-	TIM_Cmd(TIM5, ENABLE);
-	while (weld_controller->step_time_tick < rise_time)
-	{
-		/*alarm*/
-		if (weld_controller->realtime_temp > weld_controller->alarm_temp[2])
-		{
-			stop_weld();
-			err_get_type(err_ctrl, TEMP_UP)->state = true;
-			OS_ERR err;
-			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-			break;
-		}
-
-		TIM_SetCompare1(TIM1, rise_step_duty);
-		TIM_SetCompare1(TIM4, rise_step_duty);
-
-#if REALTIME_TEMP_DISPLAY == 1
-		if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
-			draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
-#endif
-	}
-	weld_controller->final_temp_record = weld_controller->realtime_temp;
-
-	/*timer reset*/
-	TIM_Cmd(TIM5, DISABLE);
-	TIM5->CNT = 0;
-	/*end of step*/
-	weld_controller->state = IDEAL_STATE;
-}
-#endif
-
 /**
  * @description: In the second stage of welding, the temperature is maintained
  * @return {*}
  */
 static void Second_Step()
 {
-	/*test*/
-	debug_index = 0;
-	stable_cnt = 0;
 
 	/*---user config param---*/
 	uint16_t hold_time = (TRANSITION_TIME_BASE + TRANSITION_TIME_CORRECT * weld_controller->temp_gain1) * TRANSITION_TIME;
@@ -902,9 +827,8 @@ static void weld_real_time_ctrl()
 	{
 		reset_forword_ctrl(weld_controller->pid_ctrl);
 		weld_controller->second_step_start_temp = temp_convert(current_Thermocouple); // 起始温度
-		// fast_rise_step();															  // 速升
-		Second_Step();					 // 二阶段
-		if (true == err_occur(err_ctrl)) // 唤醒错误处理线程
+		Second_Step();																  // 二阶段
+		if (true == err_occur(err_ctrl))											  // 唤醒错误处理线程
 			goto STOP_LABEL;
 	}
 
@@ -921,7 +845,10 @@ static void weld_real_time_ctrl()
 	End_of_Weld();
 
 	/*动态修正参数*/
-	dynamic_param_adjust();
+	if (get_comp(temp_page_list, "switch")->val == 1)
+	{
+		dynamic_param_adjust();
+	}
 
 STOP_LABEL:
 	if (true == err_occur(err_ctrl))

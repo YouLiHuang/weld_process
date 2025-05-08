@@ -51,12 +51,17 @@ Error_ctrl *new_error_ctrl(void)
 		ctrl->err_list = (error_handle **)malloc(ERR_LIST_MAX_LEN * sizeof(error_handle *)); // 允许最大注册16种错误
 		ctrl->error_cnt = 0;
 		ctrl->index = 0;
+
+		/*err cnt*/
 		ctrl->sensor_err_threshold = SENSOR_ERR_THRESHOLD;
 		ctrl->temp_over_threshold = OVER_TEMP_THRESHOLD;
 		ctrl->temp_low_threshold = LOW_TEMP_THRESHOLD;
+		ctrl->Reverse_connection_threshold = REVERSE_ERR_THRESHOLD;
+
 		ctrl->sensor_err_cnt = 0;
 		ctrl->temp_over_cnt = 0;
 		ctrl->temp_low_cnt = 0;
+		ctrl->Reverse_connection_cnt = 0;
 		return ctrl;
 	}
 	return NULL;

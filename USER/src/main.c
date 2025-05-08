@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-04-24 17:22:09
+ * @LastEditTime: 2025-05-08 09:31:15
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -29,7 +29,6 @@
 #include "usbh_msc_usr.h"
 #include "log.h"
 
-uint16_t debug_sample[2000] = {0};
 
 /* Private define ------------------------------------------------------------*/
 /*user config*/
@@ -575,6 +574,7 @@ static bool Current_out_of_ctrl_reset_callback(uint8_t index)
 {
 
 	bool ret = false;
+
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
 	err_ctrl->err_list[index]->state = false; // clear error state
 	ret = true;
@@ -634,7 +634,7 @@ void error_task(void *p_arg)
 			/*3、err handle*/
 			Page_to(page_param, ALARM_PAGE);
 			page_param->id = ALARM_PAGE;
-			for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
+			for (uint8_t i = 0; i < err_ctrl->max_len; i++)
 			{
 				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
 					err_ctrl->err_list[i]->error_callback(i);
@@ -643,7 +643,8 @@ void error_task(void *p_arg)
 			OSSemPend(&ALARM_RESET_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
 			if (err == OS_ERR_NONE)
 			{
-				for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
+				ERROR1 = 0; // error signal reset
+				for (uint8_t i = 0; i < err_ctrl->max_len; i++)
 				{
 					if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->reset_callback != NULL)
 						err_ctrl->err_list[i]->reset_callback(i);
@@ -709,21 +710,21 @@ static void Power_on_check(void)
 	}
 
 	/*load last time adjust data*/
-	switch (current_Thermocouple->type)
-	{
-	case K_TYPE:
-		current_Thermocouple->Bias = SPI_Load_Word(CARLIBRATION_BASE(remember_array));
-		break;
-	case E_TYPE:
-		current_Thermocouple->Bias = SPI_Load_Word(CARLIBRATION_BASE(remember_array) + ADDR_OFFSET);
-		break;
-	case J_TYPE:
-		current_Thermocouple->Bias = SPI_Load_Word(CARLIBRATION_BASE(remember_array) + 2 * ADDR_OFFSET);
-		break;
+	// switch (current_Thermocouple->type)
+	// {
+	// case K_TYPE:
+	// 	current_Thermocouple->Bias = SPI_Load_Word(CARLIBRATION_BASE(remember_array));
+	// 	break;
+	// case E_TYPE:
+	// 	current_Thermocouple->Bias = SPI_Load_Word(CARLIBRATION_BASE(remember_array) + ADDR_OFFSET);
+	// 	break;
+	// case J_TYPE:
+	// 	current_Thermocouple->Bias = SPI_Load_Word(CARLIBRATION_BASE(remember_array) + 2 * ADDR_OFFSET);
+	// 	break;
 
-	default:
-		break;
-	}
+	// default:
+	// 	break;
+	// }
 
 #endif
 }
@@ -1516,10 +1517,10 @@ static void page_process(Page_ID id)
 		if (OS_ERR_NONE == err)
 		{
 
-//			if (weld_controller->realtime_temp < 2 * ROOM_TEMP && weld_controller->realtime_temp > 0.5 * ROOM_TEMP) // 在室温下才允许校准（10-40°C范围内才允许校准）
-//				Thermocouple_err_eliminate();
-//			else // 焊头尚未冷却，警报
-//				command_set_comp_val("warning", "aph", 127);
+			//			if (weld_controller->realtime_temp < 2 * ROOM_TEMP && weld_controller->realtime_temp > 0.5 * ROOM_TEMP) // 在室温下才允许校准（10-40°C范围内才允许校准）
+			//				Thermocouple_err_eliminate();
+			//			else // 焊头尚未冷却，警报
+			//				command_set_comp_val("warning", "aph", 127);
 			Thermocouple_err_eliminate();
 		}
 		/*5、显示实时温度*/

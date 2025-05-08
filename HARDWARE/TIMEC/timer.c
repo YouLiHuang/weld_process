@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-15 19:17:48
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-25 10:22:11
+ * @LastEditTime: 2025-05-08 10:27:27
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -20,6 +20,9 @@
 #include "crc16.h"
 #include "tempcomp.h"
 #include "touchscreen.h"
+#include "dynamic_correct.h"
+
+#define PWM_SAMPLE 1
 
 /*实时控制*/
 extern weld_ctrl *weld_controller;
@@ -39,6 +42,12 @@ uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN] = {0}; // Temperature preservation 
 
 /*热电偶*/
 extern Thermocouple *current_Thermocouple;
+
+/*占空比数据记录——用于后续动态控制*/
+extern uint16_t PWM_Record[500];
+extern uint16_t record_index;
+extern uint16_t Stable_Threshold_cnt;
+extern uint16_t record_cnt;
 
 /**
  * @description: create an new controller
@@ -169,9 +178,7 @@ void TIM5_Int_Init(void)
 
 static volatile uint16_t current_temp_comp = 0;
 
-uint16_t debug_index = 0;
-uint16_t stable_cnt = 0;
-extern uint16_t debug_sample[2000];
+static uint16_t last_temp;
 
 /**
  * @description: Timer 5 interrupt function - real-time closed-loop control of welding
@@ -186,8 +193,10 @@ void TIM5_IRQHandler(void)
 
 	if (TIM_GetITStatus(TIM5, TIM_IT_Update) == SET)
 	{
+
 		/*feedback*/
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
+
 #if KALMAN_FILTER == 1
 		uint16_t kalman_filter_temp = KalmanFilter(&kfp, weld_controller->realtime_temp); // 卡尔曼滤波
 #if COMPENSATION == 1
@@ -210,11 +219,24 @@ void TIM5_IRQHandler(void)
 			break;
 			/*--------------------------------------------------------------------first step----------------------------------------------------------------------*/
 		case FIRST_STATE:
+			/*reverse check*/
+			if (last_temp < weld_controller->realtime_temp)
+			{
+				if (err_ctrl->Reverse_connection_cnt++ > err_ctrl->Reverse_connection_threshold)
+				{
+					err_ctrl->Reverse_connection_cnt = 0;
+					err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+					OS_ERR err;
+					OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+				}
+			}
+			/*record last time temp*/
+			last_temp = weld_controller->realtime_temp;
 			/*Time updates*/
 			weld_controller->step_time_tick++;
 
-			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0],
-														 current_temp_comp,
+			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + STABLE_ERR,
+														 weld_controller->realtime_temp,
 														 weld_controller->Duty_Cycle,
 														 weld_controller->pid_ctrl);
 
@@ -222,34 +244,46 @@ void TIM5_IRQHandler(void)
 
 			/*--------------------------------------------------------------------second step----------------------------------------------------------------------*/
 		case SECOND_STATE:
-			/*Time updates*/
-			weld_controller->step_time_tick++;
-			if (weld_controller->enter_transition_flag == false)
+			/*reverse check*/
+			if (last_temp < weld_controller->realtime_temp)
 			{
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1],
-															 current_temp_comp,
-															 weld_controller->Duty_Cycle,
-															 weld_controller->pid_ctrl);
-			}
-			else
-			{
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
-															 current_temp_comp,
-															 weld_controller->Duty_Cycle,
-															 weld_controller->pid_ctrl);
-
-				if (weld_controller->pid_ctrl->err < 5)
+				if (err_ctrl->Reverse_connection_cnt++ > err_ctrl->Reverse_connection_threshold)
 				{
-					if (stable_cnt > 30)
-					{
-						if (debug_index > sizeof(debug_sample) / sizeof(uint16_t))
-							debug_index = 0;
-						debug_sample[debug_index++] = weld_controller->Duty_Cycle;
-					}
-					else
-						stable_cnt++;
+					err_ctrl->Reverse_connection_cnt = 0;
+					err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+					OS_ERR err;
+					OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 				}
 			}
+			/*record last time temp*/
+			last_temp = weld_controller->realtime_temp;
+
+			/*Time updates*/
+			weld_controller->step_time_tick++;
+
+			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
+														 weld_controller->realtime_temp,
+														 weld_controller->Duty_Cycle,
+														 weld_controller->pid_ctrl);
+
+#if PWM_SAMPLE
+			if (weld_controller->pid_ctrl->err < TEMP_STABLE_ERR)
+			{
+				/*Make sure the temperature is stable before sample*/
+				if (Stable_Threshold_cnt > STABLE_THRESHOLD)
+				{
+					/*Ring Collection*/
+					if (record_index < sizeof(PWM_Record) / sizeof(uint16_t))
+						PWM_Record[record_index++] = weld_controller->Duty_Cycle;
+					else
+						record_index = 0;
+					/*total count*/
+					record_cnt++;
+				}
+				else
+					Stable_Threshold_cnt++;
+			}
+#endif
 
 			break;
 
@@ -271,7 +305,7 @@ void TIM5_IRQHandler(void)
 		if (weld_controller->weld_time_tick % temp_draw_ctrl->sample_freq == 0)
 		{
 			if (temp_draw_ctrl->current_index < temp_draw_ctrl->buf_len_max)
-				temp_draw_ctrl->temp_buf[temp_draw_ctrl->current_index++] = current_temp_comp;
+				temp_draw_ctrl->temp_buf[temp_draw_ctrl->current_index++] = weld_controller->realtime_temp;
 		}
 	}
 
@@ -293,10 +327,9 @@ void TIM3_IRQHandler(void)
 #endif
 
 	if (TIM_GetITStatus(TIM3, TIM_IT_Update) == SET)
-	{
-		weld_controller->weld_time_tick += 1;
-	}
+		weld_controller->weld_time_tick++;
 	TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+
 #if SYSTEM_SUPPORT_OS
 	OSIntExit();
 #endif

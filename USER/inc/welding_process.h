@@ -24,15 +24,15 @@ void welding_process(void);
 #define HOST_WELD_CTRL 1        // 上位机控制焊接
 
 /*温升控制*/
-#define STABLE_ERR 20           // 稳态误差补偿
+#define STABLE_ERR 10           // 稳态误差补偿
 #define USER_SET_MAX_TEMP 650.0 // 允许用户设定的最大温度
 #define USER_SET_MIN_TEMP 200.0 // 允许用户设定的最小温度
 #define MAX_WELD_TIME 9999      // 最长焊接用时
 
 /*user param*/
 #define TRANSITION_TIME 100
-#define TRANSITION_TIME_BASE 0.5
-#define TRANSITION_TIME_CORRECT 2.5
+#define TRANSITION_TIME_BASE 0.1
+#define TRANSITION_TIME_CORRECT 2.9
 #define DEFAULT_GAIN1 0.2
 #define DEFAULT_GAIN2 0.4
 
