@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-25 10:31:52
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-08 10:55:32
+ * @LastEditTime: 2025-05-08 10:56:59
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -15,6 +15,8 @@
 #include "string.h"
 
 #define STORAGE_DEPTH 500
+#define MAX_CORRECT_GAIN 1.25f
+#define MIN_CORRECT_GAIN 0.75f
 
 uint16_t PWM_Record[STORAGE_DEPTH];
 float PWM_Filter_Buf[STORAGE_DEPTH];
@@ -183,13 +185,13 @@ void dynamic_param_adjust(void)
     weld_controller->final_duty = steady_coefficient.slope * weld_controller->weld_temp[1] + steady_coefficient.intercept;
     /*Curve Correction*/
     float Proportion = (float)Final_PWM / (float)weld_controller->final_duty;
-    if (Proportion < 0.75f)
+    if (Proportion < MIN_CORRECT_GAIN)
     {
-        Proportion = 0.75;
+        Proportion = MIN_CORRECT_GAIN;
     }
-    else if (Proportion > 1.25f)
+    else if (Proportion > MAX_CORRECT_GAIN)
     {
-        Proportion = 1.25;
+        Proportion = MAX_CORRECT_GAIN;
     }
 
     steady_coefficient.slope *= Proportion;
