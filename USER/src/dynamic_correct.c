@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-25 10:31:52
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-08 10:40:10
+ * @LastEditTime: 2025-05-08 10:54:07
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -157,6 +157,7 @@ void dynamic_param_adjust(void)
 
     /*修正热量补偿曲线*/
     uint32_t sum = 0;
+    uint16_t Final_PWM = 0;
     if (record_cnt < STORAGE_DEPTH)
     {
         low_pass_Filter((float *)PWM_Record, record_cnt, PWM_Filter_Buf, 1000, 1000);
@@ -175,13 +176,22 @@ void dynamic_param_adjust(void)
         {
             sum += PWM_Filter_Buf[i];
         }
-        sum /= STORAGE_DEPTH;
+        Final_PWM = sum / STORAGE_DEPTH;
     }
 
     /*Original duty cycle*/
     weld_controller->final_duty = steady_coefficient.slope * weld_controller->weld_temp[1] + steady_coefficient.intercept;
     /*Curve Correction*/
-    float Proportion = (float)sum / (float)weld_controller->final_duty;
+    float Proportion = (float)Final_PWM / (float)weld_controller->final_duty;
+    if (Proportion < 0.75)
+    {
+        Proportion = 0.75;
+    }
+    else if (Proportion > 1.25)
+    {
+        Proportion = 1.25;
+    }
+
     steady_coefficient.slope *= Proportion;
     steady_coefficient.intercept *= Proportion;
 
