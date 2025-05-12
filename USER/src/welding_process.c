@@ -21,8 +21,7 @@ extern uint16_t kalman_comp_temp; // Temperature compensation value
 volatile WELD_MODE welding_flag = IDEAL_MODE;				   // Welding different stage markers
 extern weld_ctrl *weld_controller;							   // Welding controllers
 static pid_fitting_curve fitting_curves = {0.0002, -0.23, 76}; // pid Parameters dynamically fit curves ax*bx+x+c
-// Steady_state_coefficient steady_coefficient = {1.3, 1060};	   // Steady-state fitting curve coefficient
-Correction_factor corrct_factor = {0.5, 0.75}; // Steady-state fitting curve correction coefficient
+Correction_factor corrct_factor = {0.5, 0.75};				   // Steady-state fitting curve correction coefficient
 /*------------------------------------------------------------------------------------------------------------------------------*/
 
 /*-----------------------------------------------Compatible touchscreen data interface------------------------------------------*/
