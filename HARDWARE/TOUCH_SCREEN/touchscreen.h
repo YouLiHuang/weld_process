@@ -11,6 +11,8 @@
 #include "stdint.h"
 #include "string.h"
 
+#define ERR_DRAW 1
+
 /*自定义的一些参量*/
 #define NAME_LEN_MAX 20
 #define MAX_LENGTH 100
@@ -170,6 +172,11 @@ bool command_get_comp_val(Component_Queue *list, const char *name, const char *c
 void Touchscreen_init(void);
 bool Page_to(const Page_Param *page_param, const Page_ID id);
 void draw_point(uint16_t val);
+
+#if ERR_DRAW
+void draw_point_err(uint16_t val);
+#endif
+
 bool alram_clear(Page_Param *page_param);
 bool Page_id_get(void);
 //////////////////////////////////控件数据对象API///////////////////////////////////////////

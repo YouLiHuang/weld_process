@@ -698,6 +698,19 @@ void draw_point(uint16_t val)
   RS485_send(pre_cmd, strlen(pre_cmd));
 }
 
+
+#if ERR_DRAW
+void draw_point_err(uint16_t val)
+{
+  char pre_cmd[50] = "add wave_line.id,1,";
+  char value_buf[5] = {0};
+  user_value_convert_to_string(value_buf, 5, val);
+  strcat(pre_cmd, value_buf);
+  strcat(pre_cmd, END_OF_CMD);
+  RS485_send(pre_cmd, strlen(pre_cmd));
+}
+#endif
+
 /**
  * @description: init the touch screen
  * @return {*}
