@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-25 10:31:52
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-08 10:56:59
+ * @LastEditTime: 2025-05-12 09:06:47
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -11,12 +11,9 @@
 #include "welding_process.h"
 #include "timer.h"
 #include "usart.h"
-#include "filter.h"
 #include "string.h"
 
-#define STORAGE_DEPTH 500
-#define MAX_CORRECT_GAIN 1.25f
-#define MIN_CORRECT_GAIN 0.75f
+
 
 uint16_t PWM_Record[STORAGE_DEPTH];
 float PWM_Filter_Buf[STORAGE_DEPTH];
@@ -136,14 +133,14 @@ void dynamic_param_adjust(void)
     }
 
     /*Overshoot analysis --> Dynamically adjust parameters*/
-    if ((float)max / (float)weld_controller->weld_temp[1] > 1.05f)
+    if ((float)max / (float)weld_controller->weld_temp[1] > OVERSHOOT_THRESHOLD)
     {
         if (weld_controller->temp_gain2 >= 1 * MIN_STEP_SIZE)
             weld_controller->temp_gain2 -= LEARNING_RATE * MIN_STEP_SIZE;
         else if (weld_controller->temp_gain1 >= 1 * MIN_STEP_SIZE)
             weld_controller->temp_gain1 -= LEARNING_RATE * MIN_STEP_SIZE;
     }
-    else if ((float)min / (float)weld_controller->weld_temp[1] < 0.95f)
+    else if ((float)min / (float)weld_controller->weld_temp[1] < REVERSE_OVERSHOOT_THRESHOLD)
     {
         if (weld_controller->temp_gain2 <= 1)
             weld_controller->temp_gain2 += LEARNING_RATE * MIN_STEP_SIZE;
@@ -162,17 +159,15 @@ void dynamic_param_adjust(void)
     uint16_t Final_PWM = 0;
     if (record_cnt < STORAGE_DEPTH)
     {
-        // low_pass_Filter((float *)PWM_Record, record_cnt, PWM_Filter_Buf, 1000, 1000);
         /*Calculate the average*/
         for (uint16_t i = 0; i < record_cnt; i++)
         {
             sum += PWM_Record[i];
         }
-				Final_PWM = sum / record_cnt;
+        Final_PWM = sum / record_cnt;
     }
     else
     {
-        // low_pass_Filter((float *)PWM_Record, STORAGE_DEPTH, PWM_Filter_Buf, 1000, 1000);
         /*Calculate the average*/
         for (uint16_t i = 0; i < STORAGE_DEPTH; i++)
         {

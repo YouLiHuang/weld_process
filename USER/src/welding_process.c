@@ -21,7 +21,7 @@ extern uint16_t kalman_comp_temp; // Temperature compensation value
 volatile WELD_MODE welding_flag = IDEAL_MODE;				   // Welding different stage markers
 extern weld_ctrl *weld_controller;							   // Welding controllers
 static pid_fitting_curve fitting_curves = {0.0002, -0.23, 76}; // pid Parameters dynamically fit curves ax*bx+x+c
-Steady_state_coefficient steady_coefficient = {2.05, 1680.0};  // Steady-state fitting curve coefficient
+Steady_state_coefficient steady_coefficient = {1.3, 1060};	   // Steady-state fitting curve coefficient
 Correction_factor corrct_factor = {0.5, 0.75};				   // Steady-state fitting curve correction coefficient
 /*------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -75,9 +75,7 @@ weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl)
 		ctrl->Duty_Cycle = PD_MIN;
 		ctrl->pid_ctrl = pid_ctrl;
 		ctrl->enter_transition_flag = false;
-		ctrl->fast_rise_duty = DEFAULT_RISE_DUTY;
-		ctrl->fast_rise_time = DEFAULT_RISE_TIME;
-		ctrl->final_temp_record = 0;
+
 		/*realtime parameter*/
 		ctrl->first_step_start_temp = 0;
 		ctrl->second_step_start_temp = 0;
@@ -294,6 +292,7 @@ static void down_temp_line()
 	uint16_t total_time = 0;
 	uint16_t temp = 0;
 	uint8_t temp_display = 0;
+	uint8_t key = 0;
 
 	for (uint8_t i = 0; i < 5; i++)
 		total_time += weld_controller->weld_time[i];
@@ -302,18 +301,25 @@ static void down_temp_line()
 	win_width = WIN_WIDTH - weld_win_width - DRAW_RESERVE;			// 温降曲线绘图区域大小（留一个余量）
 	if (win_width >= WIN_WIDTH / 2)
 		win_width = WIN_WIDTH / 2;
+		
 	while (index < win_width)
 	{
-		if (get_weld_flag() == BUSY_MODE) // 非焊接状态才进行绘制
+		if (get_weld_flag() == BUSY_MODE) 
 			break;
-		temp = temp_convert(current_Thermocouple); // 温度采样
-		if (temp > MAX_TEMP_DISPLAY)			   // 限幅
+
+		/*stop draw start another weld*/	
+		key = new_key_scan();
+		if (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
+			break;
+
+		temp = temp_convert(current_Thermocouple); // temp sample
+		if (temp > MAX_TEMP_DISPLAY)			   // limit
 			temp = MAX_TEMP_DISPLAY;
 
-		temp_display = temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY;			  // 坐标放缩
-		draw_point(temp_display);											  // 绘图
-		command_set_comp_val("step3", "val", weld_controller->realtime_temp); // 显示实时温度数值
-		delay_ms(temp_draw_ctrl->delta_tick);								  // 采样间隔
+		temp_display = temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY;			  // Coordinate scaling
+		draw_point(temp_display);											  // draw
+		command_set_comp_val("step3", "val", weld_controller->realtime_temp); // display realtime temp
+		delay_ms(temp_draw_ctrl->delta_tick);								  // Sampling interval
 		index++;
 	}
 }
@@ -615,6 +621,10 @@ static void Second_Step()
 					weld_controller->Duty_Cycle = weld_controller->final_duty;
 			}
 		}
+
+		/*fast rise temp*/
+		if (weld_controller->step_time_tick < 200 && weld_controller->Duty_Cycle < weld_controller->final_duty)
+			weld_controller->Duty_Cycle = weld_controller->final_duty;
 
 		/*limit output*/
 		if (weld_controller->Duty_Cycle > PD_MAX)

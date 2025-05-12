@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-08 10:45:46
+ * @LastEditTime: 2025-05-12 09:23:09
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -149,8 +149,7 @@ static char *alarm_temp_name_list[] = {
 	"alarm6"};
 static char *gain_name_list[] = {
 	"GAIN1",
-	"GAIN2",
-	"GAIN3"};
+	"GAIN2"};
 
 /* Private variables ---------------------------------------------------------*/
 // 11 default baud rates
@@ -826,6 +825,11 @@ static void voltage_check(void)
 static void Overload_check(void)
 {
 	OS_ERR err;
+
+#if VOLTAGE_CHECK
+	voltage_check();
+#endif
+
 	if (GPIO_ReadInputDataBit(CURRENT_OVERLOAD_GPIO, CURRENT_PIN) == 0)
 	{
 		OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
@@ -917,9 +921,6 @@ void main_task(void *p_arg)
 
 #if OVER_LOAD_CHECK
 		Overload_check();
-#endif
-#if VOLTAGE_CHECK
-		voltage_check();
 #endif
 		Thermocouple_check();
 		welding_process();

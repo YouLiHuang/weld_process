@@ -6,6 +6,12 @@
 #define STABLE_THRESHOLD 30
 #define TEMP_STABLE_ERR 5
 
+#define STORAGE_DEPTH 500
+#define MAX_CORRECT_GAIN 1.25f
+#define MIN_CORRECT_GAIN 0.75f
+#define OVERSHOOT_THRESHOLD 1.03f
+#define REVERSE_OVERSHOOT_THRESHOLD 0.97f
+
 typedef struct point_save
 {
     uint16_t index;

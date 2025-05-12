@@ -179,7 +179,9 @@ void TIM5_Int_Init(void)
 
 static volatile uint16_t current_temp_comp = 0;
 
+#if REVERSE_CHECK
 static uint16_t last_temp;
+#endif
 
 /**
  * @description: Timer 5 interrupt function - real-time closed-loop control of welding
@@ -239,7 +241,7 @@ void TIM5_IRQHandler(void)
 			/*Time updates*/
 			weld_controller->step_time_tick++;
 
-			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + STABLE_ERR,
+			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0],
 														 weld_controller->realtime_temp,
 														 weld_controller->Duty_Cycle,
 														 weld_controller->pid_ctrl);
@@ -269,13 +271,23 @@ void TIM5_IRQHandler(void)
 			/*Time updates*/
 			weld_controller->step_time_tick++;
 
-			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
-														 weld_controller->realtime_temp,
-														 weld_controller->Duty_Cycle,
-														 weld_controller->pid_ctrl);
+			if (weld_controller->enter_transition_flag == false)
+			{
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1],
+															 weld_controller->realtime_temp,
+															 weld_controller->Duty_Cycle,
+															 weld_controller->pid_ctrl);
+			}
+			else
+			{
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
+															 weld_controller->realtime_temp,
+															 weld_controller->Duty_Cycle,
+															 weld_controller->pid_ctrl);
+			}
 
 #if PWM_SAMPLE
-			if (weld_controller->pid_ctrl->err < TEMP_STABLE_ERR)
+			if (weld_controller->pid_ctrl->err < weld_controller->weld_temp[1] + TEMP_STABLE_ERR && weld_controller->pid_ctrl->err > weld_controller->weld_temp[1] - TEMP_STABLE_ERR)
 			{
 				/*Make sure the temperature is stable before sample*/
 				if (Stable_Threshold_cnt > STABLE_THRESHOLD)

@@ -12,16 +12,15 @@
 #include "sys.h"
 #include "stdbool.h"
 
-#define COMPENSATION 0
-#define KALMAN_FILTER 0
-#define TIME_CHECH 0 // 超时监测
-#define PROTECT_ON 1 // 保护开关
+#define COMPENSATION 0  // Compensation switch
+#define KALMAN_FILTER 0 // filter switch
+#define PROTECT_ON 1    // Protection switch
 
-#define WIN_WIDTH 525        // 显示区域宽度
-#define DRAW_RESERVE 50      // 绘图余量
-#define DRAW_AREA_HIGH 210   // 绘图组件高度
-#define MAX_TEMP_DISPLAY 780 // 最大能显示的温度
-#define TEMP_BUF_MAX_LEN 3000
+#define WIN_WIDTH 525         // Display area width
+#define DRAW_RESERVE 100      // Drawing margin
+#define DRAW_AREA_HIGH 210    // Drawing component height
+#define MAX_TEMP_DISPLAY 780  // Maximum displayable temperature
+#define TEMP_BUF_MAX_LEN 3000 // Temperature acquisition buffer size
 
 void TIM3_Int_Init(void);
 void TIM5_Int_Init(void);
@@ -45,7 +44,7 @@ typedef struct Temp_draw_controller
     uint8_t sample_freq;
     uint16_t tick_record;
 
-    /*绘图间隔*/
+    /*draw interval*/
     uint8_t delta_tick;
 } Temp_draw_ctrl;
 Temp_draw_ctrl *new_temp_draw_ctrl(uint16_t *buf, uint16_t len1, uint16_t len2, uint16_t len3);

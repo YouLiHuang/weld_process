@@ -14,9 +14,6 @@
 #include "sys.h"
 #include "pid.h"
 
-void user_value_convert_to_string(char *buffer, const uint8_t buf_len, const uint16_t value);
-void welding_process(void);
-
 /*user config*/
 #define PID_DEBUG 0             // pid调试模式
 #define COMMUNICATE 0           // 上位机通信接口
@@ -33,12 +30,9 @@ void welding_process(void);
 #define TRANSITION_TIME 100
 #define TRANSITION_TIME_BASE 0.1
 #define TRANSITION_TIME_CORRECT 2.9
-#define DEFAULT_GAIN1 0.2
-#define DEFAULT_GAIN2 0.4
+#define DEFAULT_GAIN1 0.9
+#define DEFAULT_GAIN2 0.5
 
-#define MIN_FAST_RISE_TIME 100
-#define MAX_FAST_RISE_TIME 400
-#define DEFAULT_RISE_TIME 200
 #define DEFAULT_RISE_DUTY (PD_MAX * 0.5)
 #define MAX_RISE_STEP_DUTY (PD_MAX * 0.82)
 
@@ -106,9 +100,7 @@ typedef struct weld_realtime_controller
 
     /*ctrl param*/
     uint16_t final_duty;
-    uint16_t fast_rise_time;
-    uint16_t fast_rise_duty;
-    uint16_t final_temp_record;
+
     /*Heat compensation*/
     uint16_t enter_transition_time;
     bool enter_transition_flag;
@@ -122,9 +114,10 @@ typedef struct weld_realtime_controller
 } weld_ctrl;
 
 weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl);
-
 WELD_MODE get_weld_flag(void);
 
 void pid_param_dynamic_reload(void *controller, pid_fitting_curve fitting_curves, uint16_t setting);
+void user_value_convert_to_string(char *buffer, const uint8_t buf_len, const uint16_t value);
+void welding_process(void);
 
 #endif
