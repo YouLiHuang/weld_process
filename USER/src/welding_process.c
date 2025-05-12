@@ -1044,6 +1044,7 @@ void welding_process(void)
 			if (page_param->id == WAVE_PAGE)
 			{
 				down_temp_line();
+				reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
 			}
 
 			/*三段温度显示&计数值更新*/

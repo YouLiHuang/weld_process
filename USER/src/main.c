@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-12 09:23:09
+ * @LastEditTime: 2025-05-12 09:49:59
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -41,7 +41,6 @@
 #define TEMP_ADJUST 1	  // Temperature calibration
 #define VOLTAGE_CHECK 1	  // Overvoltage and undervoltage alarm
 #define OVER_LOAD_CHECK 1 // Overload protection
-#define JK_TEMP_SHOW 0	  // JK thermocouple display
 #define POWER_ON_CHECK 1  // Boot detection
 
 /* Private macro -------------------------------------------------------------*/
@@ -729,9 +728,12 @@ static void Power_on_check(void)
 
 static void Temp_updata_realtime()
 {
-#if TEMP_ADJUST == 1
 	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 	command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
+
+#if TEMP_ADJUST == 1
+	command_set_comp_val("temp11", "val", temp_convert(&Thermocouple_Lists[1])); // k
+	command_set_comp_val("temp22", "val", temp_convert(&Thermocouple_Lists[2])); // j
 #endif
 }
 
@@ -787,6 +789,8 @@ static void Thermocouple_check(void)
 		uint8_t IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E);
 		if (IO_val == 0)
 		{
+			/*use old board , close alarm*/
+
 			//			if (err_ctrl->sensor_err_cnt++ > SENSOR_ERR_THRESHOLD)
 			//			{
 			//				err_ctrl->sensor_err_cnt = 0;
@@ -1345,15 +1349,8 @@ static void page_process(Page_ID id)
 		command_get_comp_val(param_page_list, "count", "val"); // 读取计数值（用户可能修改）
 		/*2、解析按键动作*/
 		parse_key_action(page_param->id);
-		/*3、显示实时温度*/
-		command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
 
-#if JK_TEMP_SHOW == 1
-		command_set_comp_val("temp11", "val", temp_convert(&Thermocouple_Lists[1])); // k
-		command_set_comp_val("temp22", "val", temp_convert(&Thermocouple_Lists[2])); // j
-#endif
-
-		/*4、焊接接收后显示三段温度*/
+		/*3、焊接接收后显示三段温度*/
 		OSSemPend(&TEMP_DISPLAY_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
@@ -1407,7 +1404,6 @@ static void page_process(Page_ID id)
 		}
 
 #endif
-		OS_ERR err;
 		uint16_t total_time = 0;	 // 总焊接时长
 		uint16_t delta_tick = 0;	 // 坐标间隔
 		uint16_t total_tick_len = 0; // 横坐标总长度
@@ -1449,27 +1445,6 @@ static void page_process(Page_ID id)
 		/*坐标发送到触摸屏*/
 		for (uint8_t i = 0; i < sizeof(tick_name) / sizeof(char *); i++)
 			command_set_comp_val(tick_name[i], "val", (1 + i) * delta_tick);
-
-		/*焊接接收后显示三段温度*/
-		OSSemPend(&TEMP_DISPLAY_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
-		if (err == OS_ERR_NONE)
-		{
-			// uint16_t temp_display[3] = {0};
-			// char *temp_display_name[] = {"step1", "step2", "step3"};
-			// /*三段均温显示*/
-			// temp_display[0] = weld_controller->second_step_start_temp;
-			// uint32_t sum = 0;
-			// for (uint16_t i = temp_draw_ctrl->second_step_stable_index; i < temp_draw_ctrl->second_step_index_end; i++)
-			// 	sum += temp_draw_ctrl->temp_buf[i];
-			// temp_display[1] = sum / (temp_draw_ctrl->second_step_index_end - temp_draw_ctrl->second_step_stable_index + 1);
-
-			// /*一二段均值发送到触摸屏*/
-			// command_set_comp_val(temp_display_name[0], "val", temp_display[0]);
-			// command_set_comp_val(temp_display_name[1], "val", temp_display[1]);
-
-			/*绘图控制器复位*/
-			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
-		}
 	}
 	break;
 

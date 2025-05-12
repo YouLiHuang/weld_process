@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-25 10:31:52
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-12 09:06:47
+ * @LastEditTime: 2025-05-12 09:47:41
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -12,11 +12,15 @@
 #include "timer.h"
 #include "usart.h"
 #include "string.h"
+#include "spi.h"
 
-
-
+// last time set
+static uint16_t first_step_last;
+static uint16_t second_step_last;
+// realtime temp
+extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN];
+// pwm dynamic correct
 uint16_t PWM_Record[STORAGE_DEPTH];
-float PWM_Filter_Buf[STORAGE_DEPTH];
 uint16_t record_index = 0;
 uint16_t record_cnt = 0;
 uint16_t Stable_Threshold_cnt = 0;
@@ -75,11 +79,6 @@ static int16_t findValue(uint16_t arr[], uint16_t size, uint16_t val)
 
     return -1;
 }
-
-/*测试版本，先考虑一段加热*/
-extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN];
-#define LEARNING_RATE 3
-#define MIN_STEP_SIZE 0.01f
 
 void dynamic_param_adjust(void)
 {
@@ -149,6 +148,18 @@ void dynamic_param_adjust(void)
     }
     else
     {
+        if (first_step_last != weld_controller->weld_temp[0] ||
+            second_step_last != weld_controller->weld_temp[1])
+        {
+            /*save best gain*/
+            SPI_Save_Word(weld_controller->temp_gain1, GAIN_BASE(0) + ADDR_OFFSET * 0);
+            SPI_Save_Word(weld_controller->temp_gain1, GAIN_BASE(0) + ADDR_OFFSET * 1);
+        }
+
+        /*record last set*/
+        first_step_last = weld_controller->weld_temp[0];
+        second_step_last = weld_controller->weld_temp[1];
+
         /*效果良好——>尝试减小热补偿时间，提高响应速度*/
         // if (weld_controller->temp_gain1 >= 0.01)
         //     weld_controller->temp_gain1 -= LEARNING_RATE * 0.01;
