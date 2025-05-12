@@ -21,8 +21,8 @@ extern uint16_t kalman_comp_temp; // Temperature compensation value
 volatile WELD_MODE welding_flag = IDEAL_MODE;				   // Welding different stage markers
 extern weld_ctrl *weld_controller;							   // Welding controllers
 static pid_fitting_curve fitting_curves = {0.0002, -0.23, 76}; // pid Parameters dynamically fit curves ax*bx+x+c
-Steady_state_coefficient steady_coefficient = {1.3, 1060};	   // Steady-state fitting curve coefficient
-Correction_factor corrct_factor = {0.5, 0.75};				   // Steady-state fitting curve correction coefficient
+// Steady_state_coefficient steady_coefficient = {1.3, 1060};	   // Steady-state fitting curve coefficient
+Correction_factor corrct_factor = {0.5, 0.75}; // Steady-state fitting curve correction coefficient
 /*------------------------------------------------------------------------------------------------------------------------------*/
 
 /*-----------------------------------------------Compatible touchscreen data interface------------------------------------------*/
@@ -104,6 +104,9 @@ weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl)
 		}
 		ctrl->temp_gain1 = DEFAULT_GAIN1;
 		ctrl->temp_gain2 = DEFAULT_GAIN2;
+
+		ctrl->ss_coefficient.slope = 0;
+		ctrl->ss_coefficient.intercept = 0;
 
 		ctrl->user_hook_callback = stop_weld;
 
@@ -301,13 +304,13 @@ static void down_temp_line()
 	win_width = WIN_WIDTH - weld_win_width - DRAW_RESERVE;			// 温降曲线绘图区域大小（留一个余量）
 	if (win_width >= WIN_WIDTH / 2)
 		win_width = WIN_WIDTH / 2;
-		
+
 	while (index < win_width)
 	{
-		if (get_weld_flag() == BUSY_MODE) 
+		if (get_weld_flag() == BUSY_MODE)
 			break;
 
-		/*stop draw start another weld*/	
+		/*stop draw start another weld*/
 		key = new_key_scan();
 		if (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
 			break;
@@ -348,12 +351,14 @@ static void Load_Data()
 	else
 	{
 		key = new_key_scan();
-		if ((key == KEY_PC0_PRES))
+		if (key == KEY_PC0_PRES)
 		{
 			if (GP_Temp != 0)
+			{
 				GP_Temp -= 1;
-			Load_param(weld_controller, GP_Temp);
-			Load_param_alarm(weld_controller, GP_Temp);
+				Load_param(weld_controller, GP_Temp);
+				Load_param_alarm(weld_controller, GP_Temp);
+			}
 			command_set_comp_val("GP", "val", GP_Temp);
 		}
 	}
@@ -494,6 +499,7 @@ static void Preload()
  */
 static void First_Step()
 {
+	Steady_state_coefficient ss = weld_controller->ss_coefficient;
 
 	/*enter first step*/
 	weld_controller->state = FIRST_STATE;
@@ -508,7 +514,7 @@ static void First_Step()
 	weld_controller->enter_transition_time = 0;
 	/*Steady-state estimation output (coefficients can be added here for correction)*/
 	weld_controller->final_duty = (corrct_factor.base + corrct_factor.amplitude * weld_controller->temp_gain2) *
-								  (steady_coefficient.slope * weld_controller->weld_temp[0] + steady_coefficient.intercept);
+								  (ss.slope * weld_controller->weld_temp[0] + ss.intercept);
 	/*pid reload*/
 	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[0]);
 
@@ -560,6 +566,8 @@ static void Second_Step()
 	uint16_t hold_time = (TRANSITION_TIME_BASE + TRANSITION_TIME_CORRECT * weld_controller->temp_gain1) * TRANSITION_TIME;
 	uint16_t current_hold_time = 0;
 	float Critical_Threshold = 0.98;
+	uint16_t fast_rise_duty = 0;
+	Steady_state_coefficient ss = weld_controller->ss_coefficient;
 
 	/*enter first step*/
 	weld_controller->state = SECOND_STATE;
@@ -573,7 +581,8 @@ static void Second_Step()
 	weld_controller->enter_transition_time = 0;
 	/*Steady-state estimation output (coefficients can be added here for correction)*/
 	weld_controller->final_duty = (corrct_factor.base + corrct_factor.amplitude * weld_controller->temp_gain2) *
-								  (steady_coefficient.slope * weld_controller->weld_temp[1] + steady_coefficient.intercept);
+								  (ss.slope * weld_controller->weld_temp[1] + ss.intercept);
+	fast_rise_duty = ss.slope * weld_controller->weld_temp[1] + ss.intercept;
 	/*pid reload*/
 	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[1]);
 
@@ -610,6 +619,11 @@ static void Second_Step()
 				weld_controller->enter_transition_time = weld_controller->step_time_tick;
 			}
 		}
+		else if (weld_controller->Duty_Cycle < fast_rise_duty)
+		{
+			/*fast rise*/
+			weld_controller->Duty_Cycle = fast_rise_duty;
+		}
 
 		/*in transition area hold the temp (heat compensation)*/
 		if (weld_controller->enter_transition_flag == true)
@@ -621,10 +635,6 @@ static void Second_Step()
 					weld_controller->Duty_Cycle = weld_controller->final_duty;
 			}
 		}
-
-		/*fast rise temp*/
-		if (weld_controller->step_time_tick < 200 && weld_controller->Duty_Cycle < weld_controller->final_duty)
-			weld_controller->Duty_Cycle = weld_controller->final_duty;
 
 		/*limit output*/
 		if (weld_controller->Duty_Cycle > PD_MAX)

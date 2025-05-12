@@ -273,10 +273,22 @@ void TIM5_IRQHandler(void)
 
 			if (weld_controller->enter_transition_flag == false)
 			{
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1],
-															 weld_controller->realtime_temp,
-															 weld_controller->Duty_Cycle,
-															 weld_controller->pid_ctrl);
+				if (weld_controller->weld_time[1] == 0)
+				{
+					/*no first step*/
+					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1],
+																 weld_controller->realtime_temp,
+																 weld_controller->Duty_Cycle,
+																 weld_controller->pid_ctrl);
+				}
+				else
+				{
+					/*two step*/
+					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
+																 weld_controller->realtime_temp,
+																 weld_controller->Duty_Cycle,
+																 weld_controller->pid_ctrl);
+				}
 			}
 			else
 			{

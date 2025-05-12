@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-13 19:22:56
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-13 11:16:17
+ * @LastEditTime: 2025-05-12 16:31:10
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -19,6 +19,7 @@ extern Page_Param *page_param;
 extern Component_Queue *param_page_list;
 extern Component_Queue *temp_page_list;
 extern weld_ctrl *weld_controller;
+extern Steady_state_coefficient steady_coefficient; // Steady-state fitting curve coefficient
 /*-----------------------------------------------------------------------------------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------上位机通信相关数据----------------------------------------------------------------*/
@@ -168,9 +169,9 @@ void Load_data_from_mem(void)
 #endif
 
 	// 软起动
-	delay_ms(1000);
+	delay_ms(2000);
 	TRAN1 = 1;
-	delay_ms(1000);
+	delay_ms(2000);
 	TRAN1 = 0;
 
 	remember_array = 0;
@@ -181,6 +182,7 @@ void Load_data_from_mem(void)
 	/*首次从内存读取数据*/
 	Load_param(weld_controller, remember_array);
 	Load_param_alarm(weld_controller, remember_array);
+	Load_Coefficient(remember_array);
 
 	/*首次加载参数后需要发送到触摸屏*/
 	char *param_name_list[] = {
@@ -392,6 +394,12 @@ void Load_param_alarm(void *controller, int array_of_data)
 	{
 		get_comp(temp_page_list, temp_name_list[i])->val = alarm_temperature_load[i];
 	}
+}
+
+void Load_Coefficient(int array_of_data)
+{
+	weld_controller->ss_coefficient.slope = SPI_Load_Word(FIT_COEFFICIENT_BASE(array_of_data) + ADDR_OFFSET * 0) / 100.0;
+	weld_controller->ss_coefficient.intercept = SPI_Load_Word(FIT_COEFFICIENT_BASE(array_of_data) + ADDR_OFFSET * 1);
 }
 
 /**

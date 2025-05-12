@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-25 10:31:52
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-12 09:47:41
+ * @LastEditTime: 2025-05-12 16:35:34
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -29,8 +29,6 @@ uint16_t Stable_Threshold_cnt = 0;
 extern Temp_draw_ctrl *temp_draw_ctrl;
 // Welding real-time controller
 extern weld_ctrl *weld_controller;
-// Curve Correction
-extern Steady_state_coefficient steady_coefficient; // Steady-state fitting curve coefficient
 
 #if 0
 static int16_t findMax(uint16_t arr[], uint16_t size)
@@ -82,6 +80,7 @@ static int16_t findValue(uint16_t arr[], uint16_t size, uint16_t val)
 
 void dynamic_param_adjust(void)
 {
+    Steady_state_coefficient ss = weld_controller->ss_coefficient;
     uint16_t step_end_time = temp_draw_ctrl->second_step_index_end;
     /*分析有温度曲线几个极值点*/
     int16_t left_err = 0;
@@ -152,8 +151,12 @@ void dynamic_param_adjust(void)
             second_step_last != weld_controller->weld_temp[1])
         {
             /*save best gain*/
-            SPI_Save_Word(weld_controller->temp_gain1, GAIN_BASE(0) + ADDR_OFFSET * 0);
-            SPI_Save_Word(weld_controller->temp_gain1, GAIN_BASE(0) + ADDR_OFFSET * 1);
+            SPI_Save_Word((uint16_t)weld_controller->temp_gain1 * 100, GAIN_BASE(0) + ADDR_OFFSET * 0);
+            SPI_Save_Word((uint16_t)weld_controller->temp_gain1 * 100, GAIN_BASE(0) + ADDR_OFFSET * 1);
+
+            /*save fit coefficient*/
+            SPI_Save_Word((uint16_t)ss.slope * 100, FIT_COEFFICIENT_BASE(0) + ADDR_OFFSET * 0);
+            SPI_Save_Word((uint16_t)ss.intercept, FIT_COEFFICIENT_BASE(0) + ADDR_OFFSET * 1);
         }
 
         /*record last set*/
@@ -188,7 +191,7 @@ void dynamic_param_adjust(void)
     }
 
     /*Original duty cycle*/
-    weld_controller->final_duty = steady_coefficient.slope * weld_controller->weld_temp[1] + steady_coefficient.intercept;
+    weld_controller->final_duty = ss.slope * weld_controller->weld_temp[1] + ss.intercept;
     /*Curve Correction*/
     float Proportion = (float)Final_PWM / (float)weld_controller->final_duty;
     if (Proportion < MIN_CORRECT_GAIN)
@@ -200,8 +203,8 @@ void dynamic_param_adjust(void)
         Proportion = MAX_CORRECT_GAIN;
     }
 
-    steady_coefficient.slope *= Proportion;
-    steady_coefficient.intercept *= Proportion;
+    weld_controller->ss_coefficient.slope *= Proportion;
+    weld_controller->ss_coefficient.intercept *= Proportion;
 
     /*Sampling reset*/
     record_index = 0;
