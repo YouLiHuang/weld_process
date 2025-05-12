@@ -21,7 +21,7 @@ extern uint16_t kalman_comp_temp; // Temperature compensation value
 volatile WELD_MODE welding_flag = IDEAL_MODE;				   // Welding different stage markers
 extern weld_ctrl *weld_controller;							   // Welding controllers
 static pid_fitting_curve fitting_curves = {0.0002, -0.23, 76}; // pid Parameters dynamically fit curves ax*bx+x+c
-Correction_factor corrct_factor = {0.5, 0.75};				   // Steady-state fitting curve correction coefficient
+Correction_factor corrct_factor = {0.1, 1.25};				   // Steady-state fitting curve correction coefficient
 /*------------------------------------------------------------------------------------------------------------------------------*/
 
 /*-----------------------------------------------Compatible touchscreen data interface------------------------------------------*/
@@ -104,8 +104,8 @@ weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl)
 		ctrl->temp_gain1 = DEFAULT_GAIN1;
 		ctrl->temp_gain2 = DEFAULT_GAIN2;
 
-		ctrl->ss_coefficient.slope = 0;
-		ctrl->ss_coefficient.intercept = 0;
+		ctrl->ss_coefficient.slope = 1.3;
+		ctrl->ss_coefficient.intercept = 1060;
 
 		ctrl->user_hook_callback = stop_weld;
 
@@ -539,8 +539,15 @@ static void First_Step()
 
 #if REALTIME_TEMP_DISPLAY == 1
 		if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
+		{
 			draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
-		command_set_comp_val("step1", "val", weld_controller->realtime_temp);
+			command_set_comp_val("step1", "val", weld_controller->realtime_temp);
+		}
+		if(page_param->id == PARAM_PAGE)
+		{
+				command_set_comp_val("temp11", "val", weld_controller->realtime_temp);
+		}
+			
 #endif
 	}
 
@@ -643,8 +650,17 @@ static void Second_Step()
 
 #if REALTIME_TEMP_DISPLAY == 1
 		if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
-			draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
-		command_set_comp_val("step2", "val", weld_controller->realtime_temp);
+		{
+				draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
+				
+				//draw_point_err(weld_controller->pid_ctrl->delta);
+			  command_set_comp_val("step2", "val", weld_controller->realtime_temp);
+		}
+		if(page_param->id == PARAM_PAGE)
+		{
+				command_set_comp_val("temp22", "val", weld_controller->realtime_temp);
+		}
+
 #endif
 	}
 

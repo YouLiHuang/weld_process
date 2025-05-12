@@ -38,7 +38,7 @@
 #define ADC_BIAS_MAX 650  // Maximum offset value
 
 /*debug option*/
-#define TEMP_ADJUST 1	  // Temperature calibration
+#define TEMP_ADJUST 0	  // Temperature calibration
 #define VOLTAGE_CHECK 1	  // Overvoltage and undervoltage alarm
 #define OVER_LOAD_CHECK 1 // Overload protection
 #define POWER_ON_CHECK 1  // Boot detection

@@ -146,7 +146,7 @@ void UART4_IRQHandler(void)
 			switch (USART_RX_BUF[0])
 			{
 			case CMD_OK:
-				OSSemPost(&PAGE_UPDATE_SEM, OS_OPT_POST_ALL, &err);
+				//OSSemPost(&PAGE_UPDATE_SEM, OS_OPT_POST_ALL, &err);
 				break;
 			case CMD_PAGEID_RETURN:
 				OSSemPost(&PAGE_UPDATE_SEM, OS_OPT_POST_ALL, &err);

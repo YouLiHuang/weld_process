@@ -8,6 +8,7 @@
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
 #include "dynamic_correct.h"
+#include "touchscreen.h"
 #include "welding_process.h"
 #include "timer.h"
 #include "usart.h"
@@ -29,6 +30,7 @@ uint16_t Stable_Threshold_cnt = 0;
 extern Temp_draw_ctrl *temp_draw_ctrl;
 // Welding real-time controller
 extern weld_ctrl *weld_controller;
+extern Component_Queue *temp_page_list;
 
 #if 0
 static int16_t findMax(uint16_t arr[], uint16_t size)
@@ -167,6 +169,17 @@ void dynamic_param_adjust(void)
         // if (weld_controller->temp_gain1 >= 0.01)
         //     weld_controller->temp_gain1 -= LEARNING_RATE * 0.01;
     }
+		
+		
+		/*data sync*/
+		if (get_comp(temp_page_list, "GAIN1") != NULL)
+		{
+			get_comp(temp_page_list, "GAIN1")->val =weld_controller->temp_gain1*100;
+		}
+		if (get_comp(temp_page_list, "GAIN2") != NULL)
+		{
+			get_comp(temp_page_list, "GAIN2")->val =weld_controller->temp_gain2*100;
+		}
 
     /*修正热量补偿曲线*/
     uint32_t sum = 0;
@@ -191,9 +204,9 @@ void dynamic_param_adjust(void)
     }
 
     /*Original duty cycle*/
-    weld_controller->final_duty = ss.slope * weld_controller->weld_temp[1] + ss.intercept;
+		uint16_t last_final_duty=ss.slope * weld_controller->weld_temp[1] + ss.intercept;
     /*Curve Correction*/
-    float Proportion = (float)Final_PWM / (float)weld_controller->final_duty;
+    float Proportion = (float)Final_PWM / (float)last_final_duty;
     if (Proportion < MIN_CORRECT_GAIN)
     {
         Proportion = MIN_CORRECT_GAIN;
@@ -205,6 +218,8 @@ void dynamic_param_adjust(void)
 
     weld_controller->ss_coefficient.slope *= Proportion;
     weld_controller->ss_coefficient.intercept *= Proportion;
+		
+		/*此处存ss系数，修正完后只存一次*/
 
     /*Sampling reset*/
     record_index = 0;
