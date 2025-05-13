@@ -515,7 +515,7 @@ static void First_Step()
 	weld_controller->final_duty = (corrct_factor.base + corrct_factor.amplitude * weld_controller->temp_gain2) *
 								  (ss.slope * weld_controller->weld_temp[0] + ss.intercept);
 	/*pid reload*/
-	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[0]);
+	//pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[0]);
 
 	/*real-time control*/
 	TIM_Cmd(TIM5, ENABLE);
@@ -571,7 +571,6 @@ static void Second_Step()
 	/*---user config param---*/
 	uint16_t hold_time = (TRANSITION_TIME_BASE + TRANSITION_TIME_CORRECT * weld_controller->temp_gain1) * TRANSITION_TIME;
 	uint16_t current_hold_time = 0;
-	float Critical_Threshold = 0.98;
 	uint16_t fast_rise_duty = 0;
 	Steady_state_coefficient ss = weld_controller->ss_coefficient;
 
@@ -590,7 +589,7 @@ static void Second_Step()
 								  (ss.slope * weld_controller->weld_temp[1] + ss.intercept);
 	fast_rise_duty = ss.slope * weld_controller->weld_temp[1] + ss.intercept;
 	/*pid reload*/
-	pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[1]);
+	//pid_param_dynamic_reload(weld_controller, fitting_curves, weld_controller->weld_temp[1]);
 
 	/*real-time control*/
 	TIM_Cmd(TIM5, ENABLE);
@@ -613,10 +612,10 @@ static void Second_Step()
 			else
 				weld_controller->pid_ctrl->stable_threshold_cnt++;
 		}
-
+#if PID_DEBUG == 0
 		/*enter transition area (heat compensation)*/
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
-		if (weld_controller->realtime_temp > Critical_Threshold * weld_controller->weld_temp[1])
+		if (weld_controller->realtime_temp > COMPENSATION_THRESHOLD * weld_controller->weld_temp[1])
 		{
 			/*only execute the code below one time*/
 			if (weld_controller->enter_transition_flag == false && weld_controller->enter_transition_time == 0)
@@ -625,11 +624,7 @@ static void Second_Step()
 				weld_controller->enter_transition_time = weld_controller->step_time_tick;
 			}
 		}
-		else if (weld_controller->Duty_Cycle < fast_rise_duty)
-		{
-			/*fast rise*/
-			weld_controller->Duty_Cycle = fast_rise_duty;
-		}
+
 
 		/*in transition area hold the temp (heat compensation)*/
 		if (weld_controller->enter_transition_flag == true)
@@ -641,7 +636,13 @@ static void Second_Step()
 					weld_controller->Duty_Cycle = weld_controller->final_duty;
 			}
 		}
-
+#endif
+		
+		if(weld_controller->step_time_tick < FAST_RISE_TIME && weld_controller->Duty_Cycle < fast_rise_duty)
+		{
+			weld_controller->Duty_Cycle = fast_rise_duty;
+		}
+		
 		/*limit output*/
 		if (weld_controller->Duty_Cycle > PD_MAX)
 			weld_controller->Duty_Cycle = PD_MAX;

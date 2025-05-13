@@ -277,7 +277,7 @@ int main(void)
 
 	/*------------------------------------------------------User layer data objects-----------------------------------------------------------*/
 	/*pid controller*/
-	pid_ctrl = new_pid_forword_ctrl(0, 12, 0.022, 15);
+	pid_ctrl = new_pid_forword_ctrl(0, 15, 0.04, 25);
 	/*Welding controller*/
 	weld_controller = new_weld_ctrl(pid_ctrl);
 	/*New interface component list initialization*/
@@ -789,15 +789,13 @@ static void Thermocouple_check(void)
 		uint8_t IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E);
 		if (IO_val == 0)
 		{
-			/*use old board , close alarm*/
-
-			//			if (err_ctrl->sensor_err_cnt++ > SENSOR_ERR_THRESHOLD)
-			//			{
-			//				err_ctrl->sensor_err_cnt = 0;
-			//				Page_to(page_param, ALARM_PAGE);
-			//				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-			//				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
-			//			}
+				if (err_ctrl->sensor_err_cnt++ > SENSOR_ERR_THRESHOLD)
+				{
+					err_ctrl->sensor_err_cnt = 0;
+					Page_to(page_param, ALARM_PAGE);
+					err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+					OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
+				}
 		}
 		GPIO_ResetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
 		break;

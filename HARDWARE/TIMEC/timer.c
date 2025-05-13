@@ -270,25 +270,15 @@ void TIM5_IRQHandler(void)
 
 			/*Time updates*/
 			weld_controller->step_time_tick++;
-
+#if PID_DEBUG == 0
 			if (weld_controller->enter_transition_flag == false)
 			{
-				if (weld_controller->weld_time[1] == 0)
-				{
 					/*no first step*/
-					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] - STABLE_ERR,
-																 weld_controller->realtime_temp,
-																 weld_controller->Duty_Cycle,
-																 weld_controller->pid_ctrl);
-				}
-				else
-				{
-					/*two step*/
-					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
-																 weld_controller->realtime_temp,
-																 weld_controller->Duty_Cycle,
-																 weld_controller->pid_ctrl);
-				}
+					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1]*COMPENSATION_THRESHOLD,
+																											 weld_controller->realtime_temp,
+																											 weld_controller->Duty_Cycle,
+																											 weld_controller->pid_ctrl);
+				
 			}
 			else
 			{
@@ -298,6 +288,16 @@ void TIM5_IRQHandler(void)
 															 weld_controller->pid_ctrl);
 			}
 
+
+#else
+							weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1],
+															 weld_controller->realtime_temp,
+															 weld_controller->Duty_Cycle,
+															 weld_controller->pid_ctrl);
+			
+#endif
+			
+			
 #if PWM_SAMPLE
 			if (weld_controller->realtime_temp < weld_controller->weld_temp[1] + TEMP_STABLE_ERR 
 				  && weld_controller->realtime_temp > weld_controller->weld_temp[1] - TEMP_STABLE_ERR)
