@@ -274,7 +274,7 @@ void TIM5_IRQHandler(void)
 			if (weld_controller->enter_transition_flag == false)
 			{
 					/*no first step*/
-					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1]*COMPENSATION_THRESHOLD,
+					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1],
 																											 weld_controller->realtime_temp,
 																											 weld_controller->Duty_Cycle,
 																											 weld_controller->pid_ctrl);
