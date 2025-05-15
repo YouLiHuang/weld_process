@@ -179,8 +179,8 @@ void Load_data_from_mem(void)
 	if (remember_array >= 20)
 		remember_array = 0;
 
-	SPI_Save_Word(100, FIT_COEFFICIENT_BASE(0) + ADDR_OFFSET * 0);
-  SPI_Save_Word(1777, FIT_COEFFICIENT_BASE(0) + ADDR_OFFSET * 1);
+//	SPI_Save_Word(100, FIT_COEFFICIENT_BASE(0) + ADDR_OFFSET * 0);
+//  SPI_Save_Word(1777, FIT_COEFFICIENT_BASE(0) + ADDR_OFFSET * 1);
 	/*首次从内存读取数据*/
 	Load_param(weld_controller, remember_array);
 	Load_param_alarm(weld_controller, remember_array);

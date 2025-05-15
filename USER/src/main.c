@@ -205,6 +205,9 @@ Temp_draw_ctrl *temp_draw_ctrl = NULL;
 // Welding real-time controller
 weld_ctrl *weld_controller = NULL;
 pid_feedforword_ctrl *pid_ctrl = NULL;
+#if PID_DEBUG
+pid_feedforword_ctrl *pid_ctrl_debug = NULL;
+#endif
 // Current thermocouple
 Thermocouple *current_Thermocouple = NULL;
 /*list init name*/
@@ -277,7 +280,10 @@ int main(void)
 
 	/*------------------------------------------------------User layer data objects-----------------------------------------------------------*/
 	/*pid controller*/
-	pid_ctrl = new_pid_forword_ctrl(0, 15, 0.04, 25);
+	pid_ctrl = new_pid_forword_ctrl(0, DEFAULT_KP, DEFAULT_KI, DEFAULT_KD);
+#if PID_DEBUG
+	pid_ctrl_debug = new_pid_forword_ctrl(0, DEFAULT_KP, DEFAULT_KI, DEFAULT_KD);
+#endif
 	/*Welding controller*/
 	weld_controller = new_weld_ctrl(pid_ctrl);
 	/*New interface component list initialization*/
@@ -789,13 +795,13 @@ static void Thermocouple_check(void)
 		uint8_t IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E);
 		if (IO_val == 0)
 		{
-				if (err_ctrl->sensor_err_cnt++ > SENSOR_ERR_THRESHOLD)
-				{
-					err_ctrl->sensor_err_cnt = 0;
-					Page_to(page_param, ALARM_PAGE);
-					err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-					OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
-				}
+			if (err_ctrl->sensor_err_cnt++ > SENSOR_ERR_THRESHOLD)
+			{
+				err_ctrl->sensor_err_cnt = 0;
+				Page_to(page_param, ALARM_PAGE);
+				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
+			}
 		}
 		GPIO_ResetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
 		break;
@@ -1396,9 +1402,13 @@ static void page_process(Page_ID id)
 		uint16_t pid_param[3] = {0};
 		if (pid_param_get(pid_param) == true)
 		{
-			weld_controller->pid_ctrl->kp = pid_param[0] / 100.0;
-			weld_controller->pid_ctrl->ki = pid_param[1] / 1000.0;
-			weld_controller->pid_ctrl->kd = pid_param[2] / 100.0;
+			// weld_controller->pid_ctrl->kp = pid_param[0] / 100.0;
+			// weld_controller->pid_ctrl->ki = pid_param[1] / 1000.0;
+			// weld_controller->pid_ctrl->kd = pid_param[2] / 100.0;
+
+			pid_ctrl_debug->kp = pid_param[0] / 100.0;
+			pid_ctrl_debug->ki = pid_param[1] / 1000.0;
+			pid_ctrl_debug->kd = pid_param[2] / 100.0;
 		}
 
 #endif

@@ -22,7 +22,7 @@ typedef struct point_save
 
 } point;
 
-void dynamic_rise_correct(float target);
 void dynamic_param_adjust(void);
+void dynamic_pwm_adjust(void);
 
 #endif

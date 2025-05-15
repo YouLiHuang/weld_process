@@ -1,17 +1,25 @@
-/*** 
+/***
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-02 15:16:32
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
  * @LastEditTime: 2025-01-02 20:04:59
  * @Description: pid control algorithm
  * @
- * @Copyright (c) 2025 by huangyouli, All Rights Reserved. 
+ * @Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
 #ifndef __PID_H
 #define __PID_H
 #include "sys.h"
 #include "stdbool.h"
 #include "stdlib.h"
+
+/*pid adjust*/
+#define DEFAULT_KP 15.0
+#define DEFAULT_KI 0.04
+#define DEFAULT_KD 25.0
+
+#define SECOND_KI 0.045
+#define SECOND_KD 50.0
 
 /*PWM占空比上下限*/
 #define PD_MAX 8000

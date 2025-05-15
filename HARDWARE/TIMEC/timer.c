@@ -241,7 +241,7 @@ void TIM5_IRQHandler(void)
 			/*Time updates*/
 			weld_controller->step_time_tick++;
 
-			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0]+STABLE_ERR,
+			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + STABLE_ERR,
 														 weld_controller->realtime_temp,
 														 weld_controller->Duty_Cycle,
 														 weld_controller->pid_ctrl);
@@ -273,12 +273,21 @@ void TIM5_IRQHandler(void)
 #if PID_DEBUG == 0
 			if (weld_controller->enter_transition_flag == false)
 			{
-					/*no first step*/
-					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1],
-																											 weld_controller->realtime_temp,
-																											 weld_controller->Duty_Cycle,
-																											 weld_controller->pid_ctrl);
-				
+				/*no first step*/
+				if (weld_controller->weld_time[1] == 0)
+				{
+					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] * COMPENSATION_THRESHOLD,
+																 weld_controller->realtime_temp,
+																 weld_controller->Duty_Cycle,
+																 weld_controller->pid_ctrl);
+				}
+				else
+				{
+					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
+																 weld_controller->realtime_temp,
+																 weld_controller->Duty_Cycle,
+																 weld_controller->pid_ctrl);
+				}
 			}
 			else
 			{
@@ -288,19 +297,16 @@ void TIM5_IRQHandler(void)
 															 weld_controller->pid_ctrl);
 			}
 
-
 #else
-							weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1],
-															 weld_controller->realtime_temp,
-															 weld_controller->Duty_Cycle,
-															 weld_controller->pid_ctrl);
-			
+			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1],
+														 weld_controller->realtime_temp,
+														 weld_controller->Duty_Cycle,
+														 weld_controller->pid_ctrl);
+
 #endif
-			
-			
+
 #if PWM_SAMPLE
-			if (weld_controller->realtime_temp < weld_controller->weld_temp[1] + TEMP_STABLE_ERR 
-				  && weld_controller->realtime_temp > weld_controller->weld_temp[1] - TEMP_STABLE_ERR)
+			if (weld_controller->realtime_temp < weld_controller->weld_temp[1] + TEMP_STABLE_ERR && weld_controller->realtime_temp > weld_controller->weld_temp[1] - TEMP_STABLE_ERR)
 			{
 				/*Make sure the temperature is stable before sample*/
 				if (Stable_Threshold_cnt > STABLE_THRESHOLD)

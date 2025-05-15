@@ -11,7 +11,7 @@
 #include "stdint.h"
 #include "string.h"
 
-#define ERR_DRAW 1
+#define ERR_DRAW 0
 
 /*自定义的一些参量*/
 #define NAME_LEN_MAX 20

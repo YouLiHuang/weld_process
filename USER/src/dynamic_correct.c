@@ -82,7 +82,7 @@ static int16_t findValue(uint16_t arr[], uint16_t size, uint16_t val)
 
 void dynamic_param_adjust(void)
 {
-    Steady_state_coefficient ss = weld_controller->ss_coefficient;
+
     uint16_t step_end_time = temp_draw_ctrl->second_step_index_end;
     /*分析有温度曲线几个极值点*/
     int16_t left_err = 0;
@@ -135,16 +135,26 @@ void dynamic_param_adjust(void)
     /*Overshoot analysis --> Dynamically adjust parameters*/
     if ((float)max / (float)weld_controller->weld_temp[1] > OVERSHOOT_THRESHOLD)
     {
-        if (weld_controller->temp_gain2 >= 1 * MIN_STEP_SIZE)
+        // if (weld_controller->temp_gain2 >= 1 * MIN_STEP_SIZE)
+        //     weld_controller->temp_gain2 -= LEARNING_RATE * MIN_STEP_SIZE;
+        // else if (weld_controller->temp_gain1 >= 1 * MIN_STEP_SIZE)
+        //     weld_controller->temp_gain1 -= LEARNING_RATE * MIN_STEP_SIZE;
+
+        if (weld_controller->temp_gain2 > weld_controller->temp_gain1)
             weld_controller->temp_gain2 -= LEARNING_RATE * MIN_STEP_SIZE;
-        else if (weld_controller->temp_gain1 >= 1 * MIN_STEP_SIZE)
+        else
             weld_controller->temp_gain1 -= LEARNING_RATE * MIN_STEP_SIZE;
     }
     else if ((float)min / (float)weld_controller->weld_temp[1] < REVERSE_OVERSHOOT_THRESHOLD)
     {
-        if (weld_controller->temp_gain2 <= 1)
+        // if (weld_controller->temp_gain2 <= 1)
+        //     weld_controller->temp_gain2 += LEARNING_RATE * MIN_STEP_SIZE;
+        // else if (weld_controller->temp_gain1 <= 1)
+        //     weld_controller->temp_gain1 += LEARNING_RATE * MIN_STEP_SIZE;
+
+        if (weld_controller->temp_gain2 < weld_controller->temp_gain1)
             weld_controller->temp_gain2 += LEARNING_RATE * MIN_STEP_SIZE;
-        else if (weld_controller->temp_gain1 <= 1)
+        else
             weld_controller->temp_gain1 += LEARNING_RATE * MIN_STEP_SIZE;
     }
     else
@@ -155,32 +165,49 @@ void dynamic_param_adjust(void)
             /*save best gain*/
             SPI_Save_Word((uint16_t)weld_controller->temp_gain1 * 100, GAIN_BASE(0) + ADDR_OFFSET * 0);
             SPI_Save_Word((uint16_t)weld_controller->temp_gain1 * 100, GAIN_BASE(0) + ADDR_OFFSET * 1);
-
-            /*save fit coefficient*/
-            SPI_Save_Word((uint16_t)ss.slope * 100, FIT_COEFFICIENT_BASE(0) + ADDR_OFFSET * 0);
-            SPI_Save_Word((uint16_t)ss.intercept, FIT_COEFFICIENT_BASE(0) + ADDR_OFFSET * 1);
         }
 
         /*record last set*/
         first_step_last = weld_controller->weld_temp[0];
         second_step_last = weld_controller->weld_temp[1];
-
-        /*效果良好——>尝试减小热补偿时间，提高响应速度*/
-        // if (weld_controller->temp_gain1 >= 0.01)
-        //     weld_controller->temp_gain1 -= LEARNING_RATE * 0.01;
     }
-		
-		
-		/*data sync*/
-		if (get_comp(temp_page_list, "GAIN1") != NULL)
-		{
-			get_comp(temp_page_list, "GAIN1")->val =weld_controller->temp_gain1*100;
-		}
-		if (get_comp(temp_page_list, "GAIN2") != NULL)
-		{
-			get_comp(temp_page_list, "GAIN2")->val =weld_controller->temp_gain2*100;
-		}
 
+    /*limit gain*/
+    if (weld_controller->temp_gain1 < 0)
+    {
+        weld_controller->temp_gain1 = 0;
+    }
+    if (weld_controller->temp_gain2 < 0)
+    {
+        weld_controller->temp_gain2 = 0;
+    }
+    if (weld_controller->temp_gain1 > 1)
+    {
+        weld_controller->temp_gain1 = 1;
+    }
+    if (weld_controller->temp_gain2 > 1)
+    {
+        weld_controller->temp_gain2 = 1;
+    }
+
+    /*data sync*/
+    if (get_comp(temp_page_list, "GAIN1") != NULL)
+    {
+        get_comp(temp_page_list, "GAIN1")->val = weld_controller->temp_gain1 * 100;
+    }
+    if (get_comp(temp_page_list, "GAIN2") != NULL)
+    {
+        get_comp(temp_page_list, "GAIN2")->val = weld_controller->temp_gain2 * 100;
+    }
+}
+
+void dynamic_pwm_adjust(void)
+{
+
+    static uint16_t last_first_temp;
+    static uint16_t last_second_temp;
+
+    Steady_state_coefficient ss = weld_controller->ss_coefficient;
     /*修正热量补偿曲线*/
     uint32_t sum = 0;
     uint16_t Final_PWM = 0;
@@ -204,7 +231,7 @@ void dynamic_param_adjust(void)
     }
 
     /*Original duty cycle*/
-		uint16_t last_final_duty=ss.slope * weld_controller->weld_temp[1] + ss.intercept;
+    uint16_t last_final_duty = ss.slope * weld_controller->weld_temp[1] + ss.intercept;
     /*Curve Correction*/
     float Proportion = (float)Final_PWM / (float)last_final_duty;
     if (Proportion < MIN_CORRECT_GAIN)
@@ -218,8 +245,16 @@ void dynamic_param_adjust(void)
 
     weld_controller->ss_coefficient.slope *= Proportion;
     weld_controller->ss_coefficient.intercept *= Proportion;
-		
-		/*此处存ss系数，修正完后只存一次*/
+
+    /*save fit coefficient*/
+    if (weld_controller->weld_temp[0] != last_first_temp || weld_controller->weld_temp[1] != last_second_temp)
+    {
+        SPI_Save_Word((uint16_t)ss.slope * 100, FIT_COEFFICIENT_BASE(0) + ADDR_OFFSET * 0);
+        SPI_Save_Word((uint16_t)ss.intercept, FIT_COEFFICIENT_BASE(0) + ADDR_OFFSET * 1);
+
+        last_first_temp = weld_controller->weld_temp[0];
+        last_second_temp = weld_controller->weld_temp[1];
+    }
 
     /*Sampling reset*/
     record_index = 0;
