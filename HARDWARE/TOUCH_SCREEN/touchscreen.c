@@ -291,6 +291,13 @@ bool temp_page_list_init(Component_Queue *temp_page_list)
   return true;
 }
 
+/**
+ * @description: 
+ * @param {Component_Queue} * ui list object
+ * @param {char} * Component name list
+ * @param {uint8_t} Number of components
+ * @return {*}
+ */
 bool page_list_init(Component_Queue *page_list, char *name_list[], uint8_t list_len)
 {
 
