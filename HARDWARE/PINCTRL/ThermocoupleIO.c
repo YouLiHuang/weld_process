@@ -1,3 +1,4 @@
+#include "user_config.h"
 #include "ThermocoupleIO.h"
 
 void Check_IO_init(void)

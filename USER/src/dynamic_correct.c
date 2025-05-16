@@ -2,11 +2,12 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-25 10:31:52
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-12 16:35:34
+ * @LastEditTime: 2025-05-16 10:05:42
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
+#include "user_config.h"
 #include "dynamic_correct.h"
 #include "touchscreen.h"
 #include "welding_process.h"
@@ -135,11 +136,6 @@ void dynamic_param_adjust(void)
     /*Overshoot analysis --> Dynamically adjust parameters*/
     if ((float)max / (float)weld_controller->weld_temp[1] > OVERSHOOT_THRESHOLD)
     {
-        // if (weld_controller->temp_gain2 >= 1 * MIN_STEP_SIZE)
-        //     weld_controller->temp_gain2 -= LEARNING_RATE * MIN_STEP_SIZE;
-        // else if (weld_controller->temp_gain1 >= 1 * MIN_STEP_SIZE)
-        //     weld_controller->temp_gain1 -= LEARNING_RATE * MIN_STEP_SIZE;
-
         if (weld_controller->temp_gain2 > weld_controller->temp_gain1)
             weld_controller->temp_gain2 -= LEARNING_RATE * MIN_STEP_SIZE;
         else
@@ -147,11 +143,6 @@ void dynamic_param_adjust(void)
     }
     else if ((float)min / (float)weld_controller->weld_temp[1] < REVERSE_OVERSHOOT_THRESHOLD)
     {
-        // if (weld_controller->temp_gain2 <= 1)
-        //     weld_controller->temp_gain2 += LEARNING_RATE * MIN_STEP_SIZE;
-        // else if (weld_controller->temp_gain1 <= 1)
-        //     weld_controller->temp_gain1 += LEARNING_RATE * MIN_STEP_SIZE;
-
         if (weld_controller->temp_gain2 < weld_controller->temp_gain1)
             weld_controller->temp_gain2 += LEARNING_RATE * MIN_STEP_SIZE;
         else

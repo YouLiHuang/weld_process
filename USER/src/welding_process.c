@@ -1,3 +1,4 @@
+#include "user_config.h"
 #include "welding_process.h"
 
 #include "includes.h"
@@ -9,8 +10,6 @@
 #include "protect.h"
 #include "spi.h"
 #include "usart.h"
-#include "Kalman.h"
-#include "tempcomp.h"
 #include "touchscreen.h"
 #include "dynamic_correct.h"
 
@@ -18,15 +17,10 @@
 extern pid_feedforword_ctrl *pid_ctrl_debug;
 extern pid_feedforword_ctrl *pid_ctrl;
 #endif
+
 /*---------------------------------------------------Real-time control---------------------------------------------------------*/
-#if KALMAN_FILTER == 1
-extern uint16_t kalman_comp_temp; // Temperature compensation value
-#endif
-volatile WELD_MODE welding_flag = IDEAL_MODE; // Welding different stage markers
-extern weld_ctrl *weld_controller;			  // Welding controllers
-#if PID_DEBUG == 0
-static pid_fitting_curve fitting_curves = {0.0002, -0.23, 76}; // pid Parameters dynamically fit curves ax*bx+x+c
-#endif
+volatile WELD_MODE welding_flag = IDEAL_MODE;  // Welding different stage markers
+extern weld_ctrl *weld_controller;			   // Welding controllers
 Correction_factor corrct_factor = {0.1, 1.25}; // Steady-state fitting curve correction coefficient
 /*------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -42,10 +36,17 @@ extern Error_ctrl *err_ctrl;
 /*------------------------------------------------------------------------------------------------------------------------------*/
 
 /*--------------------------------------------------Control algorithms-----------------------------------------------------------*/
-/*Kalman filtering*/
-Kalman kfp;
-dynamical_comp dynam_comp;
+#if COMPENSATION
+#include "tempcomp.h"
 extern last_temp_sotre lasttemp;
+dynamical_comp dynam_comp;
+#endif
+
+#if KALMAN_FILTER
+#include "Kalman.h"
+extern uint16_t kalman_comp_temp; // Temperature compensation value
+Kalman kfp;
+#endif
 
 /*-----------------------------------------------------temp plot-----------------------------------------------------------------*/
 extern OS_SEM TEMP_DISPLAY_SEM;						 // Plot event signals
@@ -216,7 +217,9 @@ void user_value_convert_to_string(char *buffer, const uint8_t buf_len, const uin
 	}
 }
 
-#if PID_DEBUG != 1
+#if 0
+static pid_fitting_curve fitting_curves = {0.0002, -0.23, 76}; // pid Parameters dynamically fit curves ax*bx+x+c
+
 /**
  * @description: Dynamically adjust pid parameters according to set values
  * @param {void} *controller
@@ -290,6 +293,33 @@ static void pid_param_dynamic_reload(void *controller, pid_fitting_curve fitting
 }
 
 #endif
+
+/**
+ * @description: Dynamically adjust pid parameters according to different step
+ * @return {*}
+ */
+static void pid_dynamic_reload(void)
+{
+	/*two step*/
+	if (weld_controller->weld_time[1] > 100 && weld_controller->weld_time[2] > 0)
+	{
+		switch (weld_controller->state)
+		{
+		case FIRST_STATE:
+			weld_controller->pid_ctrl->ki = DEFAULT_KI;
+			weld_controller->pid_ctrl->kd = DEFAULT_KD;
+			break;
+		case SECOND_STATE:
+			weld_controller->pid_ctrl->ki = SECOND_KI;
+			weld_controller->pid_ctrl->kd = SECOND_KD;
+			break;
+
+		default:
+			break;
+		}
+	}
+}
+
 /*--------------------------------------------------------------------------------------------------------------------*/
 /*													 Process Control API                                              */
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -423,12 +453,12 @@ static void Weld_Preparation()
 #endif
 	reset_forword_ctrl(weld_controller->pid_ctrl); // pid控制器初始化
 
-#if COMPENSATION == 1
+#if COMPENSATION
 	dynamic_init(&dynam_comp, 100); // 动态补偿初始化
 	window_init(&lasttemp);			// 滑动窗口初始化
 #endif
 
-#if KALMAN_FILTER == 1
+#if KALMAN_FILTER
 	Kalman_Init(&kfp);	  // 卡尔曼滤波器初始化，初始值归零
 	kalman_comp_temp = 0; // 卡尔曼估计值初始化
 #endif
@@ -483,6 +513,17 @@ static void stop_weld(void)
 }
 
 /**
+ * @description: start of weld
+ * @return {*}
+ */
+static void start_of_weld(void)
+{
+	/*Start recording welding cycle time*/
+	weld_controller->weld_time_tick = 0;
+	TIM_Cmd(TIM3, ENABLE);
+}
+
+/**
  * @description: Pre-stress before welding
  * @return {*}
  */
@@ -494,10 +535,7 @@ static void Preload()
 	weld_controller->step_time_tick = 0;
 	TIM_Cmd(TIM5, ENABLE);
 	while (weld_controller->step_time_tick < weld_controller->weld_time[0] + 1)
-	{
-		__nop();
-		__nop();
-	}
+		;
 	TIM_Cmd(TIM5, DISABLE);
 	TIM5->CNT = 0;
 	weld_controller->state = IDEAL_STATE;
@@ -531,7 +569,7 @@ static void First_Step()
 	weld_controller->pid_ctrl = pid_ctrl;
 #else
 	/*pid reload*/
-	weld_controller->pid_ctrl->kd = DEFAULT_KD;
+	pid_dynamic_reload();
 #endif
 
 	/*real-time control*/
@@ -605,11 +643,7 @@ static void Second_Step()
 	weld_controller->pid_ctrl = pid_ctrl_debug;
 #else
 	/*pid reload*/
-	if (weld_controller->weld_time[1] > 100)
-	{
-		weld_controller->pid_ctrl->ki = SECOND_KI;
-		weld_controller->pid_ctrl->kd = SECOND_KD;
-	}
+	pid_dynamic_reload();
 #endif
 
 	/*real-time control*/
@@ -633,6 +667,7 @@ static void Second_Step()
 			else
 				weld_controller->pid_ctrl->stable_threshold_cnt++;
 		}
+
 #if PID_DEBUG == 0
 		/*enter transition area (heat compensation)*/
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
@@ -736,13 +771,6 @@ static void Third_Step()
 	temp_draw_ctrl->third_step_index_end = temp_draw_ctrl->current_index - 1; // 记录阶段结束绘图坐标
 }
 
-static void start_of_weld(void)
-{
-	/*Start recording welding cycle time*/
-	weld_controller->weld_time_tick = 0;
-	TIM_Cmd(TIM3, ENABLE);
-}
-
 /**
  * @description: End welding and reset parameters
  * @return {*}
@@ -780,7 +808,7 @@ static void End_of_Weld()
 	OVER = 1;  // 1为焊接结束信号
 }
 
-#if COMMUNICATE == 1
+#if COMMUNICATE
 
 /**
  * @description: Transmit data to the host computer
@@ -819,6 +847,10 @@ static void data_transfer_to_computer(const uint16_t Temp_Send[])
 
 #endif
 
+/**
+ * @description: Conduct a simulation of welding with no actual current output
+ * @return {*}
+ */
 static void simulate_weld()
 {
 
@@ -854,7 +886,7 @@ static void simulate_weld()
 }
 
 /**
- * @description: 焊接实时控制
+ * @description: Real-time welding control.
  * @return {*}
  */
 static void weld_real_time_ctrl()
@@ -916,8 +948,17 @@ STOP_LABEL:
 	}
 }
 
-static void Timer_Pre_Init()
+/**
+ * @description: Welding real-time control portal
+ * @return {*}
+ */
+void welding_process(void)
 {
+	/*The welding is stopped when the countdown timer reaches the end*/
+	if (weld_controller->weld_count == 0 && get_comp(param_page_list, "UP_DOWN")->val == DOWN_CNT)
+		return;
+
+	/*定时器配置PWM 5KHz*/
 	TIM1_PWM_Init();
 	TIM4_PWM_Init();
 	TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
@@ -925,24 +966,12 @@ static void Timer_Pre_Init()
 	TIM_Cmd(TIM1, DISABLE);
 	TIM_Cmd(TIM4, DISABLE);
 
-	TIM_Cmd(TIM3, DISABLE);						// 焊接周期计数器关闭
-	TIM_ClearITPendingBit(TIM3, TIM_IT_Update); // 清除中断标志位
-	TIM_Cmd(TIM5, DISABLE);						// 中实时控制器关闭
-	TIM_ClearITPendingBit(TIM5, TIM_IT_Update); // 清除中断标志位
-}
-/**
- * @description: Welding real-time control portal
- * @return {*}
- */
-void welding_process(void)
-{
-	/*向下计数模式到底，停止焊接*/
-	if (weld_controller->weld_count == 0 && get_comp(param_page_list, "UP_DOWN")->val == DOWN_CNT)
-		return;
+	TIM_Cmd(TIM3, DISABLE);
+	TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+	TIM_Cmd(TIM5, DISABLE);
+	TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
 
-	/*定时器配置PWM 5KHz*/
-	Timer_Pre_Init();
-	/*扫描按键，根据不同按键加载不同参数组别*/
+	/*Scan buttons to load different parameter sets based on the specific button pressed.*/
 	Load_Data();
 
 	/*----------------------------------------------------------------------------------------------------------------------------------------------*/

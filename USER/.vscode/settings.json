@@ -64,7 +64,8 @@
         "stdint.h": "c",
         "log.h": "c",
         "usbh_core.h": "c",
-        "usbh_def.h": "c"
+        "usbh_def.h": "c",
+        "user_config.h": "c"
     },
     // 头部注释
     "fileheader.customMade": {

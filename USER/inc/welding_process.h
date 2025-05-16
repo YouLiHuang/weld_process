@@ -14,30 +14,6 @@
 #include "sys.h"
 #include "pid.h"
 
-/*user config*/
-#define PID_DEBUG 0             // pid调试模式
-#define COMMUNICATE 0           // 上位机通信接口
-#define REALTIME_TEMP_DISPLAY 1 // 实时温度绘制开关
-#define HOST_WELD_CTRL 1        // 上位机控制焊接
-
-/*温升控制*/
-#define STABLE_ERR 5            // 稳态误差补偿
-#define USER_SET_MAX_TEMP 650.0 // 允许用户设定的最大温度
-#define USER_SET_MIN_TEMP 200.0 // 允许用户设定的最小温度
-#define MAX_WELD_TIME 9999      // 最长焊接用时
-
-/*user param*/
-#define FAST_RISE_TIME 200
-#define COMPENSATION_THRESHOLD 0.98f
-#define TRANSITION_TIME 100
-#define TRANSITION_TIME_BASE 0.1
-#define TRANSITION_TIME_CORRECT 2.9
-#define DEFAULT_GAIN1 0.9
-#define DEFAULT_GAIN2 0.5
-
-#define DEFAULT_RISE_DUTY (PD_MAX * 0.5)
-#define MAX_RISE_STEP_DUTY (PD_MAX * 0.82)
-
 /*state*/
 typedef enum WELD_STATE
 {

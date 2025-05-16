@@ -2,11 +2,12 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-15 19:17:48
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-08 10:27:27
+ * @LastEditTime: 2025-05-16 09:40:17
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
+#include "user_config.h"
 #include "timer.h"
 
 #include "welding_process.h"
@@ -21,9 +22,6 @@
 #include "tempcomp.h"
 #include "touchscreen.h"
 #include "dynamic_correct.h"
-
-#define PWM_SAMPLE 1
-#define REVERSE_CHECK 0
 
 /*实时控制*/
 extern weld_ctrl *weld_controller;

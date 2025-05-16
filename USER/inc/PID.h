@@ -25,7 +25,7 @@
 #define PD_MAX 8000
 #define PD_MIN 10
 
-#define STABLE_THRESHOLD 30
+#define PID_STABLE_THRESHOLD 30
 
 int INC_PID(u16 Set, u16 Sample, int now_current, float PROPORTION, float INTEGRAL, float Derivative);
 int INC_PID_div(int Set, int Sample, int now_PDC, float PROPORTION, float INTEGRAL, float Derivative);

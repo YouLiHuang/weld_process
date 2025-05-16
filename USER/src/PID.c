@@ -2,14 +2,14 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-21 09:52:41
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-19 09:10:00
+ * @LastEditTime: 2025-05-16 10:22:03
  * @Description:pid control algorithm
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
  */
 
 #include "pid.h"
-#include "tempcomp.h"
+
 
 pid_feedforword_ctrl *new_pid_forword_ctrl(float kp_f, float kp, float ki, float kd)
 {
@@ -29,7 +29,7 @@ pid_feedforword_ctrl *new_pid_forword_ctrl(float kp_f, float kp, float ki, float
 
 	ctrl->stable_flag = false;
 	ctrl->stable_threshold_cnt = 0;
-	ctrl->stable_threshold = STABLE_THRESHOLD;
+	ctrl->stable_threshold = PID_STABLE_THRESHOLD;
 
 	return ctrl;
 }
@@ -43,7 +43,7 @@ void reset_forword_ctrl(pid_feedforword_ctrl *ctrl)
 	ctrl->stable_flag = false;
 
 	ctrl->stable_threshold_cnt = 0;
-	ctrl->stable_threshold = STABLE_THRESHOLD;
+	ctrl->stable_threshold = PID_STABLE_THRESHOLD;
 }
 
 int PI_ctrl_output(int target, int feedback, int current_output, pid_feedforword_ctrl *ctrl)
@@ -56,14 +56,6 @@ int PI_ctrl_output(int target, int feedback, int current_output, pid_feedforword
 				  ctrl->ki * ctrl->err +
 				  ctrl->kd * (ctrl->err - 2 * ctrl->pre_err + ctrl->pre_pre_err);
 
-	// if (feedback <= 1.02 * target && feedback >= 0.98 * target)
-	// {
-	// 	if (ctrl->delta > PD_MAX * 0.01)
-	// 		ctrl->delta = PD_MAX * 0.01;
-	// }
-
-	/*forword  delta*/
-	/*...*/
 	/*update ouput*/
 	new_output = current_output + ctrl->delta;
 	/*record pre err*/

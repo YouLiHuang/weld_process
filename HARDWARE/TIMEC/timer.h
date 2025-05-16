@@ -12,15 +12,7 @@
 #include "sys.h"
 #include "stdbool.h"
 
-#define COMPENSATION 0  // Compensation switch
-#define KALMAN_FILTER 0 // filter switch
-#define PROTECT_ON 1    // Protection switch
 
-#define WIN_WIDTH 525         // Display area width
-#define DRAW_RESERVE 100      // Drawing margin
-#define DRAW_AREA_HIGH 255    // Drawing component height
-#define MAX_TEMP_DISPLAY 625  // Maximum displayable temperature
-#define TEMP_BUF_MAX_LEN 3000 // Temperature acquisition buffer size
 
 void TIM3_Int_Init(void);
 void TIM5_Int_Init(void);

@@ -2,12 +2,13 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-12 09:49:59
+ * @LastEditTime: 2025-05-16 10:35:45
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
 
+#include "user_config.h"
 #include "includes.h"
 #include "sys.h"
 #include "delay.h"
@@ -21,27 +22,12 @@
 #include "adc.h"
 #include "protect.h"
 #include "pwm.h"
-#include "Kalman.h"
 #include "touchscreen.h"
 #include "pid.h"
 #include "filter.h"
 #include "thermocoupleIO.h"
 #include "usbh_msc_usr.h"
 #include "log.h"
-
-/* Private define ------------------------------------------------------------*/
-/*user config*/
-#define USE_STM32_DEMO 0  // USB test code
-#define KEJ_CHECK_DUTY 40 // Thermocouple detection filter cycles
-#define ROOM_TEMP 20	  // Default room temperature
-#define SAMPLE_LEN 100	  // Sampling depth
-#define ADC_BIAS_MAX 650  // Maximum offset value
-
-/*debug option*/
-#define TEMP_ADJUST 0	  // Temperature calibration
-#define VOLTAGE_CHECK 1	  // Overvoltage and undervoltage alarm
-#define OVER_LOAD_CHECK 1 // Overload protection
-#define POWER_ON_CHECK 1  // Boot detection
 
 /* Private macro -------------------------------------------------------------*/
 #define START_TASK_PRIO 3
@@ -299,7 +285,7 @@ int main(void)
 	page_list_init(temp_page_list,
 				   temp_page_name_list,
 				   sizeof(temp_page_name_list) / sizeof(char *));
-	component_insert(temp_page_list, newComponet("switch", 1)); // 添加开关组件
+	component_insert(temp_page_list, newComponet("switch", 1));
 
 	/*setting page*/
 	setting_page_list = newList(UART_PAGE);
