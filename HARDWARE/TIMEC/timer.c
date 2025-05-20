@@ -239,7 +239,7 @@ void TIM5_IRQHandler(void)
 			/*Time updates*/
 			weld_controller->step_time_tick++;
 
-			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + STABLE_ERR,
+			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0],
 														 weld_controller->realtime_temp,
 														 weld_controller->Duty_Cycle,
 														 weld_controller->pid_ctrl);

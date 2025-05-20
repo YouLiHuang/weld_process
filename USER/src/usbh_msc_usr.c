@@ -24,6 +24,7 @@
 #include "usbh_msc_usr.h"
 #include "usb_bsp.h"
 #include "log.h"
+#include "user_config.h"
 
 /** @addtogroup USBH_USER
  * @{
@@ -427,8 +428,9 @@ int USBH_USR_MSC_Application(void)
     }
 
     /* Register work area for logical drives */
-    f_mount(&fatfs, "", 0);
+    f_mount(&fatfs, "", 0); // mount default root path
 
+#if WRITE_TXT_ENABLE
     if (f_open(&file, "0:test.txt", FA_CREATE_ALWAYS | FA_WRITE) == FR_OK)
     {
       /* Write buffer to file */
@@ -436,19 +438,37 @@ int USBH_USR_MSC_Application(void)
       res = f_write(&file, writeTextBuff, bytesToWrite, (void *)&bytesWritten);
 
       if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
-        printf("> test.txt CANNOT be writen.\n");
+        printf("> 'test.txt' CANNOT be writen.\n");
       else
-        printf("> 'test.txt' file created\n");
+        printf("> 'test.txt' write finished\n");
 
       /* close file and filesystem */
       f_close(&file);
-      f_mount(NULL, "", 0);
+    }
+#endif
+
+#if WRITE_CSV_ENABLE
+    /*csv write test*/
+    if (f_open(&file, "0:weldData.csv", FA_CREATE_ALWAYS | FA_WRITE) == FR_OK)
+    {
+      const char *data = "temp1,temp2,temp3\n250,400,150\n";
+      res = f_write(&file, data, strlen(data), (void *)&bytesWritten);
+
+      if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
+        printf("> 'weldData.csv' CANNOT be writen.\n");
+      else
+        printf("> 'weldData.csv'  write finished\n");
+
+      /* close file*/
+      f_close(&file);
     }
 
     else
-      printf("> test.txt created in the disk\n");
-    USB_OTG_BSP_mDelay(100);
+      printf("> 'weld_data.csv' open fail\n");
 
+#endif
+
+    USB_OTG_BSP_mDelay(100);
     USBH_USR_ApplicationState = USH_USR_FS_IDEAL;
 
     break;
@@ -456,20 +476,28 @@ int USBH_USR_MSC_Application(void)
   case USH_USR_FS_IDEAL:
     if (HCD_IsDeviceConnected(&USB_OTG_Core))
     {
+      /*mount default root path*/
       if (f_mount(&fatfs, "", 0) != FR_OK)
       {
         /* fat_fs initialisation fails */
         printf("> Cannot mount disk.\n");
         return (-1);
       }
+
+      /*listen to some sem to do some file options*/
+      /*...*/
+      
     }
+
+    /*close filesystem*/
+    // f_mount(NULL, "", 0);
 
     break;
 
   default:
     break;
   }
-  return (0);
+  return 0;
 }
 
 /**
@@ -567,7 +595,7 @@ uint8_t Explore_Disk(char *path, uint8_t recu_level)
     printf("> open dir fail\n");
 
   f_closedir(&dir);
-  f_mount(NULL, "", 0);
+  // f_mount(NULL, "", 0);
   printf("> explore finished\n");
 
   return res;
