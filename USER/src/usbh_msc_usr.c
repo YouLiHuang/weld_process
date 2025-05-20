@@ -23,12 +23,18 @@
 #include <string.h>
 #include "usbh_msc_usr.h"
 #include "usb_bsp.h"
+
+#include "welding_process.h"
+#include "adc.h"
 #include "log.h"
 #include "user_config.h"
+#include "includes.h"
 
 /** @addtogroup USBH_USER
  * @{
  */
+
+void Data_Save_Callback(void);
 
 /** @addtogroup USBH_MSC_DEMO_USER_CALLBACKS
  * @{
@@ -57,6 +63,7 @@
 /** @defgroup USBH_USR_Private_Macros
  * @{
  */
+#define DATA_BYTE_NUM 20
 
 /**
  * @}
@@ -107,9 +114,32 @@ USBH_Usr_cb_TypeDef USR_USBH_MSC_cb = {
     USBH_USR_DeviceNotSupported,
     USBH_USR_UnrecoveredError};
 
-/**
- * @}
- */
+extern OS_SEM DATA_SAVE_SEM;
+extern weld_ctrl *weld_controller;
+extern Thermocouple *current_Thermocouple;
+char *PARAM_NAME_LIST[] = {
+    "COUNT,",
+    "SENSOR_TYPE,",
+    "temp1,",
+    "temp2,",
+    "temp2,",
+    "time1,",
+    "time2,",
+    "time3,",
+    "time4,",
+    "time5,",
+    "TH1,",
+    "TL1,",
+    "TH2,",
+    "TL2,",
+    "TH3,",
+    "TL4,",
+    "gain1,",
+    "gain2,",
+    "first_step,",
+    "second_step,",
+    "third_step,",
+};
 
 /** @defgroup USBH_USR_Private_Constants
  * @{
@@ -376,9 +406,7 @@ void USBH_USR_OverCurrentDetected(void)
 int USBH_USR_MSC_Application(void)
 {
 
-  FRESULT res;
-  uint8_t writeTextBuff[] = "STM32 Connectivity line Host Demo application using FAT_FS   ";
-  uint16_t bytesWritten, bytesToWrite;
+  OS_ERR err;
 
   switch (USBH_USR_ApplicationState)
   {
@@ -409,7 +437,6 @@ int USBH_USR_MSC_Application(void)
     Explore_Disk("0:/", 1);
 
     USBH_USR_ApplicationState = USH_USR_FS_WRITEFILE;
-
     break;
 
   case USH_USR_FS_WRITEFILE:
@@ -427,27 +454,11 @@ int USBH_USR_MSC_Application(void)
       break;
     }
 
+#if WRITE_CSV_ENABLE
+
     /* Register work area for logical drives */
     f_mount(&fatfs, "", 0); // mount default root path
 
-#if WRITE_TXT_ENABLE
-    if (f_open(&file, "0:test.txt", FA_CREATE_ALWAYS | FA_WRITE) == FR_OK)
-    {
-      /* Write buffer to file */
-      bytesToWrite = sizeof(writeTextBuff);
-      res = f_write(&file, writeTextBuff, bytesToWrite, (void *)&bytesWritten);
-
-      if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
-        printf("> 'test.txt' CANNOT be writen.\n");
-      else
-        printf("> 'test.txt' write finished\n");
-
-      /* close file and filesystem */
-      f_close(&file);
-    }
-#endif
-
-#if WRITE_CSV_ENABLE
     /*csv write test*/
     if (f_open(&file, "0:weldData.csv", FA_CREATE_ALWAYS | FA_WRITE) == FR_OK)
     {
@@ -474,6 +485,7 @@ int USBH_USR_MSC_Application(void)
     break;
 
   case USH_USR_FS_IDEAL:
+
     if (HCD_IsDeviceConnected(&USB_OTG_Core))
     {
       /*mount default root path*/
@@ -484,17 +496,12 @@ int USBH_USR_MSC_Application(void)
         return (-1);
       }
 
-      /*listen to some sem to do some file options*/
-      /*...*/
-      
+      OSSemPend(&DATA_SAVE_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+      if (err == OS_ERR_NONE)
+      {
+        Data_Save_Callback();
+      }
     }
-
-    /*close filesystem*/
-    // f_mount(NULL, "", 0);
-
-    break;
-
-  default:
     break;
   }
   return 0;
@@ -599,4 +606,107 @@ uint8_t Explore_Disk(char *path, uint8_t recu_level)
   printf("> explore finished\n");
 
   return res;
+}
+
+/**
+ * @description: sava  weld data to disk
+ * @return {*}
+ */
+void Data_Save_Callback(void)
+{
+  FRESULT res;
+  uint16_t bytesWritten;
+
+  // param names
+  if (f_open(&file, "0:WeldData.csv", FA_OPEN_ALWAYS | FA_WRITE) == FR_OK)
+  {
+    for (uint16_t i = 0; i < sizeof(PARAM_NAME_LIST) / sizeof(char *); i++)
+    {
+      res = f_write(&file, PARAM_NAME_LIST[i], strlen(PARAM_NAME_LIST[i]), (void *)&bytesWritten);
+      if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
+        printf("> 'weldData.csv' CANNOT be writen.\n");
+    }
+
+    // next line
+    f_write(&file, "\n", 1, (void *)&bytesWritten);
+
+    // weld count
+    char *data_buf = malloc(sizeof(char) * DATA_BYTE_NUM);
+    memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
+    sprintf(data_buf, "%d", weld_controller->weld_count);
+    res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
+
+    // sensor type
+    switch (current_Thermocouple->type)
+    {
+    case E_TYPE:
+      res = f_write(&file, "E_TYPE", strlen("E_TYPE"), (void *)&bytesWritten);
+      if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
+        printf("> 'weldData.csv' CANNOT be writen.\n");
+      break;
+
+    case J_TYPE:
+      res = f_write(&file, "J_TYPE", strlen("J_TYPE"), (void *)&bytesWritten);
+      if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
+        printf("> 'weldData.csv' CANNOT be writen.\n");
+      break;
+
+    case K_TYPE:
+      res = f_write(&file, "K_TYPE", strlen("K_TYPE"), (void *)&bytesWritten);
+      if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
+        printf("> 'weldData.csv' CANNOT be writen.\n");
+      break;
+    }
+
+    // temp1-temp3
+    for (uint16_t i = 0; i < sizeof(weld_controller->weld_temp) / sizeof(uint16_t); i++)
+    {
+      memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
+      sprintf(data_buf, "%d", weld_controller->weld_temp[i]);
+      res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
+      if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
+        printf("> 'weldData.csv' CANNOT be writen.\n");
+    }
+
+    // time1 -time5
+    for (uint16_t i = 0; i < sizeof(weld_controller->weld_time) / sizeof(uint16_t); i++)
+    {
+      memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
+      sprintf(data_buf, "%d", weld_controller->weld_time[i]);
+      res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
+      if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
+        printf("> 'weldData.csv' CANNOT be writen.\n");
+    }
+
+    // alarm1-alarm6
+    for (uint16_t i = 0; i < sizeof(weld_controller->alarm_temp) / sizeof(uint16_t); i++)
+    {
+      memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
+      sprintf(data_buf, "%d", weld_controller->alarm_temp[i]);
+      res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
+      if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
+        printf("> 'weldData.csv' CANNOT be writen.\n");
+    }
+
+    // gain1 gain2
+    memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
+    sprintf(data_buf, "%f", (float)weld_controller->temp_gain1);
+    res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
+    if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
+      printf("> 'weldData.csv' CANNOT be writen.\n");
+
+    memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
+    sprintf(data_buf, "%f", (float)weld_controller->temp_gain2);
+    res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
+    if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
+      printf("> 'weldData.csv' CANNOT be writen.\n");
+
+    /*...step1 - step3...*/
+
+    /* close file*/
+    f_close(&file);
+  }
+
+  else
+    printf("> 'weld_data.csv' open fail\n");
 }

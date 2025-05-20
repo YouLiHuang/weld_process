@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-16 10:35:45
+ * @LastEditTime: 2025-05-20 19:42:13
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -169,6 +169,8 @@ OS_SEM HOST_WELD_CTRL_SEM;
 OS_SEM ERROR_HANDLE_SEM;
 // draw sem
 OS_SEM TEMP_DISPLAY_SEM;
+// data save sem
+OS_SEM DATA_SAVE_SEM;
 
 /*A list of new interface components*/
 // Record the ID of the current screen and the status of the three buttons
@@ -433,6 +435,8 @@ and the time slice length is 1 system clock beat, 1 ms
 	OSSemCreate(&TEMP_DISPLAY_SEM, "temp draw sem", 0, &err);
 	// 创建报错信号
 	OSSemCreate(&ERROR_HANDLE_SEM, "err sem", 0, &err);
+	// data save sem
+	OSSemCreate(&DATA_SAVE_SEM, "data save", 0, &err);
 
 	// 错误处理任务——最高优先级
 	// 50ms调度——50ms时间片

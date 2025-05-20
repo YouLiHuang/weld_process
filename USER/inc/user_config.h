@@ -3,8 +3,6 @@
 
 /* Private enable--------------------------------------------------------------------------------*/
 #define USE_STM32_DEMO 0   // USB test code enable
-#define WRITE_TXT_ENABLE 0 // txt write test
-#define WRITE_CSV_ENABLE 1 // csv write test
 
 /* debug enable ---------------------------------------------------------------------------------*/
 #define TEMP_ADJUST 0     // Temperature calibration enable
