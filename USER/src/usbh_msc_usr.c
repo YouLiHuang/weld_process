@@ -633,26 +633,26 @@ void Data_Save_Callback(void)
     // weld count
     char *data_buf = malloc(sizeof(char) * DATA_BYTE_NUM);
     memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
-    sprintf(data_buf, "%d", weld_controller->weld_count);
+    sprintf(data_buf, "%d,", weld_controller->weld_count);
     res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
 
     // sensor type
     switch (current_Thermocouple->type)
     {
     case E_TYPE:
-      res = f_write(&file, "E_TYPE", strlen("E_TYPE"), (void *)&bytesWritten);
+      res = f_write(&file, "E_TYPE,", strlen("E_TYPE"), (void *)&bytesWritten);
       if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
         printf("> 'weldData.csv' CANNOT be writen.\n");
       break;
 
     case J_TYPE:
-      res = f_write(&file, "J_TYPE", strlen("J_TYPE"), (void *)&bytesWritten);
+      res = f_write(&file, "J_TYPE,", strlen("J_TYPE"), (void *)&bytesWritten);
       if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
         printf("> 'weldData.csv' CANNOT be writen.\n");
       break;
 
     case K_TYPE:
-      res = f_write(&file, "K_TYPE", strlen("K_TYPE"), (void *)&bytesWritten);
+      res = f_write(&file, "K_TYPE,", strlen("K_TYPE"), (void *)&bytesWritten);
       if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
         printf("> 'weldData.csv' CANNOT be writen.\n");
       break;
@@ -662,7 +662,7 @@ void Data_Save_Callback(void)
     for (uint16_t i = 0; i < sizeof(weld_controller->weld_temp) / sizeof(uint16_t); i++)
     {
       memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
-      sprintf(data_buf, "%d", weld_controller->weld_temp[i]);
+      sprintf(data_buf, "%d,", weld_controller->weld_temp[i]);
       res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
       if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
         printf("> 'weldData.csv' CANNOT be writen.\n");
@@ -672,7 +672,7 @@ void Data_Save_Callback(void)
     for (uint16_t i = 0; i < sizeof(weld_controller->weld_time) / sizeof(uint16_t); i++)
     {
       memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
-      sprintf(data_buf, "%d", weld_controller->weld_time[i]);
+      sprintf(data_buf, "%d,", weld_controller->weld_time[i]);
       res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
       if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
         printf("> 'weldData.csv' CANNOT be writen.\n");
@@ -682,7 +682,7 @@ void Data_Save_Callback(void)
     for (uint16_t i = 0; i < sizeof(weld_controller->alarm_temp) / sizeof(uint16_t); i++)
     {
       memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
-      sprintf(data_buf, "%d", weld_controller->alarm_temp[i]);
+      sprintf(data_buf, "%d,", weld_controller->alarm_temp[i]);
       res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
       if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
         printf("> 'weldData.csv' CANNOT be writen.\n");
@@ -690,13 +690,13 @@ void Data_Save_Callback(void)
 
     // gain1 gain2
     memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
-    sprintf(data_buf, "%f", (float)weld_controller->temp_gain1);
+    sprintf(data_buf, "%f,", (float)weld_controller->temp_gain1);
     res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
     if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
       printf("> 'weldData.csv' CANNOT be writen.\n");
 
     memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
-    sprintf(data_buf, "%f", (float)weld_controller->temp_gain2);
+    sprintf(data_buf, "%f,", (float)weld_controller->temp_gain2);
     res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
     if ((bytesWritten == 0) || (res != FR_OK)) /* EOF or Error */
       printf("> 'weldData.csv' CANNOT be writen.\n");
