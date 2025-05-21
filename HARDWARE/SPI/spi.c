@@ -7,6 +7,7 @@
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
  */
+#include "user_config.h"
 #include "spi.h"
 #include "delay.h"
 #include "key.h"
@@ -377,12 +378,18 @@ void Load_param_alarm(void *controller, int array_of_data)
 
 		ctrl->alarm_temp[i] = alarm_temperature_load[i];
 	}
-	ctrl->temp_gain1 = (double)gain_raw[0] / 100.0;
-	ctrl->temp_gain2 = (double)gain_raw[1] / 100.0;
 
-	/*参数同步*/
-	get_comp(temp_page_list, "GAIN1")->val = gain_raw[0];
-	get_comp(temp_page_list, "GAIN2")->val = gain_raw[1];
+	if (gain_raw[0] / 100.0 != 0 && gain_raw[1] / 100.0 != 0)
+	{
+		ctrl->temp_gain1 = (double)gain_raw[0] / 100.0;
+		ctrl->temp_gain2 = (double)gain_raw[1] / 100.0;
+	}
+	else
+	{
+		/*参数同步*/
+		get_comp(temp_page_list, "GAIN1")->val = DEFAULT_GAIN1;
+		get_comp(temp_page_list, "GAIN2")->val = DEFAULT_GAIN2;
+	}
 
 	char *temp_name_list[] = {
 		"alarm1",

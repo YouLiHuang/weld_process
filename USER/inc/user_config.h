@@ -2,7 +2,11 @@
 #define USER_CONFIG_H
 
 /* Private enable--------------------------------------------------------------------------------*/
-#define USE_STM32_DEMO 0   // USB test code enable
+#define USE_STM32_DEMO 0 // USB test code enable
+#define MAX_SAVE_TIMES 5
+#define FILE_MAX_NAME_LEN 20
+#define WRITE_CSV_ENABLE 0
+#define EXPLORE_DISK_ENABLE 0
 
 /* debug enable ---------------------------------------------------------------------------------*/
 #define TEMP_ADJUST 0     // Temperature calibration enable
@@ -32,7 +36,7 @@
 #define TRANSITION_TIME_BASE 0.1     // coefficients of heat compensation time - Baseline value
 #define TRANSITION_TIME_CORRECT 2.9  // coefficients of heat compensation time - Adjustment range
 #define DEFAULT_GAIN1 0.9            // Determine the compensation strength
-#define DEFAULT_GAIN2 0.5            // Determine the compensation time
+#define DEFAULT_GAIN2 0.64           // Determine the compensation time
 
 #define DEFAULT_RISE_DUTY (PD_MAX * 0.5)
 #define MAX_RISE_STEP_DUTY (PD_MAX * 0.82)

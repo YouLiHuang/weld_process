@@ -33,7 +33,7 @@ extern uint8_t ID_OF_MAS;
 /*-----------------------------------------------------False alarms--------------------------------------------------------------*/
 extern OS_SEM ERROR_HANDLE_SEM;
 extern Error_ctrl *err_ctrl;
-/*------------------------------------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------------------------------------*/
 
 /*--------------------------------------------------Control algorithms-----------------------------------------------------------*/
 #if COMPENSATION
@@ -53,10 +53,14 @@ extern OS_SEM TEMP_DISPLAY_SEM;						 // Plot event signals
 extern Temp_draw_ctrl *temp_draw_ctrl;				 // Drawing controllers
 extern Page_Param *page_param;						 // Real-time page parameters
 extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN]; // Temperature preservation buffer
-/*------------------------------------------------------------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------------------------------------------------------------*/
 
 extern Thermocouple *current_Thermocouple; // The current thermocouple object
 extern OS_SEM HOST_WELD_CTRL_SEM;		   // The upper computer turns on the welding signal
+
+/*-------------------------------------------------------------- USB---------------------------------------------------------------*/
+extern OS_SEM DATA_SAVE_SEM;
+/*--------------------------------------------------------------------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 /*													 Data Object API                                                  */
@@ -1012,6 +1016,9 @@ void welding_process(void)
 			/*三段温度显示&计数值更新*/
 			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
 
+			/*usb save data*/
+			OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
+
 			/*焊接间隔*/
 			OVER = 0;
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
@@ -1076,6 +1083,9 @@ void welding_process(void)
 
 			/*三段温度显示&计数值更新*/
 			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
+
+			/*存储数据到U盘*/
+			OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
 
 			OVER = 0;
 			/*设置焊接间隔*/

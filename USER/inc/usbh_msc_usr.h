@@ -62,6 +62,12 @@ extern USBH_Usr_cb_TypeDef USR_USBH_MSC_cb;
 #define USH_USR_FS_READLIST 1
 #define USH_USR_FS_WRITEFILE 2
 #define USH_USR_FS_IDEAL 3
+
+#define USB_SAVE_FIRST_OPEN 0
+#define USB_SAVE_FIRST_LINE_WRITE 1
+#define USB_SAVE_DATA 2
+#define USB_SAVE_OPEN_NEXT_FILE 3
+
 /**
  * @}
  */

@@ -43,7 +43,7 @@ CPU_STK ERROR_TASK_STK[ERROR_STK_SIZE];
 void error_task(void *p_arg);
 
 #define MAIN_TASK_PRIO 5
-#define MAIN_STK_SIZE 3072
+#define MAIN_STK_SIZE 2048
 OS_TCB Main_TaskTCB;
 CPU_STK MAIN_TASK_STK[MAIN_STK_SIZE];
 void main_task(void *p_arg);
@@ -62,7 +62,7 @@ CPU_STK COMPUTER_TASK_STK[COMPUTER_STK_SIZE];
 void computer_read_task(void *p_arg);
 
 #define USB_TASK_PRIO 6
-#define USB_STK_SIZE 2048
+#define USB_STK_SIZE 4096
 OS_TCB USB_TaskTCB;
 CPU_STK USB_TASK_STK[USB_STK_SIZE];
 void usb_task(void *p_arg);
@@ -1905,6 +1905,6 @@ void usb_task(void *p_arg)
 
 		/* Host Task handler */
 		USBH_Process(&USB_OTG_Core, &USB_Host);
-		OSTimeDlyHMSM(0, 0, 0, 40, OS_OPT_TIME_PERIODIC, &err);
+		OSTimeDlyHMSM(0, 0, 0, 20, OS_OPT_TIME_PERIODIC, &err);
 	}
 }

@@ -35,7 +35,7 @@
 #define FIT_COEFFICIENT_BASE_OFFSET 36
 /*address convert*/
 #define GP_BASE 0
-#define PAGE_BASE(group) (ADDR_PAGE_WIDTH * (group + 1))
+#define PAGE_BASE(group) (ADDR_PAGE_WIDTH * (group + 2))
 
 #define TIME_BASE(group) (PAGE_BASE(group) + TIME_BASE_OFFSET)
 #define TEMP_BASE(group) (PAGE_BASE(group) + TEMP_BASE_OFFSET)
