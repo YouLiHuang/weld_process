@@ -580,6 +580,11 @@
         <Ww>
           <count>18</count>
           <WinNumber>2</WinNumber>
+          <ItemText>file_count</ItemText>
+        </Ww>
+        <Ww>
+          <count>19</count>
+          <WinNumber>2</WinNumber>
           <ItemText>save_times</ItemText>
         </Ww>
       </WatchWindow2>

@@ -25,6 +25,13 @@ typedef enum WELD_STATE
     THIRD_STATE
 } WELD_STATE;
 
+typedef enum COUNT_DIR
+{
+    UP = 0,
+    DOWN,
+
+} COUNT_DIR;
+
 typedef enum WELD_MODE
 {
     BUSY_MODE = 0,
@@ -64,6 +71,7 @@ typedef struct weld_realtime_controller
     uint16_t Duty_Cycle;     /*Duty Cycle*/
     uint16_t weld_count;     /*weld count*/
     WELD_STATE state;        /*wled state*/
+    COUNT_DIR Count_Dir;     /*count direction*/
 
     /*Transition Parameters*/
     uint16_t first_step_start_temp;

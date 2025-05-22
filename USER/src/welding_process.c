@@ -91,6 +91,7 @@ weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl)
 		ctrl->second_step_start_temp = 0;
 		ctrl->third_step_start_temp = 0;
 		ctrl->state = IDEAL_STATE;
+		ctrl->Count_Dir = UP;
 
 		/*time tick*/
 		ctrl->step_time_tick = 0;
@@ -894,9 +895,9 @@ static void simulate_weld()
 	OVER = 1;  // 1为焊接结束信号
 
 	/*+++根据计数模式更新计数值+++*/
-	if (get_comp(param_page_list, "UP_DOWN")->val == UP_CNT)
+	if (weld_controller->Count_Dir == UP)
 		weld_controller->weld_count++;
-	else if (get_comp(param_page_list, "UP_DOWN")->val == DOWN_CNT && weld_controller->weld_count > 0)
+	else if (weld_controller->Count_Dir == DOWN && weld_controller->weld_count > 0)
 		weld_controller->weld_count--;
 
 	command_set_comp_val("param_page.count", "val", weld_controller->weld_count);
@@ -1030,11 +1031,11 @@ void welding_process(void)
 			/*绘制降温曲线*/
 			down_temp_line();
 
-			/*三段温度显示&计数值更新*/
-			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
-
 			/*存储数据到U盘*/
 			OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
+
+			/*三段温度显示&计数值更新*/
+			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
 
 			/*焊接间隔*/
 			OVER = 0;
@@ -1101,11 +1102,11 @@ void welding_process(void)
 				down_temp_line();
 			}
 
-			/*三段温度显示&计数值更新*/
-			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
-
 			/*存储数据到U盘*/
 			OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
+
+			/*三段温度显示&计数值更新*/
+			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
 
 			OVER = 0;
 			/*设置焊接间隔*/

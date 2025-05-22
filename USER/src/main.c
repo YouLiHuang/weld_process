@@ -1532,6 +1532,8 @@ static bool data_syn(Page_ID id)
 		if (comp != NULL)
 			weld_controller->weld_count = comp->val;
 
+		weld_controller->Count_Dir = get_comp(param_page_list, "UP_DOWN")->val == UP_CNT ? UP : DOWN;
+
 		break;
 	}
 
@@ -1559,6 +1561,8 @@ static bool data_syn(Page_ID id)
 		comp = get_comp(param_page_list, "count");
 		if (comp != NULL)
 			weld_controller->weld_count = comp->val;
+
+		weld_controller->Count_Dir = get_comp(temp_page_list, "UP_DOWN")->val == UP_CNT ? UP : DOWN;
 
 		break;
 	}
