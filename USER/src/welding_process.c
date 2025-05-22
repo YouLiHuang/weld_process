@@ -368,6 +368,20 @@ static void down_temp_line()
 	}
 }
 
+static void display_temp_cal(void)
+{
+	uint32_t sum = 0;
+
+	/*step 1*/
+	temp_draw_ctrl->display_temp[0] = weld_controller->second_step_start_temp;
+	/*step 2*/
+	for (uint16_t i = temp_draw_ctrl->second_step_stable_index; i < temp_draw_ctrl->second_step_index_end; i++)
+		sum += temp_draw_ctrl->temp_buf[i];
+	temp_draw_ctrl->display_temp[1] = sum / (temp_draw_ctrl->second_step_index_end - temp_draw_ctrl->second_step_stable_index + 1);
+	/*step 3*/
+	temp_draw_ctrl->display_temp[2] = weld_controller->weld_temp[2];
+}
+
 /**
  * @description: load data from eeprom
  * @return {*}
@@ -1010,13 +1024,16 @@ void welding_process(void)
 			/*实时焊接控制*/
 			weld_real_time_ctrl();
 
+			/*计算三段显示温度值*/
+			display_temp_cal();
+
 			/*绘制降温曲线*/
 			down_temp_line();
 
 			/*三段温度显示&计数值更新*/
 			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
 
-			/*usb save data*/
+			/*存储数据到U盘*/
 			OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
 
 			/*焊接间隔*/
@@ -1074,6 +1091,9 @@ void welding_process(void)
 
 			/*实时焊接控制*/
 			weld_real_time_ctrl();
+
+			/*计算三段显示温度值*/
+			display_temp_cal();
 
 			/*绘制降温曲线*/
 			if (page_param->id == WAVE_PAGE)

@@ -63,8 +63,8 @@ extern USBH_Usr_cb_TypeDef USR_USBH_MSC_cb;
 #define USH_USR_FS_WRITEFILE 2
 #define USH_USR_FS_IDEAL 3
 
-#define USB_SAVE_FIRST_OPEN 0
-#define USB_SAVE_FIRST_LINE_WRITE 1
+#define USB_SAVE_NEW_OPEN 0
+#define USB_SAVE_TITLE 1
 #define USB_SAVE_DATA 2
 #define USB_SAVE_OPEN_NEXT_FILE 3
 
@@ -75,6 +75,11 @@ extern USBH_Usr_cb_TypeDef USR_USBH_MSC_cb;
 /** @defgroup USBH_USR_Exported_Macros
  * @{
  */
+
+#define DATA_BYTE_NUM 20
+#define FILE_PREFIX "0:WELD"
+#define FILE_SUFFIX "CSV"
+
 /**
  * @}
  */
@@ -111,7 +116,9 @@ USBH_USR_Status USBH_USR_UserInput(void);
 void USBH_USR_DeviceNotSupported(void);
 void USBH_USR_UnrecoveredError(void);
 int USBH_USR_MSC_Application(void);
+
 uint8_t Explore_Disk(char *path, uint8_t recu_level);
+void Write_Test(const char *file_name, const char *data);
 
 /**
  * @}

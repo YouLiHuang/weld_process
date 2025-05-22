@@ -24,11 +24,12 @@
 #include "usbh_msc_usr.h"
 #include "usb_bsp.h"
 
-#include "welding_process.h"
-#include "adc.h"
-#include "log.h"
 #include "user_config.h"
 #include "includes.h"
+#include "timer.h"
+#include "adc.h"
+#include "welding_process.h"
+#include "log.h"
 
 /** @addtogroup USBH_USER
  * @{
@@ -63,9 +64,7 @@ void Data_Save_Callback(void);
 /** @defgroup USBH_USR_Private_Macros
  * @{
  */
-#define DATA_BYTE_NUM 20
-#define FILE_PREFIX "0:WELD"
-#define FILE_SUFFIX "CSV"
+
 /**
  * @}
  */
@@ -75,7 +74,7 @@ void Data_Save_Callback(void);
  */
 
 uint8_t USBH_USR_ApplicationState = USH_USR_FS_INIT;
-uint8_t USB_SAVE_STATE = USB_SAVE_FIRST_OPEN;
+uint8_t USB_SAVE_STATE = USB_SAVE_NEW_OPEN;
 FATFS fatfs;
 static FIL file;
 FIL test_file;
@@ -119,6 +118,7 @@ USBH_Usr_cb_TypeDef USR_USBH_MSC_cb = {
 
 extern OS_SEM DATA_SAVE_SEM;
 extern weld_ctrl *weld_controller;
+extern Temp_draw_ctrl *temp_draw_ctrl;
 extern Thermocouple *current_Thermocouple;
 
 char *file_name = NULL;
@@ -393,11 +393,6 @@ int USBH_USR_MSC_Application(void)
 
   OS_ERR err;
 
-#if WRITE_CSV_ENABLE
-  FRESULT res;
-  uint16_t bytesWritten;
-#endif
-
   switch (USBH_USR_ApplicationState)
   {
   case USH_USR_FS_INIT:
@@ -427,9 +422,7 @@ int USBH_USR_MSC_Application(void)
 
 #if EXPLORE_DISK_ENABLE
     printf(MSG_ROOT_CONT);
-    printf("-----------------------Disk File Directory-----------------------\n");
     Explore_Disk("0:/", 1);
-    printf("-----------------------------------------------------------------\n");
 #endif
 
     USBH_USR_ApplicationState = USH_USR_FS_WRITEFILE;
@@ -445,27 +438,7 @@ int USBH_USR_MSC_Application(void)
     }
 
 #if WRITE_CSV_ENABLE
-
-    f_mount(&fatfs, "", 0);
-    /*csv write test*/
-
-    if (f_open(&file, "0:WELDDATA.CSV", FA_CREATE_ALWAYS | FA_WRITE) == FR_OK)
-    {
-      const uint8_t data[] = "temp1,temp2,temp3\n250,400,150\n";
-      res = f_write(&file, data, sizeof(data) / sizeof(uint8_t), (void *)&bytesWritten);
-
-      if (res != FR_OK) /* EOF or Error */
-        printf("> FILE Cannot be writen.\n");
-
-      /* close file*/
-      f_close(&file);
-
-      printf("> File written successfully.\n");
-    }
-
-    else
-      printf("> WRITE TEST FAIL !\n");
-
+    Write_Test("0:Test.csv", "temp1,temp2,temp3\n250,400,150\n");
 #endif
 
     USBH_USR_ApplicationState = USH_USR_FS_IDEAL;
@@ -474,7 +447,7 @@ int USBH_USR_MSC_Application(void)
   case USH_USR_FS_IDEAL:
     if (HCD_IsDeviceConnected(&USB_OTG_Core))
     {
-      OSSemPend(&DATA_SAVE_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+      OSSemPend(&DATA_SAVE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
       if (err == OS_ERR_NONE)
       {
 #if !WRITE_CSV_ENABLE
@@ -512,6 +485,8 @@ uint8_t Explore_Disk(char *path, uint8_t recu_level)
   FRESULT res;
   FILINFO fno;
   DIR dir;
+
+  printf("-----------------------Disk File Directory-----------------------\n");
 
   res = f_opendir(&dir, path);
   if (res == FR_OK)
@@ -584,7 +559,43 @@ uint8_t Explore_Disk(char *path, uint8_t recu_level)
     printf("> Open dir fail\n");
 
   f_closedir(&dir);
+
+  printf("-----------------------------------------------------------------\n");
+
   return res;
+}
+
+void Write_Test(const char *file_name, const char *data)
+{
+
+  FRESULT res;
+  uint16_t bytesWritten;
+
+  if (strlen(file_name) > 8)
+  {
+    printf("> name too long !");
+    return;
+  }
+
+  f_mount(&fatfs, "", 0);
+  /*csv write test*/
+
+  if (f_open(&file, file_name, FA_CREATE_ALWAYS | FA_WRITE) == FR_OK)
+  {
+
+    res = f_write(&file, data, sizeof(data) / sizeof(uint8_t), (void *)&bytesWritten);
+
+    if (res != FR_OK) /* EOF or Error */
+      printf("> FILE Cannot be writen.\n");
+
+    /* close file*/
+    f_close(&file);
+
+    printf("> File written successfully.\n");
+  }
+
+  else
+    printf("> WRITE TEST FAIL !\n");
 }
 
 static FRESULT Save2Disk(char *file_name)
@@ -592,8 +603,7 @@ static FRESULT Save2Disk(char *file_name)
   FRESULT res;
   uint16_t bytesWritten;
 
-  char data_buf[DATA_BYTE_NUM];
-  memset(data_buf, 0, sizeof(data_buf));
+  char data_buf[DATA_BYTE_NUM] = "";
 
   // weld count
   memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
@@ -635,7 +645,7 @@ static FRESULT Save2Disk(char *file_name)
   // temp1-temp3
   for (uint16_t i = 0; i < sizeof(weld_controller->weld_temp) / sizeof(uint16_t); i++)
   {
-    memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
+    memset(data_buf, 0, sizeof(data_buf) / sizeof(data_buf[0]));
     sprintf(data_buf, "%d,", weld_controller->weld_temp[i]);
     res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
     if (res != FR_OK) /* EOF or Error */
@@ -647,7 +657,7 @@ static FRESULT Save2Disk(char *file_name)
   // time1 -time5
   for (uint16_t i = 0; i < sizeof(weld_controller->weld_time) / sizeof(uint16_t); i++)
   {
-    memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
+    memset(data_buf, 0, sizeof(data_buf) / sizeof(data_buf[0]));
     sprintf(data_buf, "%d,", weld_controller->weld_time[i]);
     res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
     if (res != FR_OK) /* EOF or Error */
@@ -659,7 +669,7 @@ static FRESULT Save2Disk(char *file_name)
   // alarm1-alarm6
   for (uint16_t i = 0; i < sizeof(weld_controller->alarm_temp) / sizeof(uint16_t); i++)
   {
-    memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
+    memset(data_buf, 0, sizeof(data_buf) / sizeof(data_buf[0]));
     sprintf(data_buf, "%d,", weld_controller->alarm_temp[i]);
     res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
     if (res != FR_OK) /* EOF or Error */
@@ -669,7 +679,7 @@ static FRESULT Save2Disk(char *file_name)
   }
 
   // gain1 gain2
-  memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
+  memset(data_buf, 0, sizeof(data_buf) / sizeof(data_buf[0]));
   sprintf(data_buf, "%f,", (float)weld_controller->temp_gain1);
   res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
   if (res != FR_OK) /* EOF or Error */
@@ -677,7 +687,7 @@ static FRESULT Save2Disk(char *file_name)
     printf("> %s CANNOT be writen.\n", file_name);
   }
 
-  memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
+  memset(data_buf, 0, sizeof(data_buf) / sizeof(data_buf[0]));
   sprintf(data_buf, "%f,", (float)weld_controller->temp_gain2);
   res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
   if (res != FR_OK) /* EOF or Error */
@@ -685,7 +695,17 @@ static FRESULT Save2Disk(char *file_name)
     printf("> %s CANNOT be writen.\n", file_name);
   }
 
-  /*...step1 - step3...*/
+  /*step1 - step3*/
+  for (uint16_t i = 0; i < sizeof(temp_draw_ctrl->display_temp) / sizeof(temp_draw_ctrl->display_temp[0]); i++)
+  {
+    memset(data_buf, 0, sizeof(data_buf) / sizeof(char));
+    sprintf(data_buf, "%d,", temp_draw_ctrl->display_temp[i]);
+    res = f_write(&file, data_buf, strlen(data_buf), (void *)&bytesWritten);
+    if (res != FR_OK) /* EOF or Error */
+    {
+      printf("> %s CANNOT be writen.\n", file_name);
+    }
+  }
 
   // next line
   f_write(&file, "\n", 1, (void *)&bytesWritten);
@@ -701,54 +721,78 @@ void Data_Save_Callback(void)
 {
   FRESULT res;
   uint16_t bytesWritten;
+  uint8_t name_len;
+  static uint16_t last_count;
   char temp_name[20] = "";
 
-  /*file name*/
-  sprintf(temp_name, "%s%d.%s", FILE_PREFIX, file_count, FILE_SUFFIX);
-  if (file_name == NULL)
-    file_name = malloc(sizeof(char) * (strlen(temp_name) + 1));
-  else
-    realloc(file_name, sizeof(char) * (strlen(temp_name) + 1));
+  /*new file name*/
+  if ((file_count == 0 && save_times == 0) || last_count != file_count) // create the first file or a new file
+  {
+    sprintf(temp_name, "%s%d.%s", FILE_PREFIX, file_count, FILE_SUFFIX);
+    name_len = strlen(temp_name);
 
-  strcpy(file_name, temp_name);
+    if (file_name == NULL)
+    {
+      file_name = malloc(sizeof(char) * (name_len + 1));
+      if (file_name == NULL)
+      {
+        printf("> Malloc fail!\n");
+        return;
+      }
+    }
 
+    else if (strlen(file_name) != name_len)
+    {
+      file_name = realloc(file_name, sizeof(char) * (name_len + 1));
+      if (file_name == NULL)
+      {
+        printf("> Realloc fail!\n");
+        return;
+      }
+    }
+
+    strcpy(file_name, temp_name);
+  }
+
+  /*State Machine——save data as csv file*/
   switch (USB_SAVE_STATE)
   {
-  case USB_SAVE_FIRST_OPEN:
+  case USB_SAVE_NEW_OPEN:
 
     /*mount to root path*/
     f_mount(&fatfs, "", 0);
-    /*first time open file*/
+    /*open new file*/
     res = f_open(&file, file_name, FA_CREATE_ALWAYS | FA_WRITE);
     if (res != FR_OK)
     {
-      printf("> %s OPNE FAIL , RETRY... !\n", file_name);
+      printf("> %s OPNE FAIL , RETRY...\n", file_name);
       break;
     }
     else
     {
-      printf("> NEW FILE OPEN !\n");
-      USB_SAVE_STATE = USB_SAVE_FIRST_LINE_WRITE;
+      printf("> OPEN NEW FILE  \"%s\" \n", file_name);
+      USB_SAVE_STATE = USB_SAVE_TITLE;
     }
 
-  case USB_SAVE_FIRST_LINE_WRITE:
-    /*first line / name line*/
+  case USB_SAVE_TITLE:
+    /*write title*/
     res = f_write(&file, PARAM_NAME_LIST, strlen(PARAM_NAME_LIST), (void *)&bytesWritten);
     if (res != FR_OK) /* EOF or Error */
-      printf("> %s CANNOT BE WRITTEN , RETRY...\n", file_name);
+    {
+      printf("> %s TITLE WRITE FAIL, RETRY...\n", file_name);
+      break;
+    }
     else
     {
       printf("> FIRST LINE HAVE BEEN WRITTEN !\n");
       USB_SAVE_STATE = USB_SAVE_DATA;
     }
 
-    break;
-
   case USB_SAVE_DATA:
     res = Save2Disk(file_name);
     if (res == FR_OK)
     {
-      printf("> DATA HAVE BEEN SAVED !\n");
+      printf("> DATA HAVE BEEN SAVED to \"%s\" !\n", file_name);
       save_times++;
 
       /*save to next file*/
@@ -758,7 +802,7 @@ void Data_Save_Callback(void)
         file_count++;
         f_close(&file);
 
-        USB_SAVE_STATE = USB_SAVE_FIRST_OPEN;
+        USB_SAVE_STATE = USB_SAVE_NEW_OPEN;
       }
     }
     else
@@ -766,4 +810,6 @@ void Data_Save_Callback(void)
 
     break;
   }
+
+  last_count = file_count;
 }

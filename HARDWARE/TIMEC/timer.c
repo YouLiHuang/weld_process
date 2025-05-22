@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-15 19:17:48
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-19 19:57:20
+ * @LastEditTime: 2025-05-22 09:42:09
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -79,6 +79,11 @@ Temp_draw_ctrl *new_temp_draw_ctrl(uint16_t *buf, uint16_t len1, uint16_t len2, 
 	ctrl->third_step_index_end = 0;
 	ctrl->tick_record = 0;
 
+	for (uint8_t i = 0; i < sizeof(ctrl->display_temp) / sizeof(ctrl->display_temp[0]); i++)
+	{
+		ctrl->display_temp[i] = 0;
+	}
+
 	return ctrl;
 }
 
@@ -111,6 +116,11 @@ void reset_temp_draw_ctrl(Temp_draw_ctrl *ctrl, const uint16_t welding_time[])
 	for (uint16_t i = 0; i < ctrl->buf_len_max; i++)
 	{
 		ctrl->temp_buf[i] = 0;
+	}
+
+	for (uint8_t i = 0; i < sizeof(ctrl->display_temp) / sizeof(ctrl->display_temp[0]); i++)
+	{
+		ctrl->display_temp[i] = 0;
 	}
 }
 
