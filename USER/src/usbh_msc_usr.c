@@ -565,6 +565,12 @@ uint8_t Explore_Disk(char *path, uint8_t recu_level)
   return res;
 }
 
+/**
+ * @description: write file test function
+ * @param {char} * file name
+ * @param {char} * data write to file
+ * @return {*}
+ */
 void Write_Test(const char *file_name, const char *data)
 {
 
@@ -598,6 +604,11 @@ void Write_Test(const char *file_name, const char *data)
     printf("> WRITE TEST FAIL !\n");
 }
 
+/**
+ * @description: save weld data to disk
+ * @param {char} file name that will be saved to
+ * @return {*}
+ */
 static FRESULT Save2Disk(char *file_name)
 {
   FRESULT res;
@@ -714,7 +725,7 @@ static FRESULT Save2Disk(char *file_name)
 }
 
 /**
- * @description: sava  weld data to disk
+ * @description: It will be called every time welding is completed, trying to store data to disk
  * @return {*}
  */
 void Data_Save_Callback(void)
