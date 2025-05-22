@@ -844,7 +844,7 @@ void Data_Save_Callback(void)
     }
 
     /*move to end of file*/
-    printf("> \"%s\" size : %d \n", file_name, f_size(file));
+    // printf("> \"%s\" size : %d \n", file_name, f_size(file));
     res = f_lseek(file, f_size(file));
     if (res != FR_OK)
     {
