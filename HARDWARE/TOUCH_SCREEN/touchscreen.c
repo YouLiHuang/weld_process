@@ -292,7 +292,7 @@ bool temp_page_list_init(Component_Queue *temp_page_list)
 }
 
 /**
- * @description: 
+ * @description:
  * @param {Component_Queue} * ui list object
  * @param {char} * Component name list
  * @param {uint8_t} Number of components
@@ -535,6 +535,41 @@ bool command_get_comp_str(Component_Queue *list, const char *name, const char *c
 }
 
 /**
+ * @description: Get the variable value of the touch screen
+ * @param {int *} Pointer storing the variable value
+ * @param {char *} name :specifies the Variable name
+ * @return {*}
+ */
+bool command_get_variable_val(uint16_t *val, const char *name)
+{
+  uart_init(115200);
+  char send_buf[20] = "";
+  if (val == NULL || name == NULL)
+    return false;
+
+  sprintf(send_buf, "get %s%s", name, END_OF_CMD);
+
+#if FAST_MODE == 1
+  RS485_send(send_buf, strlen(send_buf)); // 发送数据
+#else
+  CPU_SR_ALLOC();
+  OS_CRITICAL_ENTER();                    // 进入临界区
+  RS485_send(send_buf, strlen(send_buf)); // 发送数据
+  OS_CRITICAL_EXIT();                     // 退出临界区
+#endif
+
+  OS_ERR err;
+  OSSemPend(&COMP_VAL_GET_SEM, 200, OS_OPT_PEND_BLOCKING, NULL, &err);
+  if (err == OS_ERR_NONE)
+  {
+    *val = USART_RX_BUF[1] | USART_RX_BUF[2] << 8 | USART_RX_BUF[3] << 16 | USART_RX_BUF[4] << 24;
+    return true;
+  }
+  else
+    return false;
+}
+
+/**
  * @description: raw api that only call before enter os
  * @param {char} *cmd
  * @return {*}
@@ -704,7 +739,6 @@ void draw_point(uint16_t val)
   strcat(pre_cmd, END_OF_CMD);
   RS485_send(pre_cmd, strlen(pre_cmd));
 }
-
 
 #if ERR_DRAW
 void draw_point_err(uint16_t val)
