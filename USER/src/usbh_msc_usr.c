@@ -35,16 +35,7 @@
  * @{
  */
 
-void Data_Save_Callback(void);
-
-/** @addtogroup USBH_MSC_DEMO_USER_CALLBACKS
- * @{
- */
-
-/** @defgroup USBH_USR
- * @brief    This file includes the usb host stack user callbacks
- * @{
- */
+USBH_Status Data_Save_Callback(void);
 
 /** @defgroup USBH_USR_Private_TypesDefinitions
  * @{
@@ -72,12 +63,20 @@ void Data_Save_Callback(void);
 /** @defgroup USBH_USR_Private_Variables
  * @{
  */
+extern OS_SEM DATA_SAVE_SEM;
+extern weld_ctrl *weld_controller;
+extern Temp_draw_ctrl *temp_draw_ctrl;
+extern Thermocouple *current_Thermocouple;
+
+char *file_name = NULL;
+static uint16_t save_times = 0;
+static uint8_t file_count = 0;
+const char PARAM_NAME_LIST[] = "COUNT,SENSOR_TYPE,temp1,temp2,temp3,time1,time2,time3,time4,time5,TH1,TL1,TH2,TL2,TH3,TL3,gain1,gain2,step1,step2,step3\n";
 
 uint8_t USBH_USR_ApplicationState = USH_USR_FS_INIT;
-uint8_t USB_SAVE_STATE = USB_SAVE_NEW_OPEN;
 FATFS fatfs;
 FIL *file = NULL;
-FIL test_file;
+USB_SAVE_STATE usb_save_status;
 
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
 #if defined(__ICCARM__) /* !< IAR Compiler */
@@ -115,16 +114,6 @@ USBH_Usr_cb_TypeDef USR_USBH_MSC_cb = {
     USBH_USR_MSC_Application,
     USBH_USR_DeviceNotSupported,
     USBH_USR_UnrecoveredError};
-
-extern OS_SEM DATA_SAVE_SEM;
-extern weld_ctrl *weld_controller;
-extern Temp_draw_ctrl *temp_draw_ctrl;
-extern Thermocouple *current_Thermocouple;
-
-char *file_name = NULL;
-static uint16_t save_times = 0;
-static uint8_t file_count = 0;
-const char PARAM_NAME_LIST[] = "COUNT,SENSOR_TYPE,temp1,temp2,temp3,time1,time2,time3,time4,time5,TH1,TL1,TH2,TL2,TH3,TL3,gain1,gain2,step1,step2,step3\n";
 
 /** @defgroup USBH_USR_Private_Constants
  * @{
@@ -393,6 +382,8 @@ int USBH_USR_MSC_Application(void)
 
   OS_ERR err;
 
+  USBH_Status ret;
+
   switch (USBH_USR_ApplicationState)
   {
   case USH_USR_FS_INIT:
@@ -402,7 +393,8 @@ int USBH_USR_MSC_Application(void)
     {
       /* efs initialisation fails */
       printf("> Cannot initialize File System.\n");
-      return (-1);
+      ret = USBH_APPLY_DEINIT;
+      break;
     }
     else
     {
@@ -413,6 +405,8 @@ int USBH_USR_MSC_Application(void)
     if (USBH_MSC_Param.MSWriteProtect == DISK_WRITE_PROTECTED)
     {
       printf(MSG_WR_PROTECT);
+      ret = USBH_APPLY_DEINIT;
+      break;
     }
 
     USBH_USR_ApplicationState = USH_USR_FS_READLIST;
@@ -434,6 +428,7 @@ int USBH_USR_MSC_Application(void)
     if (USBH_MSC_Param.MSWriteProtect == DISK_WRITE_PROTECTED)
     {
       printf("> Disk flash is write protected \n");
+      ret = USBH_APPLY_DEINIT;
       break;
     }
 
@@ -442,7 +437,6 @@ int USBH_USR_MSC_Application(void)
 #endif
 
     USBH_USR_ApplicationState = USH_USR_FS_IDEAL;
-
     break;
 
   case USH_USR_FS_IDEAL:
@@ -450,17 +444,13 @@ int USBH_USR_MSC_Application(void)
     {
       OSSemPend(&DATA_SAVE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
       if (err == OS_ERR_NONE)
-      {
-#if !WRITE_CSV_ENABLE
-        Data_Save_Callback();
-#endif
-      }
+        ret = Data_Save_Callback();
     }
 
     break;
   }
 
-  return 0;
+  return ret;
 }
 
 /**
@@ -732,44 +722,48 @@ static FRESULT Save2Disk(char *file_name)
  * @description: It will be called every time welding is completed, trying to store data to disk
  * @return {*}
  */
-void Data_Save_Callback(void)
+USBH_Status Data_Save_Callback(void)
 {
   FRESULT res;
+  USBH_Status ret;
   uint16_t bytesWritten;
   uint8_t name_len;
-
   char temp_name[20] = "";
 
-  /*file name*/
-  sprintf(temp_name, "%s%d.%s", FILE_PREFIX, file_count, FILE_SUFFIX);
-  name_len = strlen(temp_name);
-
-  if (file_name == NULL)
-  {
-    file_name = malloc(sizeof(char) * (name_len + 1));
-    if (file_name == NULL)
-    {
-      printf("> Malloc fail!\n");
-      return;
-    }
-  }
-
-  else if (strlen(file_name) != name_len)
-  {
-    file_name = realloc(file_name, sizeof(char) * (name_len + 1));
-    if (file_name == NULL)
-    {
-      printf("> Realloc fail!\n");
-      return;
-    }
-  }
-
-  strcpy(file_name, temp_name);
-
   /*State Machine——save data as csv file*/
-  switch (USB_SAVE_STATE)
+  switch (usb_save_status)
   {
-  case USB_SAVE_NEW_OPEN:
+
+  case SAVE_INIT:
+    /*file name*/
+    sprintf(temp_name, "%s%d.%s", FILE_PREFIX, file_count, FILE_SUFFIX);
+    name_len = strlen(temp_name);
+
+    if (file_name == NULL)
+    {
+      file_name = malloc(sizeof(char) * (name_len + 1));
+      if (file_name == NULL)
+      {
+        printf("> Malloc fail!\n");
+        ret = USBH_APPLY_DEINIT;
+        break;
+      }
+    }
+    else if (strlen(file_name) != name_len)
+    {
+      file_name = realloc(file_name, sizeof(char) * (name_len + 1));
+      if (file_name == NULL)
+      {
+        printf("> Realloc fail!\n");
+        ret = USBH_APPLY_DEINIT;
+        break;
+      }
+    }
+
+    strcpy(file_name, temp_name);
+    usb_save_status = SAVE_NEW_OPEN;
+
+  case SAVE_NEW_OPEN:
 
     if (file != NULL)
     {
@@ -779,31 +773,41 @@ void Data_Save_Callback(void)
 
     /*open new file*/
     file = malloc(sizeof(FIL));
-    if (file != NULL)
+    if (file == NULL)
     {
-
-      /*mount to root path*/
-      f_mount(&fatfs, "", 0);
-
-      res = f_open(file, file_name, FA_CREATE_ALWAYS | FA_WRITE);
-      if (res != FR_OK) /* EOF or Error */
-      {
-        printf(">  NEW FILE \"%s\" OPEN FAIL , RETRY...\n", file_name);
-
-        f_close(file);
-        free(file);
-        file = NULL;
-
-        break;
-      }
-      else
-      {
-        printf("> OPEN NEW FILE  \"%s\" \n", file_name);
-        USB_SAVE_STATE = USB_SAVE_TITLE;
-      }
+      printf("> Malloc fail!\n");
+      ret = USBH_APPLY_DEINIT;
+      break;
     }
 
-  case USB_SAVE_TITLE:
+    /*mount to root path*/
+    res = f_mount(&fatfs, "", 0);
+    if (res != FR_OK)
+    {
+      printf("> Mount Fail !\n");
+      ret = USBH_APPLY_DEINIT;
+      break;
+    }
+
+    res = f_open(file, file_name, FA_CREATE_ALWAYS | FA_WRITE);
+    if (res != FR_OK) /* EOF or Error */
+    {
+      printf(">  NEW FILE \"%s\" OPEN FAIL , RETRY...\n", file_name);
+
+      f_close(file);
+      free(file);
+      file = NULL;
+
+      ret = USBH_APPLY_DEINIT;
+      break;
+    }
+    else
+    {
+      printf("> OPEN NEW FILE  \"%s\" \n", file_name);
+      usb_save_status = SAVE_TITLE;
+    }
+
+  case SAVE_TITLE:
     /*write title*/
     res = f_write(file, PARAM_NAME_LIST, strlen(PARAM_NAME_LIST), (void *)&bytesWritten);
     if (res != FR_OK) /* EOF or Error */
@@ -813,7 +817,8 @@ void Data_Save_Callback(void)
       free(file);
       file = NULL;
 
-      USB_SAVE_STATE = USB_SAVE_NEW_OPEN;
+      usb_save_status = SAVE_INIT;
+      ret = USBH_APPLY_DEINIT;
       break;
     }
     else
@@ -823,10 +828,10 @@ void Data_Save_Callback(void)
       f_close(file);
       free(file);
       file = NULL;
-      USB_SAVE_STATE = USB_SAVE_DATA;
+      usb_save_status = SAVE_DATA;
     }
 
-  case USB_SAVE_DATA:
+  case SAVE_DATA:
 
     if (file == NULL)
       file = malloc(sizeof(FIL));
@@ -840,11 +845,12 @@ void Data_Save_Callback(void)
       f_close(file);
       free(file);
       file = NULL;
+
+      ret = USBH_APPLY_DEINIT;
       break;
     }
 
     /*move to end of file*/
-    // printf("> \"%s\" size : %d \n", file_name, f_size(file));
     res = f_lseek(file, f_size(file));
     if (res != FR_OK)
     {
@@ -852,6 +858,8 @@ void Data_Save_Callback(void)
       f_close(file);
       free(file);
       file = NULL;
+
+      ret = USBH_APPLY_DEINIT;
       break;
     }
 
@@ -866,11 +874,14 @@ void Data_Save_Callback(void)
       if (save_times % MAX_SAVE_TIMES == 0)
       {
         file_count++;
-        USB_SAVE_STATE = USB_SAVE_NEW_OPEN;
+        usb_save_status = SAVE_INIT;
       }
     }
     else
+    {
       printf("> DATA SAVE FAIL , RETRY...\n");
+      ret = USBH_APPLY_DEINIT;
+    }
 
     /*close file sync data*/
     if (file != NULL)
@@ -881,7 +892,8 @@ void Data_Save_Callback(void)
       file = NULL;
     }
 
-    // USB_OTG_BSP_mDelay(100);
     break;
   }
+
+  return ret;
 }

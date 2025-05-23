@@ -63,10 +63,15 @@ extern USBH_Usr_cb_TypeDef USR_USBH_MSC_cb;
 #define USH_USR_FS_WRITEFILE 2
 #define USH_USR_FS_IDEAL 3
 
-#define USB_SAVE_NEW_OPEN 0
-#define USB_SAVE_TITLE 1
-#define USB_SAVE_DATA 2
-#define USB_SAVE_OPEN_NEXT_FILE 3
+
+typedef enum USB_SAVE_STATE
+{
+    SAVE_INIT = 0,
+    SAVE_NEW_OPEN,
+    SAVE_TITLE,
+    SAVE_DATA ,
+
+} USB_SAVE_STATE;
 
 /**
  * @}
