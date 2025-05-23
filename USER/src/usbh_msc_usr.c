@@ -35,7 +35,7 @@
  * @{
  */
 
-USBH_Status Data_Save_Callback(void);
+int Data_Save_Callback(void);
 
 /** @defgroup USBH_USR_Private_TypesDefinitions
  * @{
@@ -382,7 +382,7 @@ int USBH_USR_MSC_Application(void)
 
   OS_ERR err;
 
-  USBH_Status ret;
+  int ret = USBH_OK;
 
   switch (USBH_USR_ApplicationState)
   {
@@ -393,7 +393,7 @@ int USBH_USR_MSC_Application(void)
     {
       /* efs initialisation fails */
       printf("> Cannot initialize File System.\n");
-      ret = USBH_APPLY_DEINIT;
+      ret = (1);
       break;
     }
     else
@@ -405,7 +405,7 @@ int USBH_USR_MSC_Application(void)
     if (USBH_MSC_Param.MSWriteProtect == DISK_WRITE_PROTECTED)
     {
       printf(MSG_WR_PROTECT);
-      ret = USBH_APPLY_DEINIT;
+      ret = (1);
       break;
     }
 
@@ -428,7 +428,7 @@ int USBH_USR_MSC_Application(void)
     if (USBH_MSC_Param.MSWriteProtect == DISK_WRITE_PROTECTED)
     {
       printf("> Disk flash is write protected \n");
-      ret = USBH_APPLY_DEINIT;
+      ret = (1);
       break;
     }
 
@@ -722,10 +722,10 @@ static FRESULT Save2Disk(char *file_name)
  * @description: It will be called every time welding is completed, trying to store data to disk
  * @return {*}
  */
-USBH_Status Data_Save_Callback(void)
+int Data_Save_Callback(void)
 {
   FRESULT res;
-  USBH_Status ret;
+  int ret;
   uint16_t bytesWritten;
   uint8_t name_len;
   char temp_name[20] = "";
@@ -745,7 +745,7 @@ USBH_Status Data_Save_Callback(void)
       if (file_name == NULL)
       {
         printf("> Malloc fail!\n");
-        ret = USBH_APPLY_DEINIT;
+        ret = (1);
         break;
       }
     }
@@ -755,7 +755,7 @@ USBH_Status Data_Save_Callback(void)
       if (file_name == NULL)
       {
         printf("> Realloc fail!\n");
-        ret = USBH_APPLY_DEINIT;
+        ret = (1);
         break;
       }
     }
@@ -776,7 +776,7 @@ USBH_Status Data_Save_Callback(void)
     if (file == NULL)
     {
       printf("> Malloc fail!\n");
-      ret = USBH_APPLY_DEINIT;
+      ret = (1);
       break;
     }
 
@@ -785,10 +785,11 @@ USBH_Status Data_Save_Callback(void)
     if (res != FR_OK)
     {
       printf("> Mount Fail !\n");
-      ret = USBH_APPLY_DEINIT;
+      ret = (1);
       break;
     }
 
+    /*new open*/
     res = f_open(file, file_name, FA_CREATE_ALWAYS | FA_WRITE);
     if (res != FR_OK) /* EOF or Error */
     {
@@ -798,7 +799,7 @@ USBH_Status Data_Save_Callback(void)
       free(file);
       file = NULL;
 
-      ret = USBH_APPLY_DEINIT;
+      ret = (1);
       break;
     }
     else
@@ -813,12 +814,12 @@ USBH_Status Data_Save_Callback(void)
     if (res != FR_OK) /* EOF or Error */
     {
       printf("> %s TITLE WRITE FAIL, RETRY...\n", file_name);
-      f_close(file);
+
       free(file);
       file = NULL;
 
       usb_save_status = SAVE_INIT;
-      ret = USBH_APPLY_DEINIT;
+      ret = (1);
       break;
     }
     else
@@ -826,15 +827,18 @@ USBH_Status Data_Save_Callback(void)
       printf("> FIRST LINE HAVE BEEN WRITTEN !\n");
 
       f_close(file);
-      free(file);
-      file = NULL;
       usb_save_status = SAVE_DATA;
     }
 
   case SAVE_DATA:
+    if (file != NULL)
+    {
+      free(file);
+      file = NULL;
+    }
 
-    if (file == NULL)
-      file = malloc(sizeof(FIL));
+    /*open new file*/
+    file = malloc(sizeof(FIL));
 
     /*open file*/
     res = f_open(file, file_name, FA_OPEN_ALWAYS | FA_WRITE);
@@ -842,11 +846,10 @@ USBH_Status Data_Save_Callback(void)
     {
       printf("> \"%s\" OPEN FAIL , RETRY...\n", file_name);
 
-      f_close(file);
       free(file);
       file = NULL;
 
-      ret = USBH_APPLY_DEINIT;
+      ret = (1);
       break;
     }
 
@@ -859,7 +862,7 @@ USBH_Status Data_Save_Callback(void)
       free(file);
       file = NULL;
 
-      ret = USBH_APPLY_DEINIT;
+      ret = (1);
       break;
     }
 
@@ -876,20 +879,16 @@ USBH_Status Data_Save_Callback(void)
         file_count++;
         usb_save_status = SAVE_INIT;
       }
+      f_close(file);
     }
     else
     {
       printf("> DATA SAVE FAIL , RETRY...\n");
-      ret = USBH_APPLY_DEINIT;
-    }
-
-    /*close file sync data*/
-    if (file != NULL)
-    {
-
       f_close(file);
       free(file);
       file = NULL;
+      usb_save_status = SAVE_INIT;
+      ret = (1);
     }
 
     break;
