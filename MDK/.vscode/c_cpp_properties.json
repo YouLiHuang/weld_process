@@ -3,9 +3,8 @@
         {
             "name": "Template",
             "includePath": [
-                "c:\\Users\\86198\\Desktop\\weld\\weld_process\\MDK\\inc",
+                "c:\\Users\\86198\\Desktop\\weld\\weld_process\\USER\\inc",
                 "c:\\Users\\86198\\Desktop\\weld\\weld_process\\CORE",
-                "c:\\Users\\86198\\Desktop\\weld\\weld_process\\SYSTEM\\usart",
                 "c:\\Users\\86198\\Desktop\\weld\\weld_process\\SYSTEM\\delay",
                 "c:\\Users\\86198\\Desktop\\weld\\weld_process\\SYSTEM\\sys",
                 "c:\\Users\\86198\\Desktop\\weld\\weld_process\\USER\\inc",
