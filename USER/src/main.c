@@ -198,6 +198,9 @@ pid_feedforword_ctrl *pid_ctrl_debug = NULL;
 #endif
 // Current thermocouple
 Thermocouple *current_Thermocouple = NULL;
+// current date
+Date current_date;
+
 /*list init name*/
 static char *temp_page_name_list[] = {
 	"alarm1",
@@ -228,7 +231,13 @@ static char *param_page_name_list[] = {
 	"ION_OFF",
 	"SGW_CTW",
 	"UP_DOWN",
-	"count"};
+	"count",
+	"rtc0",
+	"rtc1",
+	"rtc2",
+	"rtc3",
+	"rtc4",
+};
 
 static char *setting_page_name_list[] = {
 	"adress",
@@ -1329,6 +1338,7 @@ static bool pid_param_get(uint16_t *pid_raw_param)
 static void page_process(Page_ID id)
 {
 	const char *tick_name[] = {"tick1", "tick2", "tick3", "tick4", "tick5"};
+
 	switch (page_param->id)
 	{
 	case PARAM_PAGE:
@@ -1357,6 +1367,13 @@ static void page_process(Page_ID id)
 			/*绘图控制器复位*/
 			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
 		}
+
+		/*4、获取当前时间(年/月/日/时/分)*/
+		command_get_variable_val(&current_date.Year, "rtc0");
+		command_get_variable_val(&current_date.Month, "rtc1");
+		command_get_variable_val(&current_date.Day, "rtc2");
+		command_get_variable_val(&current_date.Hour, "rtc3");
+		command_get_variable_val(&current_date.Minute, "rtc4");
 	}
 	break;
 

@@ -74,6 +74,18 @@
 /*------------------------------------------------------------------报警组件名称------------------------------------------------------------------*/
 #define SHOW_ON 127
 #define SHOW_OFF 0
+
+/*-------------------------日期对象---------------------------*/
+typedef struct Date
+{
+    uint16_t Year;
+    uint16_t Month;
+    uint16_t Day;
+    uint16_t Hour;
+    uint16_t Minute;
+    uint16_t Second;
+} Date;
+
 /*-------------------------控件属性集---------------------------*/
 
 typedef enum
@@ -168,6 +180,7 @@ bool command_send(const char *cmd);
 bool command_set_comp_val(const char *name, const char *compatible, const int val);
 bool command_set_comp_str(const char *name, const char *compatible, const char *str);
 bool command_get_comp_val(Component_Queue *list, const char *name, const char *compatible);
+bool command_get_variable_val(uint16_t *val, const char *name);
 /*常用接口*/
 void Touchscreen_init(void);
 bool Page_to(const Page_Param *page_param, const Page_ID id);

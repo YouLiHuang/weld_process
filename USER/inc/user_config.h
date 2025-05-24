@@ -1,9 +1,10 @@
 #ifndef USER_CONFIG_H
 #define USER_CONFIG_H
 
+
 /* Private enable--------------------------------------------------------------------------------*/
 #define USE_STM32_DEMO 0 // USB test code enable
-#define MAX_SAVE_TIMES 5
+#define MAX_SAVE_TIMES 100
 #define FILE_MAX_NAME_LEN 20
 #define WRITE_CSV_ENABLE 0
 #define EXPLORE_DISK_ENABLE 0

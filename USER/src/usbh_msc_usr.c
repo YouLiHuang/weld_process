@@ -67,6 +67,7 @@ extern OS_SEM DATA_SAVE_SEM;
 extern weld_ctrl *weld_controller;
 extern Temp_draw_ctrl *temp_draw_ctrl;
 extern Thermocouple *current_Thermocouple;
+extern Date current_date;
 
 char *file_name = NULL;
 static uint16_t save_times = 0;
@@ -736,7 +737,8 @@ int Data_Save_Callback(void)
 
   case SAVE_INIT:
     /*file name*/
-    sprintf(temp_name, "%s%d.%s", FILE_PREFIX, file_count, FILE_SUFFIX);
+    // sprintf(temp_name, "%s%d.%s", FILE_PREFIX, file_count, FILE_SUFFIX);
+    sprintf(temp_name, "%d_%d_%d.%s", current_date.Month, current_date.Day, file_count, FILE_SUFFIX);
     name_len = strlen(temp_name);
 
     if (file_name == NULL)
