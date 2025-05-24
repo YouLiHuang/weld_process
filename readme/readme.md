@@ -2,11 +2,40 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-05-16 14:58:18
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-16 16:34:07
+ * @LastEditTime: 2025-05-24 17:46:54
  * @Description: 
  * 
  * Copyright (c) 2025 by huangyouli, All Rights Reserved. 
 -->
+## 工程目录架构
+![](./pic/文件目录.png)
+
+### core
+cortex-M4x内核相关
+
+### LIB
+- 标准外设库
+- USB驱动库
+- FATFS库
+
+### USCOSⅢ
+U/Cos操作系统相关
+
+### HARDWARE
+硬件相关驱动：ADC、PWM、SPI、触摸屏...
+
+### MDK
+keil目录
+
+### SYSTEM
+系统级文件：延时、stm32f4配置、IO位带操作
+
+### 其他
+- OBJ：输出中间文件
+- readme：项目架构说明
+
+
+
 ## 代码总体架构
 ![](./pic/总体架构.png)
 
