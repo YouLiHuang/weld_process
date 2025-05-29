@@ -137,7 +137,7 @@ uint16_t SPI_Load_Word(uint16_t addr)
 
 void Load_data_from_mem(void)
 {
-#if RESET_SPI_DATA == 0
+#if RESET_SPI_DATA
 	/*数据初始化*/
 	int time_init[] = {100, 300, 2500, 200, 50};
 	int temp_init[] = {200, 450, 150};
@@ -180,47 +180,46 @@ void Load_data_from_mem(void)
 	if (remember_array >= 20)
 		remember_array = 0;
 
-	SPI_Save_Word(100, FIT_COEFFICIENT_BASE(0) + ADDR_OFFSET * 0);
-	SPI_Save_Word(1777, FIT_COEFFICIENT_BASE(0) + ADDR_OFFSET * 1);
 	/*首次从内存读取数据*/
 	Load_param(weld_controller, remember_array);
 	Load_param_alarm(weld_controller, remember_array);
 	Load_Coefficient(remember_array);
 
 	/*首次加载参数后需要发送到触摸屏*/
-	char *param_name_list[] = {
+	char *param_time_list[] = {
 		"time1",
 		"time2",
 		"time3",
 		"time4",
 		"time5",
+
+	};
+	char *param_temp_list[] = {
 		"temp1",
 		"temp2",
 		"temp3",
 	};
-	char *temp_name_list[] = {
+	char *alarm_name_list[] = {
 		"temp_page.alarm1",
 		"temp_page.alarm2",
 		"temp_page.alarm3",
 		"temp_page.alarm4",
 		"temp_page.alarm5",
 		"temp_page.alarm6",
-		"temp_page.GAIN1",
-		"temp_page.GAIN2",
-		"temp_page.GAIN3",
 	};
 
 	command_set_comp_val_raw("wave_page.kpf", "val", 0);
 	command_set_comp_val_raw("wave_page.kp", "val", 0);
 	command_set_comp_val_raw("wave_page.ki", "val", 0);
 	command_set_comp_val_raw("wave_page.kd", "val", 0);
+
 	/*温度限制界面UI初始化*/
-	for (uint8_t i = 0; i < sizeof(temp_name_list) / sizeof(char *); i++)
+	for (uint8_t i = 0; i < sizeof(alarm_name_list) / sizeof(alarm_name_list[0]); i++)
 	{
-		Component *comp = get_comp(temp_page_list, temp_name_list[i]);
-		if (comp != NULL)
-			command_set_comp_val_raw(temp_name_list[i], "val", comp->val);
+		command_set_comp_val_raw(alarm_name_list[i], "val", weld_controller->alarm_temp[i]);
 	}
+	command_set_comp_val_raw("GAIN1", "val", weld_controller->temp_gain1 * 100);
+	command_set_comp_val_raw("GAIN2", "val", weld_controller->temp_gain2 * 100);
 	command_set_comp_val_raw("switch", "val", 1); // 默认自动模式
 
 	/*参数页面UI初始化*/
@@ -230,11 +229,15 @@ void Load_data_from_mem(void)
 	command_set_comp_val_raw("SGW_CTW", "pic", SGW);
 	command_set_comp_val_raw("GP", "val", 0);
 	command_set_comp_val_raw("count", "val", 0);
-	for (uint8_t i = 0; i < sizeof(param_name_list) / sizeof(char *); i++)
+
+	for (uint8_t i = 0; i < sizeof(param_time_list) / sizeof(param_time_list[0]); i++)
 	{
-		Component *comp = get_comp(param_page_list, param_name_list[i]);
-		if (comp != NULL)
-			command_set_comp_val_raw(param_name_list[i], "val", comp->val);
+		command_set_comp_val_raw(param_time_list[i], "val", weld_controller->weld_time[i]);
+	}
+
+	for (uint8_t i = 0; i < sizeof(param_temp_list) / sizeof(param_temp_list[0]); i++)
+	{
+		command_set_comp_val_raw(param_temp_list[i], "val", weld_controller->weld_temp[i]);
 	}
 }
 
@@ -407,8 +410,14 @@ void Load_param_alarm(void *controller, int array_of_data)
 
 void Load_Coefficient(int array_of_data)
 {
-	weld_controller->ss_coefficient.slope = SPI_Load_Word(FIT_COEFFICIENT_BASE(array_of_data) + ADDR_OFFSET * 0) / 100.0;
-	weld_controller->ss_coefficient.intercept = SPI_Load_Word(FIT_COEFFICIENT_BASE(array_of_data) + ADDR_OFFSET * 1);
+	uint16_t gain_raw1, gain_raw2;
+	gain_raw1 = SPI_Load_Word(FIT_COEFFICIENT_BASE(array_of_data) + ADDR_OFFSET * 0);
+	gain_raw2 = SPI_Load_Word(FIT_COEFFICIENT_BASE(array_of_data) + ADDR_OFFSET * 1);
+	if (gain_raw1 != 0 && gain_raw2 != 0)
+	{
+		weld_controller->ss_coefficient.slope = gain_raw1 / 100.0;
+		weld_controller->ss_coefficient.intercept = gain_raw2;
+	}
 }
 
 /**
@@ -436,6 +445,8 @@ void Host_computer_reset(void)
 	/*重新设定上位机波特率*/
 	usart3_set_bound(BOUND_SET);
 
+#if COMMUNICATE
+
 	/*和上位机通信*/
 	uint8_t Mas_ID_stauts[5] = {0};
 	Mas_ID_stauts[0] = 0x01;
@@ -452,6 +463,7 @@ void Host_computer_reset(void)
 			; // 把请求类型发送过去
 	}
 	BIT_ADDR(GPIOB_ODR_Addr, 9) = 0; // 设置为接收模式
+#endif
 
 	/*添加触摸屏更新接口...*/
 	/*...*/

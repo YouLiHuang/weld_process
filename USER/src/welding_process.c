@@ -13,6 +13,7 @@
 #include "touchscreen.h"
 #include "dynamic_correct.h"
 
+uint8_t err_comp;
 #if PID_DEBUG
 extern pid_feedforword_ctrl *pid_ctrl_debug;
 extern pid_feedforword_ctrl *pid_ctrl;
@@ -311,10 +312,12 @@ static void pid_dynamic_reload(void)
 		switch (weld_controller->state)
 		{
 		case FIRST_STATE:
+			weld_controller->pid_ctrl->kp = DEFAULT_KP;
 			weld_controller->pid_ctrl->ki = DEFAULT_KI;
 			weld_controller->pid_ctrl->kd = DEFAULT_KD;
 			break;
 		case SECOND_STATE:
+			weld_controller->pid_ctrl->kp = SECOND_KP;
 			weld_controller->pid_ctrl->ki = SECOND_KI;
 			weld_controller->pid_ctrl->kd = SECOND_KD;
 			break;
@@ -447,8 +450,8 @@ static void Weld_Preparation()
 	if (weld_controller->weld_temp[1] < USER_SET_MIN_TEMP)
 		weld_controller->weld_temp[1] = USER_SET_MIN_TEMP;
 
-	if (weld_controller->weld_temp[0] > USER_SET_MAX_TEMP)
-		weld_controller->weld_temp[0] = USER_SET_MAX_TEMP;
+	if (weld_controller->weld_temp[0] > USER_FIRST_SET_MAX)
+		weld_controller->weld_temp[0] = USER_FIRST_SET_MAX;
 
 	if (weld_controller->weld_temp[1] > USER_SET_MAX_TEMP)
 		weld_controller->weld_temp[1] = USER_SET_MAX_TEMP;
@@ -481,6 +484,8 @@ static void Weld_Preparation()
 	Kalman_Init(&kfp);	  // 卡尔曼滤波器初始化，初始值归零
 	kalman_comp_temp = 0; // 卡尔曼估计值初始化
 #endif
+
+	err_comp = 0.2 * weld_controller->weld_temp[0] - 30;
 
 	/*------------------------------------------绘图部分------------------------------------------*/
 	reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
@@ -596,6 +601,7 @@ static void First_Step()
 	while (weld_controller->step_time_tick < weld_controller->weld_time[1])
 	{
 		/*alarm*/
+		// over temp
 		if (weld_controller->realtime_temp > weld_controller->alarm_temp[0])
 		{
 			stop_weld();
@@ -603,6 +609,19 @@ static void First_Step()
 			OS_ERR err;
 			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 			break;
+		}
+		// low temp
+		if (weld_controller->realtime_temp < weld_controller->first_step_start_temp-10)
+		{
+			if (err_ctrl->temp_low_cnt++ > err_ctrl->temp_low_threshold)
+			{
+				stop_weld();
+				err_get_type(err_ctrl, TEMP_DOWN)->state = true;
+				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+				OS_ERR err;
+				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+				break;
+			}
 		}
 
 		/*limit output*/
@@ -615,7 +634,6 @@ static void First_Step()
 		if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
 		{
 			draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
-			command_set_comp_val("step1", "val", weld_controller->realtime_temp);
 		}
 #endif
 	}
@@ -659,7 +677,9 @@ static void Second_Step()
 	fast_rise_duty = ss.slope * weld_controller->weld_temp[1] + ss.intercept;
 
 #if PID_DEBUG
-	weld_controller->pid_ctrl = pid_ctrl_debug;
+	weld_controller->pid_ctrl->kp = pid_ctrl_debug->kp;
+	weld_controller->pid_ctrl->ki = pid_ctrl_debug->ki;
+	weld_controller->pid_ctrl->kd = pid_ctrl_debug->kd;
 #else
 	/*pid reload*/
 	pid_dynamic_reload();
@@ -710,13 +730,13 @@ static void Second_Step()
 					weld_controller->Duty_Cycle = weld_controller->final_duty;
 			}
 		}
-#endif
 
 		/*fast rise step*/
 		if (weld_controller->step_time_tick < FAST_RISE_TIME && weld_controller->Duty_Cycle < fast_rise_duty)
 		{
 			weld_controller->Duty_Cycle = fast_rise_duty;
 		}
+#endif
 
 		/*limit output*/
 		if (weld_controller->Duty_Cycle > PD_MAX)
@@ -728,7 +748,7 @@ static void Second_Step()
 		if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
 		{
 			draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
-			command_set_comp_val("step2", "val", weld_controller->realtime_temp);
+			// command_set_comp_val("step2", "val", weld_controller->realtime_temp);
 		}
 
 #endif
@@ -773,7 +793,6 @@ static void Third_Step()
 #if REALTIME_TEMP_DISPLAY == 1
 		if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
 			draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
-		command_set_comp_val("step3", "val", weld_controller->realtime_temp);
 #endif
 
 		/*limit output execute*/
@@ -932,9 +951,10 @@ static void weld_real_time_ctrl()
 	/*二阶段*/
 	if (weld_controller->weld_time[2] != 0)
 	{
-		// reset_forword_ctrl(weld_controller->pid_ctrl);
+		reset_forword_ctrl(weld_controller->pid_ctrl);
 #if PID_DEBUG
-		// reset_forword_ctrl(pid_ctrl_debug);
+		reset_forword_ctrl(pid_ctrl_debug);
+		reset_forword_ctrl(weld_controller->pid_ctrl);
 #endif
 		weld_controller->second_step_start_temp = temp_convert(current_Thermocouple); // 起始温度
 		Second_Step();																  // 二阶段

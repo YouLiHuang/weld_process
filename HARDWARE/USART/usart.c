@@ -27,7 +27,7 @@ float Host_gain2;				 // 上位机增益1参数暂存（浮点数）
 float Host_gain1;				 // 上位机增益2参数暂存（浮点数）
 
 extern uint8_t ID_OF_MAS; // 焊机485通讯机号，默认是零
-extern int RDY_SCH;		  // 参数设置按键
+
 
 extern OS_Q UART_Msg;		   // 消息队列
 extern Error_ctrl *err_ctrl;   // 错误控制器

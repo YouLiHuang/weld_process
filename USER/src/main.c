@@ -266,9 +266,6 @@ extern int Host_gain1_raw;
 extern int Host_gain2_raw;
 /*Touchscreen communication parameters*/
 extern uint16_t remember_array;
-extern int ION_IOF;
-extern int SGW_CTW;
-extern int RDY_SCH;
 extern USBH_HOST USB_Host __ALIGN_END;
 extern USB_OTG_CORE_HANDLE USB_OTG_Core __ALIGN_END;
 
@@ -328,7 +325,7 @@ int main(void)
 	temp_draw_ctrl = new_temp_draw_ctrl(realtime_temp_buf, 500, 2000, 500);
 
 	/*默认e型热电偶*/
-	current_Thermocouple = &Thermocouple_Lists[0];
+	current_Thermocouple = &Thermocouple_Lists[1];
 
 	/*------------------------------------------------------Hardware layer data initialization-----------------------------------------------------------*/
 	/*Peripheral initialization*/
@@ -746,7 +743,7 @@ static void Thermocouple_check(void)
 {
 
 	OS_ERR err;
-
+#if 0
 	static uint8_t IO_val;
 	switch (current_Thermocouple->type)
 	{
@@ -804,6 +801,61 @@ static void Thermocouple_check(void)
 		}
 		GPIO_ResetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
 		break;
+	}
+#endif
+
+	bool check_state = false;
+
+	GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
+	GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
+	GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
+
+	OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err);
+
+	if (GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E) != 0)
+	{
+		check_state = true;
+		for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
+		{
+			if (Thermocouple_Lists[i].type == E_TYPE)
+				current_Thermocouple = &Thermocouple_Lists[i];
+		}
+	}
+
+	if (GPIO_ReadInputDataBit(CHECK_GPIO_K, CHECKIN_PIN_K) != 0)
+	{
+		check_state = true;
+		for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
+		{
+			if (Thermocouple_Lists[i].type == K_TYPE)
+				current_Thermocouple = &Thermocouple_Lists[i];
+		}
+	}
+
+	if (GPIO_ReadInputDataBit(CHECK_GPIO_J, CHECKIN_PIN_J) != 0)
+	{
+		check_state = true;
+		for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
+		{
+			if (Thermocouple_Lists[i].type == J_TYPE)
+				current_Thermocouple = &Thermocouple_Lists[i];
+		}
+	}
+
+	GPIO_ResetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
+	GPIO_ResetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
+	GPIO_ResetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
+
+	/*no Thermocouple detect*/
+	if (check_state == false)
+	{
+		if (err_ctrl->sensor_err_cnt++ > SENSOR_ERR_THRESHOLD)
+		{
+			err_ctrl->sensor_err_cnt = 0;
+			Page_to(page_param, ALARM_PAGE);
+			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
+		}
 	}
 }
 
@@ -1072,8 +1124,11 @@ static void key_action_callback_param(Component_Queue *page_list)
 				command_get_comp_val(page_list, weld_time_name_list[i], "val");
 			}
 
-			/*Ⅱ、读取用户设定的参数*/
+			command_get_comp_val(page_list, "count", "val");
+
+			/*Ⅱ、从列表当中获取用户设定的数据*/
 			uint16_t temp[3] = {0}, time[5] = {0};
+			uint16_t current_conut;
 			for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
 			{
 				/*获取更新的组件属性值*/
@@ -1087,6 +1142,8 @@ static void key_action_callback_param(Component_Queue *page_list)
 					temp[i] = get_comp(page_list, weld_temp_name_list[i])->val;
 			}
 
+			current_conut = get_comp(page_list, "count")->val;
+
 			/*Ⅲ、保存到eeprom*/
 			if (get_comp(page_list, "GP"))
 			{
@@ -1097,6 +1154,22 @@ static void key_action_callback_param(Component_Queue *page_list)
 						   time,
 						   sizeof(time) / sizeof(uint16_t));
 			}
+			/*Ⅳ、数据同步*/
+			for (uint8_t i = 0; i < sizeof(temp) / sizeof(temp[0]); i++)
+			{
+				weld_controller->weld_temp[i] = temp[i];
+			}
+			for (uint8_t i = 0; i < sizeof(time) / sizeof(time[0]); i++)
+			{
+				weld_controller->weld_time[i] = time[i];
+			}
+
+			if (current_conut != weld_controller->weld_count)
+			{
+				weld_controller->weld_count = current_conut;
+			}
+
+			weld_controller->Count_Dir = get_comp(page_list, "UP_DOWN")->val == UP_CNT ? UP : DOWN;
 		}
 		// 2、RDY——>RDY：无动作，根据GP值加载参数
 		else if (get_comp(page_list, "GP")->val <= GP_MAX)
@@ -1194,6 +1267,8 @@ static void key_action_callback_temp(Component_Queue *page_list)
 
 			/*Ⅱ、保存用户设定的参数*/
 			uint16_t temp_HL[6] = {0}, gain[2] = {0};
+			uint16_t current_conut;
+
 			for (uint8_t i = 0; i < sizeof(temp_HL) / sizeof(uint16_t); i++)
 			{
 				/*获取更新的组件属性值*/
@@ -1207,7 +1282,7 @@ static void key_action_callback_temp(Component_Queue *page_list)
 					gain[i] = get_comp(page_list, gain_name_list[i])->val;
 			}
 
-			/*Ⅱ、存储到eeprom*/
+			/*Ⅲ、存储到eeprom*/
 			if (get_comp(page_list, "GP") != NULL)
 			{
 				save_param_alarm(weld_controller,
@@ -1216,6 +1291,21 @@ static void key_action_callback_temp(Component_Queue *page_list)
 								 sizeof(temp_HL) / sizeof(uint16_t),
 								 gain);
 			}
+
+			/*Ⅳ、数据同步*/
+			for (uint8_t i = 0; i < sizeof(temp_HL) / sizeof(temp_HL[0]); i++)
+			{
+				weld_controller->alarm_temp[i] = temp_HL[i];
+			}
+			weld_controller->temp_gain1 = gain[0] / 100.0;
+			weld_controller->temp_gain2 = gain[1] / 100.0;
+
+			if (current_conut != weld_controller->weld_count)
+			{
+				weld_controller->weld_count = current_conut;
+			}
+
+			weld_controller->Count_Dir = get_comp(page_list, "UP_DOWN")->val == UP_CNT ? UP : DOWN;
 		}
 		// 2、RDY——>RDY：用户无动作，根据GP值加载参数
 		else if (comp->val == page_param->key1 && get_comp(page_list, "GP")->val <= GP_MAX)
@@ -1224,19 +1314,15 @@ static void key_action_callback_temp(Component_Queue *page_list)
 			uint8_t GP = get_comp(page_list, "GP")->val; // 当前设定的GP值
 			if (GP != page_param->GP && GP <= GP_MAX)	 // GP值和上次不一致（用户修改）
 				Load_param_alarm(weld_controller, GP);	 // 加载温度限制/温度增益参数
+
 			/*发送到触摸屏*/
 			for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
 			{
-				Component *comp = get_comp(page_list, alarm_temp_name_list[i]);
-				if (comp != NULL)
-					command_set_comp_val(alarm_temp_name_list[i], "val", comp->val);
+				command_set_comp_val(alarm_temp_name_list[i], "val", weld_controller->alarm_temp[i]);
 			}
-			for (uint8_t i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
-			{
-				Component *comp = get_comp(page_list, gain_name_list[i]);
-				if (comp != NULL)
-					command_set_comp_val(gain_name_list[i], "val", comp->val);
-			}
+
+			command_set_comp_val(gain_name_list[0], "val", weld_controller->temp_gain1 * 100);
+			command_set_comp_val(gain_name_list[1], "val", weld_controller->temp_gain2 * 100);
 		}
 	}
 	// 处于修改模式————进入修改模式
@@ -1338,12 +1424,11 @@ static bool pid_param_get(uint16_t *pid_raw_param)
 static void page_process(Page_ID id)
 {
 	const char *tick_name[] = {"tick1", "tick2", "tick3", "tick4", "tick5"};
-
+	char *temp_display_name[] = {"temp11", "temp22", "temp33"};
 	switch (page_param->id)
 	{
 	case PARAM_PAGE:
 	{
-		OS_ERR err;
 		/*1、读取界面上的参数*/
 		for (uint8_t i = 0; i < sizeof(key_name_list) / sizeof(char *); i++)
 		{
@@ -1354,19 +1439,12 @@ static void page_process(Page_ID id)
 		/*2、解析按键动作*/
 		parse_key_action(page_param->id);
 
-		/*3、焊接接收后显示三段温度*/
-		OSSemPend(&TEMP_DISPLAY_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
-		if (err == OS_ERR_NONE)
-		{
-			char *temp_display_name[] = {"temp11", "temp22", "temp33"};
+		/*3、显示三段温度*/
+		command_set_comp_val(temp_display_name[0], "val", temp_draw_ctrl->display_temp[0]);
+		command_set_comp_val(temp_display_name[1], "val", temp_draw_ctrl->display_temp[1]);
 
-			/*一二段均值发送到触摸屏*/
-			command_set_comp_val(temp_display_name[0], "val", temp_draw_ctrl->display_temp[0]);
-			command_set_comp_val(temp_display_name[1], "val", temp_draw_ctrl->display_temp[1]);
-
-			/*绘图控制器复位*/
-			reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
-		}
+		/*绘图控制器复位*/
+		reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
 
 		/*4、获取当前时间(年/月/日/时/分)*/
 		command_get_variable_val(&current_date.Year, "rtc0");
@@ -1390,6 +1468,10 @@ static void page_process(Page_ID id)
 		command_get_comp_val(temp_page_list, "switch", "val");
 		/*3、解析按键动作*/
 		parse_key_action(page_param->id);
+
+		/*4、显示三段温度*/
+		command_set_comp_val(temp_display_name[0], "val", temp_draw_ctrl->display_temp[0]);
+		command_set_comp_val(temp_display_name[1], "val", temp_draw_ctrl->display_temp[1]);
 	}
 	break;
 
@@ -1402,10 +1484,6 @@ static void page_process(Page_ID id)
 		uint16_t pid_param[3] = {0};
 		if (pid_param_get(pid_param) == true)
 		{
-			// weld_controller->pid_ctrl->kp = pid_param[0] / 100.0;
-			// weld_controller->pid_ctrl->ki = pid_param[1] / 1000.0;
-			// weld_controller->pid_ctrl->kd = pid_param[2] / 100.0;
-
 			pid_ctrl_debug->kp = pid_param[0] / 100.0;
 			pid_ctrl_debug->ki = pid_param[1] / 1000.0;
 			pid_ctrl_debug->kd = pid_param[2] / 100.0;
@@ -1453,6 +1531,10 @@ static void page_process(Page_ID id)
 		/*坐标发送到触摸屏*/
 		for (uint8_t i = 0; i < sizeof(tick_name) / sizeof(char *); i++)
 			command_set_comp_val(tick_name[i], "val", (1 + i) * delta_tick);
+
+		/*4、显示三段温度*/
+		command_set_comp_val("step1", "val", temp_draw_ctrl->display_temp[0]);
+		command_set_comp_val("step2", "val", temp_draw_ctrl->display_temp[1]);
 	}
 	break;
 
@@ -1470,7 +1552,7 @@ static void page_process(Page_ID id)
 	case UART_PAGE:
 	{
 		OS_ERR err;
-
+		Component *comp = NULL;
 		/*1、读取界面设定的地址*/
 		command_get_comp_val(setting_page_list, "adress", "val");
 		/*2、读取页面设定的波特率*/
@@ -1496,103 +1578,20 @@ static void page_process(Page_ID id)
 		if (OS_ERR_NONE == err)
 		{
 
-			//			if (weld_controller->realtime_temp < 2 * ROOM_TEMP && weld_controller->realtime_temp > 0.5 * ROOM_TEMP) // 在室温下才允许校准（10-40°C范围内才允许校准）
-			//				Thermocouple_err_eliminate();
-			//			else // 焊头尚未冷却，警报
-			//				command_set_comp_val("warning", "aph", 127);
-			Thermocouple_err_eliminate();
+			// if (weld_controller->realtime_temp < 2 * ROOM_TEMP && weld_controller->realtime_temp > 0.5 * ROOM_TEMP) // 在室温下才允许校准（10-40°C范围内才允许校准）
+			// 	Thermocouple_err_eliminate();
+			// else // 焊头尚未冷却，警报
+			// 	command_set_comp_val("warning", "aph", 127);
+			// Thermocouple_err_eliminate();
 		}
 		/*5、显示实时温度*/
 		command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
-	}
-	break;
 
-	default:
-		/*...用户可自行添加需要的页面...*/
-		break;
-	}
-}
-
-/**
- * @description: sync data from screen to user data
- * @param {Page_ID} id
- * @return {*}
- */
-static bool data_syn(Page_ID id)
-{
-	/*key state sync*/
-	RDY_SCH = (page_param->key1 == SCH) ? 1 : 0;
-	ION_IOF = (page_param->key2 == IOFF) ? 1 : 0;
-	SGW_CTW = (page_param->key3 == CTW) ? 1 : 0;
-
-	/*weld_controller sync*/
-	switch (id)
-	{
-	case PARAM_PAGE:
-	{
-
-		Component *comp = NULL;
-		for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
-		{
-			comp = get_comp(param_page_list, weld_time_name_list[i]);
-			if (comp != NULL)
-				weld_controller->weld_time[i] = comp->val;
-		}
-		for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
-		{
-			comp = get_comp(param_page_list, weld_temp_name_list[i]);
-			if (comp != NULL)
-				weld_controller->weld_temp[i] = comp->val;
-		}
-		/*Synchronization Count Values (User Subject to Change)*/
-		comp = get_comp(param_page_list, "count");
-		if (comp != NULL)
-			weld_controller->weld_count = comp->val;
-
-		weld_controller->Count_Dir = get_comp(param_page_list, "UP_DOWN")->val == UP_CNT ? UP : DOWN;
-
-		break;
-	}
-
-	case TEMP_PAGE:
-	{
-		Component *comp = NULL;
-		for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
-		{
-			comp = get_comp(temp_page_list, alarm_temp_name_list[i]);
-			if (comp != NULL)
-				weld_controller->alarm_temp[i] = comp->val;
-		}
-
-		if (get_comp(temp_page_list, "GAIN1") != NULL)
-		{
-			float gain = get_comp(temp_page_list, "GAIN1")->val / 100.0;
-			weld_controller->temp_gain1 = gain;
-		}
-		if (get_comp(temp_page_list, "GAIN2") != NULL)
-		{
-			float gain = get_comp(temp_page_list, "GAIN2")->val / 100.0;
-			weld_controller->temp_gain2 = gain;
-		}
-		/*Synchronization Count Values (User Subject to Change)*/
-		comp = get_comp(param_page_list, "count");
-		if (comp != NULL)
-			weld_controller->weld_count = comp->val;
-
-		weld_controller->Count_Dir = get_comp(temp_page_list, "UP_DOWN")->val == UP_CNT ? UP : DOWN;
-
-		break;
-	}
-
-	case UART_PAGE:
-	{
-		Component *comp = NULL;
-		/*update machine id*/
+		/*6、数据同步*/
 		comp = get_comp(setting_page_list, "adress");
 		if (comp != NULL)
 			ID_OF_MAS = comp->val;
 
-		/*update baudrate*/
 		comp = get_comp(setting_page_list, "baudrate");
 		if (comp != NULL)
 		{
@@ -1600,12 +1599,12 @@ static bool data_syn(Page_ID id)
 			usart3_set_bound(baud_list[index - 1]);
 		}
 	}
+	break;
 
 	default:
+		/*...用户可自行添加需要的页面...*/
 		break;
 	}
-
-	return true;
 }
 
 /**
@@ -1623,7 +1622,6 @@ void read_task(void *p_arg)
 		if (Page_id_get() == true)
 		{
 			page_process(page_param->id);
-			data_syn(page_param->id);
 		}
 		/*display Real-time temperature*/
 		Temp_updata_realtime();

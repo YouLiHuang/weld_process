@@ -1,7 +1,6 @@
 #ifndef USER_CONFIG_H
 #define USER_CONFIG_H
 
-
 /* Private enable--------------------------------------------------------------------------------*/
 #define USE_STM32_DEMO 0 // USB test code enable
 #define MAX_SAVE_TIMES 100
@@ -26,7 +25,8 @@
 #define HOST_WELD_CTRL 1        // Upper computer control welding enable
 
 /* Temperature control ---------------------------------------------------------------------------*/
-#define STABLE_ERR 5            // Steady-state error compensation
+#define STABLE_ERR 5 // Steady-state error compensation
+#define USER_FIRST_SET_MAX 300
 #define USER_SET_MAX_TEMP 650.0 // User-set maximum temperature
 #define USER_SET_MIN_TEMP 200.0 // User-set minimum temperature
 #define MAX_WELD_TIME 9999      // Maximum welding time
@@ -36,7 +36,7 @@
 #define TRANSITION_TIME 100          // Thermal compensation time
 #define TRANSITION_TIME_BASE 0.1     // coefficients of heat compensation time - Baseline value
 #define TRANSITION_TIME_CORRECT 2.9  // coefficients of heat compensation time - Adjustment range
-#define DEFAULT_GAIN1 0.9            // Determine the compensation strength
+#define DEFAULT_GAIN1 0.7            // Determine the compensation strength
 #define DEFAULT_GAIN2 0.64           // Determine the compensation time
 
 #define DEFAULT_RISE_DUTY (PD_MAX * 0.5)
@@ -49,7 +49,6 @@
 
 /* Dynamic correction macro-----------------------------------------------------------------------*/
 #define PWM_SAMPLE 1                      // PWM sample enable
-#define REVERSE_CHECK 0                   // reverse check enable
 #define LEARNING_RATE 3                   // Determine the correction speed
 #define MIN_STEP_SIZE 0.01f               // min correction speed
 #define STABLE_THRESHOLD 30               // Pre-sampling filtering time

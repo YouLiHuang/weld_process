@@ -14,10 +14,11 @@
 #include "stdlib.h"
 
 /*pid adjust*/
-#define DEFAULT_KP 15.0
-#define DEFAULT_KI 0.04
-#define DEFAULT_KD 25.0
+#define DEFAULT_KP 8
+#define DEFAULT_KI 0.02
+#define DEFAULT_KD 0.0
 
+#define SECOND_KP 15.0
 #define SECOND_KI 0.045
 #define SECOND_KD 50.0
 

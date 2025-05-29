@@ -23,6 +23,8 @@
 #include "touchscreen.h"
 #include "dynamic_correct.h"
 
+extern uint8_t err_comp;
+
 /*实时控制*/
 extern weld_ctrl *weld_controller;
 /*温度补偿部分*/
@@ -118,10 +120,10 @@ void reset_temp_draw_ctrl(Temp_draw_ctrl *ctrl, const uint16_t welding_time[])
 		ctrl->temp_buf[i] = 0;
 	}
 
-	for (uint8_t i = 0; i < sizeof(ctrl->display_temp) / sizeof(ctrl->display_temp[0]); i++)
-	{
-		ctrl->display_temp[i] = 0;
-	}
+	// for (uint8_t i = 0; i < sizeof(ctrl->display_temp) / sizeof(ctrl->display_temp[0]); i++)
+	// {
+	// 	ctrl->display_temp[i] = 0;
+	// }
 }
 
 /**
@@ -230,26 +232,10 @@ void TIM5_IRQHandler(void)
 			break;
 			/*--------------------------------------------------------------------first step----------------------------------------------------------------------*/
 		case FIRST_STATE:
-#if REVERSE_CHECK
-			/*reverse check*/
-			if (last_temp < weld_controller->realtime_temp)
-			{
-				if (err_ctrl->Reverse_connection_cnt++ > err_ctrl->Reverse_connection_threshold)
-				{
-					err_ctrl->Reverse_connection_cnt = 0;
-					err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-					OS_ERR err;
-					OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-				}
-			}
-			/*record last time temp*/
-			last_temp = weld_controller->realtime_temp;
-#endif
-
 			/*Time updates*/
 			weld_controller->step_time_tick++;
 
-			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0],
+			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + err_comp,
 														 weld_controller->realtime_temp,
 														 weld_controller->Duty_Cycle,
 														 weld_controller->pid_ctrl);
@@ -258,23 +244,6 @@ void TIM5_IRQHandler(void)
 
 			/*--------------------------------------------------------------------second step----------------------------------------------------------------------*/
 		case SECOND_STATE:
-
-#if REVERSE_CHECK
-			/*reverse check*/
-			if (last_temp < weld_controller->realtime_temp)
-			{
-				if (err_ctrl->Reverse_connection_cnt++ > err_ctrl->Reverse_connection_threshold)
-				{
-					err_ctrl->Reverse_connection_cnt = 0;
-					err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-					OS_ERR err;
-					OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-				}
-			}
-			/*record last time temp*/
-			last_temp = weld_controller->realtime_temp;
-
-#endif
 
 			/*Time updates*/
 			weld_controller->step_time_tick++;

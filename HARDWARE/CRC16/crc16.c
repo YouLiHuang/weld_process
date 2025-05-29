@@ -20,9 +20,7 @@ u8 read_group_nums = 0;					 // 用于多次验证读数，防止读取数据出
 u8 last_read_group_num = 0;				 // 用于多次验证读数，防止读取数据出错，第一读取的组号
 struct crc16_struct temp = {0x00, 0x00}; // 实例化一个crc16对象
 int remember_array = -1;				 // 焊接参数组号存储
-int ION_IOF = 0;						 // 电流开关
-int RDY_SCH = 0;						 // 参数修改标志
-int SGW_CTW = 0;						 // 单点连续标志
+
 int RESET_K = 0;						 // 复位按键
 int flag_data_1 = 0;					 // 用于上述四个标志位的读取
 int disposing_data_flag = 0x0000;		 // 数据修改标志，假设有数据修改，此数据将会被置位
