@@ -140,6 +140,7 @@ typedef struct page_param
     ION_OFF_STATE key2; /*ion ioff*/
     SGW_CTW_STATE key3; /*sgw ctw*/
     uint8_t GP;
+    
     int *user_buf_val;
     char *user_buf_str;
 } Page_Param;

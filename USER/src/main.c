@@ -1434,6 +1434,8 @@ static void page_process(Page_ID id)
 		{
 			command_get_comp_val(param_page_list, key_name_list[i], "pic");
 		}
+		weld_controller->Count_Dir = (get_comp(param_page_list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
+
 		command_get_comp_val(param_page_list, "GP", "val");	   // 读取gp值
 		command_get_comp_val(param_page_list, "count", "val"); // 读取计数值（用户可能修改）
 		/*2、解析按键动作*/
@@ -1462,6 +1464,8 @@ static void page_process(Page_ID id)
 		{
 			command_get_comp_val(temp_page_list, key_name_list[i], "pic");
 		}
+		weld_controller->Count_Dir = (get_comp(temp_page_list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
+		
 		command_get_comp_val(temp_page_list, "GP", "val");
 		command_get_comp_val(temp_page_list, "count", "val");
 		/*2、读取auto/user模式*/

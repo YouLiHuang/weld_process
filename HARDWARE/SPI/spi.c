@@ -218,9 +218,9 @@ void Load_data_from_mem(void)
 	{
 		command_set_comp_val_raw(alarm_name_list[i], "val", weld_controller->alarm_temp[i]);
 	}
-	command_set_comp_val_raw("GAIN1", "val", weld_controller->temp_gain1 * 100);
-	command_set_comp_val_raw("GAIN2", "val", weld_controller->temp_gain2 * 100);
-	command_set_comp_val_raw("switch", "val", 1); // 默认自动模式
+	command_set_comp_val_raw("temp_page.GAIN1", "val", weld_controller->temp_gain1 * 100);
+	command_set_comp_val_raw("temp_page.GAIN2", "val", weld_controller->temp_gain2 * 100);
+	command_set_comp_val_raw("temp_page.switch", "val", 0); // 默认自动模式
 
 	/*参数页面UI初始化*/
 	command_send("page 1");

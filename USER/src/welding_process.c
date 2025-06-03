@@ -611,7 +611,7 @@ static void First_Step()
 			break;
 		}
 		// low temp
-		if (weld_controller->realtime_temp < weld_controller->first_step_start_temp-10)
+		if (weld_controller->realtime_temp < weld_controller->first_step_start_temp - 10)
 		{
 			if (err_ctrl->temp_low_cnt++ > err_ctrl->temp_low_threshold)
 			{
@@ -831,10 +831,11 @@ static void End_of_Weld()
 	weld_controller->Duty_Cycle = 0;
 	weld_controller->state = IDEAL_STATE;
 	/*根据计数模式更新焊接计数值*/
-	if (get_comp(param_page_list, "UP_DOWN")->val == UP_CNT)
+	if (weld_controller->Count_Dir == UP)
 		weld_controller->weld_count++;
-	else if (get_comp(param_page_list, "UP_DOWN")->val == DOWN_CNT && weld_controller->weld_count > 0)
+	if (weld_controller->Count_Dir == DOWN && weld_controller->weld_count > 0)
 		weld_controller->weld_count--;
+
 	/*计数值更新*/
 	command_set_comp_val("param_page.count", "val", weld_controller->weld_count);
 	command_set_comp_val("temp_page.count", "val", weld_controller->weld_count);
@@ -994,7 +995,7 @@ STOP_LABEL:
 void welding_process(void)
 {
 	/*The welding is stopped when the countdown timer reaches the end*/
-	if (weld_controller->weld_count == 0 && get_comp(param_page_list, "UP_DOWN")->val == DOWN_CNT)
+	if (weld_controller->weld_count == 0 && weld_controller->Count_Dir == DOWN)
 		return;
 
 	/*定时器配置PWM 5KHz*/
