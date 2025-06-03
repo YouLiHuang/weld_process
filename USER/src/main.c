@@ -293,7 +293,7 @@ int main(void)
 	page_list_init(temp_page_list,
 				   temp_page_name_list,
 				   sizeof(temp_page_name_list) / sizeof(char *));
-	component_insert(temp_page_list, newComponet("switch", 1));
+	component_insert(temp_page_list, newComponet("switch", 0));
 
 	/*setting page*/
 	setting_page_list = newList(UART_PAGE);
