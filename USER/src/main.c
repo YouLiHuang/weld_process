@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-06 11:47:29
+ * @LastEditTime: 2025-06-06 12:23:44
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -732,11 +732,6 @@ static void Temp_updata_realtime()
 {
 	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 	command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
-
-#if TEMP_ADJUST == 1
-	command_set_comp_val("temp11", "val", temp_convert(&Thermocouple_Lists[1])); // k
-	command_set_comp_val("temp22", "val", temp_convert(&Thermocouple_Lists[2])); // j
-#endif
 }
 
 static void Thermocouple_check(void)
@@ -936,6 +931,7 @@ void main_task(void *p_arg)
 /*--------------------------------------------------------------------------------------*/
 /*----------------------Touchscreen communication thread internal API-------------------*/
 /*--------------------------------------------------------------------------------------*/
+#if TEMP_ADJUST
 /**
  * @description: Thermocouple adjust
  * @return {*}
@@ -1036,6 +1032,7 @@ static void Thermocouple_err_eliminate()
 		}
 	}
 }
+#endif
 
 static void key_action_callback_param(Component_Queue *page_list);
 static void key_action_callback_temp(Component_Queue *page_list);
@@ -1530,12 +1527,13 @@ static void page_process(Page_ID id)
 		OSSemPend(&SENSOR_UPDATE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (OS_ERR_NONE == err)
 		{
-
-			// if (weld_controller->realtime_temp < 2 * ROOM_TEMP && weld_controller->realtime_temp > 0.5 * ROOM_TEMP) // 在室温下才允许校准（10-40°C范围内才允许校准）
-			// 	Thermocouple_err_eliminate();
-			// else // 焊头尚未冷却，警报
-			// 	command_set_comp_val("warning", "aph", 127);
-			// Thermocouple_err_eliminate();
+#if TEMP_ADJUST
+			if (weld_controller->realtime_temp < 2 * ROOM_TEMP && weld_controller->realtime_temp > 0.5 * ROOM_TEMP) // 在室温下才允许校准（10-40°C范围内才允许校准）
+				Thermocouple_err_eliminate();
+			else // 焊头尚未冷却，警报
+				command_set_comp_val("warning", "aph", 127);
+			Thermocouple_err_eliminate();
+#endif
 		}
 		/*5、显示实时温度*/
 		command_set_comp_val("temp33", "val", weld_controller->realtime_temp);

@@ -43,6 +43,7 @@
                 "c:\\Users\\86198\\Desktop\\weld\\weld_process\\LIB\\STM32_USB_HOST_Library\\Core\\src",
                 "c:\\Users\\86198\\Desktop\\weld\\weld_process\\LIB\\STM32_USB_HOST_Library\\Class\\MSC\\src",
                 "c:\\Users\\86198\\Desktop\\weld\\weld_process\\LIB\\STM32_USB_OTG_Driver\\src",
+                "c:\\Users\\86198\\Desktop\\weld\\weld_process\\LIB\\FATFS\\src\\option",
                 "c:\\Users\\86198\\Desktop\\weld\\weld_process\\USER\\src"
             ],
             "defines": [
