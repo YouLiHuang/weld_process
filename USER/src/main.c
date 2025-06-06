@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-22 09:46:01
+ * @LastEditTime: 2025-06-06 11:47:29
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -605,10 +605,11 @@ void error_task(void *p_arg)
 
 	while (1)
 	{
-		OSSemPend(&ERROR_HANDLE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+		OSSemPend(&ERROR_HANDLE_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
 		if (OS_ERR_NONE == err)
 		{
-			/*pwm off*/
+
+			/*PWM OFF / Timer Reset*/
 			TIM_SetCompare1(TIM1, 0);
 			TIM_SetCompare1(TIM4, 0);
 			TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
@@ -616,21 +617,19 @@ void error_task(void *p_arg)
 			TIM_Cmd(TIM4, DISABLE);
 			TIM_Cmd(TIM1, DISABLE);
 
-			/*timer reset*/
-			TIM_Cmd(TIM3, DISABLE);
-			TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+			TIM_Cmd(TIM3, DISABLE);						// 焊接周期计数关闭
+			TIM_ClearITPendingBit(TIM3, TIM_IT_Update); // 清除中断标志位
+			TIM_Cmd(TIM5, DISABLE);						// 实时控制器关闭
+			TIM_ClearITPendingBit(TIM5, TIM_IT_Update); // 清除中断5标志位
 			TIM3->CNT = 0;
-			TIM_Cmd(TIM5, DISABLE);
-			TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
 			TIM5->CNT = 0;
 
-			/*Valve off*/
 			ERROR1 = 1; // error signal
 			RLY10 = 0;	// Valve1 off
 			RLY11 = 0;	// Valve2 off
 			RLY12 = 0;	// Valve3 off
 
-			/*3、err handle*/
+			/*err handle*/
 			Page_to(page_param, ALARM_PAGE);
 			page_param->id = ALARM_PAGE;
 			for (uint8_t i = 0; i < err_ctrl->max_len; i++)
@@ -638,6 +637,7 @@ void error_task(void *p_arg)
 				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
 					err_ctrl->err_list[i]->error_callback(i);
 			}
+
 			/*wait until user reset*/
 			OSSemPend(&ALARM_RESET_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
 			if (err == OS_ERR_NONE)
@@ -743,67 +743,6 @@ static void Thermocouple_check(void)
 {
 
 	OS_ERR err;
-#if 0
-	static uint8_t IO_val;
-	switch (current_Thermocouple->type)
-	{
-
-	case J_TYPE:
-		IO_val = 0;
-		GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
-		OSTimeDlyHMSM(0, 0, 0, KEJ_CHECK_DUTY, OS_OPT_TIME_PERIODIC, &err);
-		IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_J, CHECKIN_PIN_J);
-		if (IO_val == 0)
-		{
-			if (err_ctrl->sensor_err_cnt++ > SENSOR_ERR_THRESHOLD)
-			{
-				err_ctrl->sensor_err_cnt = 0;
-				Page_to(page_param, ALARM_PAGE);
-				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
-			}
-		}
-		GPIO_ResetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
-		break;
-
-	case K_TYPE:
-		IO_val = 0;
-		GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
-		OSTimeDlyHMSM(0, 0, 0, KEJ_CHECK_DUTY, OS_OPT_TIME_PERIODIC, &err);
-		IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_K, CHECKIN_PIN_K);
-		if (IO_val == 0)
-		{
-			if (err_ctrl->sensor_err_cnt++ > SENSOR_ERR_THRESHOLD)
-			{
-				err_ctrl->sensor_err_cnt = 0;
-				Page_to(page_param, ALARM_PAGE);
-				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
-			}
-		}
-		GPIO_ResetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
-		break;
-
-	case E_TYPE:
-		IO_val = 0;
-		GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
-		OSTimeDlyHMSM(0, 0, 0, KEJ_CHECK_DUTY, OS_OPT_TIME_PERIODIC, &err);
-		uint8_t IO_val = GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E);
-		if (IO_val == 0)
-		{
-			if (err_ctrl->sensor_err_cnt++ > SENSOR_ERR_THRESHOLD)
-			{
-				err_ctrl->sensor_err_cnt = 0;
-				Page_to(page_param, ALARM_PAGE);
-				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
-			}
-		}
-		GPIO_ResetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
-		break;
-	}
-#endif
-
 	bool check_state = false;
 
 	GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
@@ -857,6 +796,8 @@ static void Thermocouple_check(void)
 			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
 		}
 	}
+	else
+		err_ctrl->sensor_err_cnt = 0;
 }
 
 static void voltage_check(void)
@@ -1429,26 +1370,28 @@ static void page_process(Page_ID id)
 	{
 	case PARAM_PAGE:
 	{
-		/*1、读取界面上的参数*/
+		/*get keys status*/
 		for (uint8_t i = 0; i < sizeof(key_name_list) / sizeof(char *); i++)
 		{
 			command_get_comp_val(param_page_list, key_name_list[i], "pic");
 		}
 		weld_controller->Count_Dir = (get_comp(param_page_list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
 
-		command_get_comp_val(param_page_list, "GP", "val");	   // 读取gp值
-		command_get_comp_val(param_page_list, "count", "val"); // 读取计数值（用户可能修改）
-		/*2、解析按键动作*/
+		/*get current array number*/
+		command_get_comp_val(param_page_list, "GP", "val");
+		/*get count , which would be changed by user*/
+		command_get_comp_val(param_page_list, "count", "val");
+		uint16_t count = get_comp(param_page_list, "count")->val;
+		if (weld_controller->weld_count != count)
+			weld_controller->weld_count = count;
+
 		parse_key_action(page_param->id);
 
-		/*3、显示三段温度*/
+		/*display average temperature*/
 		command_set_comp_val(temp_display_name[0], "val", temp_draw_ctrl->display_temp[0]);
 		command_set_comp_val(temp_display_name[1], "val", temp_draw_ctrl->display_temp[1]);
 
-		/*绘图控制器复位*/
-		reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
-
-		/*4、获取当前时间(年/月/日/时/分)*/
+		/*get current data*/
 		command_get_variable_val(&current_date.Year, "rtc0");
 		command_get_variable_val(&current_date.Month, "rtc1");
 		command_get_variable_val(&current_date.Day, "rtc2");
@@ -1459,21 +1402,27 @@ static void page_process(Page_ID id)
 
 	case TEMP_PAGE:
 	{
-		/*1、读取界面上的参数*/
+		/*get keys status*/
 		for (uint8_t i = 0; i < sizeof(key_name_list) / sizeof(char *); i++)
 		{
 			command_get_comp_val(temp_page_list, key_name_list[i], "pic");
 		}
 		weld_controller->Count_Dir = (get_comp(temp_page_list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
-		
+
+		/*get current array number*/
 		command_get_comp_val(temp_page_list, "GP", "val");
+		/*get count , which would be changed by user*/
 		command_get_comp_val(temp_page_list, "count", "val");
-		/*2、读取auto/user模式*/
+		uint16_t cur_count = get_comp(temp_page_name_list, "count")->val;
+		if (cur_count != weld_controller->weld_count)
+			weld_controller->weld_count = cur_count;
+
+		/*get switch status*/
 		command_get_comp_val(temp_page_list, "switch", "val");
-		/*3、解析按键动作*/
+
 		parse_key_action(page_param->id);
 
-		/*4、显示三段温度*/
+		/*display average temperature*/
 		command_set_comp_val(temp_display_name[0], "val", temp_draw_ctrl->display_temp[0]);
 		command_set_comp_val(temp_display_name[1], "val", temp_draw_ctrl->display_temp[1]);
 	}
