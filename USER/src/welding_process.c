@@ -747,7 +747,6 @@ static void Second_Step()
 		if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
 		{
 			draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
-			// command_set_comp_val("step2", "val", weld_controller->realtime_temp);
 		}
 
 #endif
@@ -1034,9 +1033,9 @@ void welding_process(void)
 			if (page_param->id == WAVE_PAGE)
 			{
 				command_send("cle wave_line.id,0");
-				OSTimeDly(2, OS_OPT_TIME_DLY, &err);
+				OSTimeDly(5, OS_OPT_TIME_DLY, &err);
 				command_send("cle wave_line.id,0");
-				OSTimeDly(2, OS_OPT_TIME_DLY, &err);
+				OSTimeDly(5, OS_OPT_TIME_DLY, &err);
 			}
 			/*进入焊接的条件*/
 			if (page_param->key1 != RDY || weld_controller->realtime_temp > weld_controller->weld_temp[2])
@@ -1101,9 +1100,9 @@ void welding_process(void)
 			if (page_param->id == WAVE_PAGE)
 			{
 				command_send("cle wave_line.id,0");
-				OSTimeDly(2, OS_OPT_TIME_DLY, &err);
+				OSTimeDly(5, OS_OPT_TIME_DLY, &err);
 				command_send("cle wave_line.id,0");
-				OSTimeDly(2, OS_OPT_TIME_DLY, &err);
+				OSTimeDly(5, OS_OPT_TIME_DLY, &err);
 			}
 
 			/*进入焊接的条件*/

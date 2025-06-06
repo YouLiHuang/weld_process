@@ -1413,9 +1413,9 @@ static void page_process(Page_ID id)
 		command_get_comp_val(temp_page_list, "GP", "val");
 		/*get count , which would be changed by user*/
 		command_get_comp_val(temp_page_list, "count", "val");
-		uint16_t cur_count = get_comp(temp_page_name_list, "count")->val;
-		if (cur_count != weld_controller->weld_count)
-			weld_controller->weld_count = cur_count;
+		uint16_t count = get_comp(temp_page_list, "count")->val;
+		if (count != weld_controller->weld_count)
+			weld_controller->weld_count = count;
 
 		/*get switch status*/
 		command_get_comp_val(temp_page_list, "switch", "val");
