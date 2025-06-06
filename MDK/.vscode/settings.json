@@ -66,7 +66,8 @@
         "usbh_core.h": "c",
         "usbh_def.h": "c",
         "user_config.h": "c",
-        "ff.h": "c"
+        "ff.h": "c",
+        "usb_core.h": "c"
     },
     // 头部注释
     "fileheader.customMade": {

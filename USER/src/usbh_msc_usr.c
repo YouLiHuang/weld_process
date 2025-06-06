@@ -738,7 +738,7 @@ int Data_Save_Callback(void)
   case SAVE_INIT:
     /*file name*/
     // sprintf(temp_name, "%s%d.%s", FILE_PREFIX, file_count, FILE_SUFFIX);
-    sprintf(temp_name, "%d_%d_%d.%s", current_date.Month, current_date.Day, file_count, FILE_SUFFIX);
+    sprintf(temp_name, "%d_%d_%d_%d_%d.%s", current_date.Month, current_date.Day, current_date.Hour, current_date.Minute, file_count, FILE_SUFFIX);
     name_len = strlen(temp_name);
 
     if (file_name == NULL)
