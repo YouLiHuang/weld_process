@@ -4,19 +4,19 @@
 #include "sys.h"
 
 /* Private variables ---------------------------------------------------------*/
-// 输入寄存器内容 (test)
+// input reg
 uint16_t usRegInputBuf[REG_INPUT_NREGS] = {0x1000, 0x1001, 0x1002, 0x1003, 0x1004, 0x1005, 0x1006, 0x1007};
-// 输入寄存器起始地址
+// input reg address start
 uint16_t usRegInputStart = REG_INPUT_START;
 
-// 保持寄存器内容 (test)
-uint16_t usRegHoldingBuf[REG_HOLDING_NREGS] = {0x147b, 0x3f8e, 0x147b, 0x400e, 0x1eb8, 0x4055, 0x147b, 0x408e};
-// 保持寄存器起始地址
+// hold reg
+uint16_t usRegHoldingBuf[REG_HOLDING_NREGS] = {0x1234, 0x5678, 0x4321, 0x8765, 0x1111, 0x2222, 0x3333, 0x4444};
+// hold reg adress start
 uint16_t usRegHoldingStart = REG_HOLDING_START;
 
-// 线圈状态 (test)
+// coil state 
 uint8_t ucRegCoilsBuf[REG_COILS_SIZE / 8] = {0x01, 0x02};
-// 开关输入状态 (test)
+// switch state
 uint8_t ucRegDiscreteBuf[REG_DISCRETE_SIZE / 8] = {0x01, 0x02};
 
 /**
