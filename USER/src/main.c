@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-07 09:24:10
+ * @LastEditTime: 2025-06-09 17:29:31
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -104,7 +104,7 @@ Calibration is required separately, but the software layer is consistent*/
 // K：0.218*3300/4096=0.1756
 static Thermocouple Thermocouple_Lists[] = {
 	{E_TYPE, 0.17, 0, 0},
-	{K_TYPE, 0.17, 0, 0}, // 主控板上的热电偶检测通道，实际上校准成了E
+	{K_TYPE, 0.17, 0, 0}, 
 	{J_TYPE, 0.17, 0, 0},
 };
 
@@ -1602,7 +1602,7 @@ void computer_read_task(void *p_arg)
 		printf("> MODBUS NOT SUPPORT!\n");
 #endif
 
-		OSTimeDlyHMSM(0, 0, 0, 20, OS_OPT_TIME_PERIODIC, &err);
+		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);
 	}
 }
 
@@ -1632,6 +1632,6 @@ void usb_task(void *p_arg)
 
 		/* Host Task handler */
 		USBH_Process(&USB_OTG_Core, &USB_Host);
-		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err);
+		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);
 	}
 }
