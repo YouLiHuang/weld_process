@@ -7,7 +7,7 @@
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
-#include "key.h"
+#include "io_ctrl.h"
 #include "delay.h"
 
 void KEYin_Init(void)

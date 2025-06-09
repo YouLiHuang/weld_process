@@ -2,7 +2,7 @@
 #include "welding_process.h"
 
 #include "includes.h"
-#include "key.h"
+#include "io_ctrl.h"
 #include "pwm.h"
 #include "pid.h"
 #include "adc.h"
@@ -755,6 +755,9 @@ static void Second_Step()
 	/*timer reset*/
 	TIM_Cmd(TIM5, DISABLE);
 	TIM5->CNT = 0;
+	/*PWM off*/
+	TIM_SetCompare1(TIM1, 0);
+	TIM_SetCompare1(TIM4, 0);
 	/*end of step*/
 	weld_controller->state = IDEAL_STATE;
 	/*Record end coordinates*/
@@ -844,45 +847,6 @@ static void End_of_Weld()
 	CUNT = 1;  // 1为计数，0清除计数信号
 	OVER = 1;  // 1为焊接结束信号
 }
-
-#if COMMUNICATE
-
-/**
- * @description: Transmit data to the host computer
- * @param {uint16_t} Temp_Send
- * @return {*}
- */
-static void data_transfer_to_computer(const uint16_t Temp_Send[])
-{
-	// 调试时暂时注释掉，防止对温度曲线进行干扰
-	//  发送各段焊接温度给上位机
-	unsigned char output_welding_data[15] = {0x00};
-	output_welding_data[0] = ID_OF_MAS;							/* 焊机号 */
-	output_welding_data[1] = 0x0f;								/* 指令码 */
-	output_welding_data[2] = 0x00;								/*发送字节数 */
-	output_welding_data[3] = weld_controller->weld_count / 256; /* 焊接计数值高字节 */
-	output_welding_data[4] = weld_controller->weld_count % 256; /* 焊接计数低字节 */
-	output_welding_data[5] = Temp_Send[0] / 256;
-	output_welding_data[6] = Temp_Send[0] % 256;
-	output_welding_data[7] = Temp_Send[1] / 256;
-	output_welding_data[8] = Temp_Send[1] % 256;
-	output_welding_data[9] = Temp_Send[2] / 256;
-	output_welding_data[10] = Temp_Send[2] % 256;
-	int crc16_data = CRC16(output_welding_data, 11);
-	output_welding_data[11] = crc16_data >> 8;
-	output_welding_data[12] = crc16_data & 0x00ff;
-	BIT_ADDR(GPIOB_ODR_Addr, 9) = 1; // 设置为发送模式
-	for (int t1 = 0; t1 < 13; t1++)
-	{
-		USART3->SR;
-		USART_SendData(USART3, output_welding_data[t1]);
-		while (USART_GetFlagStatus(USART3, USART_FLAG_TC) != SET)
-			; // 把请求类型发送过去
-	}
-	BIT_ADDR(GPIOB_ODR_Addr, 9) = 0; // 设置为接收模式
-}
-
-#endif
 
 /**
  * @description: Conduct a simulation of welding with no actual current output
@@ -996,9 +960,7 @@ void welding_process(void)
 	if (weld_controller->weld_count == 0 && weld_controller->Count_Dir == DOWN)
 		return;
 
-	/*定时器配置PWM 5KHz*/
-	TIM1_PWM_Init();
-	TIM4_PWM_Init();
+	/*TIMER DEINIT*/
 	TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
 	TIM_ForcedOC1Config(TIM4, TIM_ForcedAction_InActive);
 	TIM_Cmd(TIM1, DISABLE);

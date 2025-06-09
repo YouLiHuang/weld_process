@@ -2,20 +2,20 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-06 12:23:44
+ * @LastEditTime: 2025-06-07 09:24:10
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
-
+ 
+/*user*/
 #include "user_config.h"
 #include "includes.h"
 #include "sys.h"
-#include "delay.h"
 
+/*bsp*/
+#include "delay.h"
 #include "usart.h"
-#include "key.h"
-#include "crc16.h"
 #include "welding_process.h"
 #include "spi.h"
 #include "timer.h"
@@ -25,7 +25,16 @@
 #include "touchscreen.h"
 #include "pid.h"
 #include "filter.h"
-#include "thermocoupleIO.h"
+#include "thermocouple.h"
+#include "io_ctrl.h"
+
+/*FreeModbus includes*/
+#include "mb.h"
+#include "mbport.h"
+#include "mbrtu.h"
+#include "port_bsp.h"
+
+/*USB includes*/
 #include "usbh_msc_usr.h"
 #include "log.h"
 
@@ -37,7 +46,7 @@ CPU_STK START_TASK_STK[START_STK_SIZE];
 void start_task(void *p_arg);
 
 #define ERROR_TASK_PRIO 4
-#define ERROR_STK_SIZE 1024
+#define ERROR_STK_SIZE 512
 OS_TCB ErrorTaskTCB;
 CPU_STK ERROR_TASK_STK[ERROR_STK_SIZE];
 void error_task(void *p_arg);
@@ -55,14 +64,14 @@ CPU_STK READ_TASK_STK[READ_STK_SIZE];
 
 void read_task(void *p_arg);
 
-#define COMPUTER_TASK_PRIO 7
-#define COMPUTER_STK_SIZE 512
+#define COMPUTER_TASK_PRIO 6
+#define COMPUTER_STK_SIZE 2048
 OS_TCB COMPUTER_TaskTCB;
 CPU_STK COMPUTER_TASK_STK[COMPUTER_STK_SIZE];
 void computer_read_task(void *p_arg);
 
-#define USB_TASK_PRIO 6
-#define USB_STK_SIZE 4096
+#define USB_TASK_PRIO 7
+#define USB_STK_SIZE 2048
 OS_TCB USB_TaskTCB;
 CPU_STK USB_TASK_STK[USB_STK_SIZE];
 void usb_task(void *p_arg);
@@ -249,21 +258,7 @@ static char *wave_page_name_list[] = {
 	"ki",
 	"kd"};
 
-/*host computer 485 param*/
-/*max to 15*/
-uint8_t ID_OF_MAS = 0;
-uint8_t last_id_of_mas = 0;
-uint32_t BOUND_SET = 0;
-/*Communication parameters of the host computer*/
-extern int Host_action;
-extern int Host_GP;
-extern uint16_t ModBus_time[6];
-extern uint16_t ModBus_temp[3];
-extern uint16_t ModBus_alarm_temp[6];
-extern float Host_gain1;
-extern float Host_gain2;
-extern int Host_gain1_raw;
-extern int Host_gain2_raw;
+uint8_t ID_OF_DEVICE = 0;
 /*Touchscreen communication parameters*/
 extern uint16_t remember_array;
 extern USBH_HOST USB_Host __ALIGN_END;
@@ -325,32 +320,37 @@ int main(void)
 	temp_draw_ctrl = new_temp_draw_ctrl(realtime_temp_buf, 500, 2000, 500);
 
 	/*默认e型热电偶*/
-	current_Thermocouple = &Thermocouple_Lists[1];
+	current_Thermocouple = &Thermocouple_Lists[0];
 
 	/*------------------------------------------------------Hardware layer data initialization-----------------------------------------------------------*/
 	/*Peripheral initialization*/
 	delay_init(168);								// clock init
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); // Interrupt Group Configuration
+	TIM1_PWM_Init();								// tim1 PWM
+	TIM4_PWM_Init();								// tim4 PWM
+	TIM3_INIT();									// PID TIMER
+	TIM5_INIT();									// COUNT TIMER
 	uart_init(115200);								// Touch screen communication interface initialization
-	usart3_init(115200);							// Host computer communication initialization
-	KEYin_Init();									// key io init
-	OUT_Init();										// output pin init
-	Check_IO_init();								// Thermocouple detection io initialization
-	SPI1_Init();									// spi init
-	ADC_DMA_INIT();									// ADC init
-	Current_Check_IO_Config();						// Current detection io configuration
-	Temp_Protect_IO_Config();						// temp overload init
+#if MODBUSSLAVE
+	eMBInit(MB_RTU, 1, 3, 115200, MB_PAR_NONE, 1);
+	eMBEnable();
+#else
+	modbus_serial_init(115200);
+#endif
+	log_bsp_init(115200);
 
-	/*TIM3(weld time) TIM5(pid) TIM1(pwm1) TIM4(pwm2)*/
-	TIM3_Int_Init();
-	TIM5_Int_Init();
+	KEYin_Init();			   // key IO init
+	OUT_Init();				   // output pin init
+	Check_IO_init();		   // Thermocouple detection io initialization
+	SPI1_Init();			   // spi init
+	ADC_DMA_INIT();			   // ADC init
+	Current_Check_IO_Config(); // Current detection io configuration
+	Temp_Protect_IO_Config();  // temp overload init
 
 	/*user device init*/
 	Touchscreen_init();
 	Load_data_from_mem();
-	Host_computer_reset();
-
-	/*Hardware test snippet*/
+	/*Hardware test*/
 	/*...*/
 
 	/*-----------------------------------------------------------System level data objects-----------------------------------------------------------------*/
@@ -502,7 +502,7 @@ and the time slice length is 1 system clock beat, 1 ms
 				 (CPU_STK_SIZE)USB_STK_SIZE / 10,
 				 (CPU_STK_SIZE)USB_STK_SIZE,
 				 (OS_MSG_QTY)0,
-				 (OS_TICK)40,
+				 (OS_TICK)20,
 				 (void *)0,
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
@@ -517,7 +517,7 @@ and the time slice length is 1 system clock beat, 1 ms
 				 (CPU_STK_SIZE)COMPUTER_STK_SIZE / 10,
 				 (CPU_STK_SIZE)COMPUTER_STK_SIZE,
 				 (OS_MSG_QTY)0,
-				 (OS_TICK)10,
+				 (OS_TICK)40,
 				 (void *)0,
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
@@ -1361,7 +1361,7 @@ static bool pid_param_get(uint16_t *pid_raw_param)
 
 static void page_process(Page_ID id)
 {
-	const char *tick_name[] = {"tick1", "tick2", "tick3", "tick4", "tick5"};
+	char *tick_name[] = {"tick1", "tick2", "tick3", "tick4", "tick5"};
 	char *temp_display_name[] = {"temp11", "temp22", "temp33"};
 	switch (page_param->id)
 	{
@@ -1541,13 +1541,13 @@ static void page_process(Page_ID id)
 		/*6、数据同步*/
 		comp = get_comp(setting_page_list, "adress");
 		if (comp != NULL)
-			ID_OF_MAS = comp->val;
+			ID_OF_DEVICE = comp->val;
 
 		comp = get_comp(setting_page_list, "baudrate");
 		if (comp != NULL)
 		{
 			uint8_t index = get_comp(setting_page_list, "baudrate")->val;
-			usart3_set_bound(baud_list[index - 1]);
+			/*set bounds*/
 		}
 	}
 	break;
@@ -1585,261 +1585,24 @@ void read_task(void *p_arg)
 /*-------------------------------------------------------------------------------------------------------------------------*/
 
 /**
- * @description: Data synchronization
- * @return {*}
- */
-static void Hsot_Computer_Data_Sync()
-{
-	char *time_name[] = {
-		"time1",
-		"time2",
-		"time3",
-		"time4",
-		"time5",
-	};
-	for (uint8_t i = 0; i < sizeof(time_name) / sizeof(time_name[0]); i++)
-	{
-		get_comp(param_page_list, time_name[i])->val = weld_controller->weld_time[i];
-	}
-	char *temp_name[] = {
-		"temp1",
-		"temp2",
-		"temp3",
-	};
-	for (uint8_t i = 0; i < sizeof(temp_name) / sizeof(temp_name[0]); i++)
-	{
-		get_comp(param_page_list, temp_name[i])->val = weld_controller->weld_temp[i];
-	}
-
-	char *alarm_name[] = {
-		"alarm1",
-		"alarm2",
-		"alarm3",
-		"alarm4",
-		"alarm5",
-		"alarm6",
-	};
-	for (uint8_t i = 0; i < sizeof(alarm_name) / sizeof(alarm_name[0]); i++)
-	{
-		get_comp(param_page_list, alarm_name[i])->val = weld_controller->alarm_temp[i];
-	}
-	get_comp(temp_page_list, "GAIN1")->val = weld_controller->temp_gain1;
-	get_comp(temp_page_list, "GAIN2")->val = weld_controller->temp_gain2;
-}
-
-/**
  * @description: The upper computer communication thread
  * @param {void} *p_arg
  * @return {*}
  */
 void computer_read_task(void *p_arg)
 {
-	/*
-	Data receive from host computer:
-	ModBus_time||ModBus_temp||ModBus_alarm_temp||Host_GP||Host_gain1_raw||Host_gain1||Host_gain2_raw||Host_gain2
-	User-maintained data:
-	weld_controller->weld_time||weld_controller->weld_temp||weld_controller->alarm_temp
-	*/
+
 	OS_ERR err;
-	usart3_init(115200);
+
 	while (1)
 	{
+#if MODBUSSLAVE
+		(void)eMBPoll();
+#else
+		printf("> MODBUS NOT SUPPORT!\n");
+#endif
 
-		/*Subscribe to data update signals*/
-		OSSemPend(&COMPUTER_DATA_SYN_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
-		if (OS_ERR_NONE == err)
-		{
-
-			/*
-			When the Host_action is not 0, it is to process the data of the host computer and refresh the data to the touch screen
-			*/
-			if (Host_action == 1)
-			{
-				/*data update*/
-				remember_array = Host_GP;
-				/*screan refresh*/
-				for (int i = 0; i < 2; i++)
-				{
-					/*The GP value of the previous time is sent to the slave*/
-					command_set_comp_val("GP", "val", remember_array);
-					Load_param(weld_controller, remember_array);
-					Load_param_alarm(weld_controller, remember_array);
-				}
-				SPI_Save_Word(0, 40 * (remember_array + 1) + 4);
-				Host_action = 0;
-			}
-			/*
-			Host_action is 2 - 17, which means that the host computer modifies a single data,
-			and synchronously modifies the parameter array of the control board and the touch screen data
-			*/
-			else if ((Host_action >= 2) && (Host_action <= 17))
-			{
-				/*data update*/
-				switch (Host_action)
-				{
-
-				/*weld time*/
-				case 2:
-					weld_controller->weld_time[0] = ModBus_time[0];
-					break;
-				case 3:
-					weld_controller->weld_time[1] = ModBus_time[1];
-					break;
-				case 4:
-					weld_controller->weld_time[2] = ModBus_time[3];
-					break;
-				case 5:
-					weld_controller->weld_time[3] = ModBus_time[4];
-					break;
-				case 6:
-					weld_controller->weld_time[4] = ModBus_time[5];
-					break;
-				/*weld temp*/
-				case 7:
-					weld_controller->weld_temp[0] = ModBus_temp[0];
-					break;
-				case 8:
-					weld_controller->weld_temp[1] = ModBus_temp[1];
-					break;
-				case 9:
-					weld_controller->weld_temp[2] = ModBus_temp[2];
-					break;
-				/*alarm temp*/
-				case 10:
-					weld_controller->alarm_temp[0] = ModBus_alarm_temp[0];
-					break;
-				case 11:
-					weld_controller->alarm_temp[1] = ModBus_alarm_temp[1];
-					break;
-				case 12:
-					weld_controller->alarm_temp[2] = ModBus_alarm_temp[2];
-					break;
-				case 13:
-					weld_controller->alarm_temp[3] = ModBus_alarm_temp[3];
-					break;
-				case 14:
-					weld_controller->alarm_temp[4] = ModBus_alarm_temp[4];
-					break;
-				case 15:
-					weld_controller->alarm_temp[5] = ModBus_alarm_temp[5];
-					break;
-				/*gain*/
-				case 16:
-					weld_controller->temp_gain1 = Host_gain1;
-					break;
-				case 17:
-					weld_controller->temp_gain2 = Host_gain2;
-					break;
-				}
-
-				/*save param*/
-				/*time1-time5*/
-				for (uint8_t i = 0; i < TIME_NUM; i++)
-				{
-					SPI_Save_Word(weld_controller->weld_time[i], TIME_BASE(remember_array) + ADDR_OFFSET * i);
-				}
-				/*temp1-temp3*/
-				for (uint8_t i = 0; i < TEMP_NUM; i++)
-				{
-					SPI_Save_Word(weld_controller->weld_temp[i], TEMP_BASE(remember_array) + ADDR_OFFSET * i);
-				}
-				/*alarm1-alarm6*/
-				for (uint8_t i = 0; i < ALARM_NUM; i++)
-				{
-					SPI_Save_Word(weld_controller->alarm_temp[i], ALARM_BASE(remember_array) + ADDR_OFFSET * i);
-				}
-
-				/*gain1-gain2*/
-				SPI_Save_Word(weld_controller->temp_gain1 * 100, GAIN_BASE(remember_array));
-				SPI_Save_Word(weld_controller->temp_gain2 * 100, GAIN_BASE(remember_array) + ADDR_OFFSET);
-
-				/*screan refresh*/
-				char *time_name_list[] = {
-					"param_page.time1",
-					"param_page.time2",
-					"param_page.time3",
-					"param_page.time4",
-					"param_page.time5",
-				};
-				for (uint8_t i = 0; i < sizeof(time_name_list) / sizeof(time_name_list[0]); i++)
-				{
-					command_set_comp_val(time_name_list[i], "val", weld_controller->weld_time[i]);
-				}
-				char *temp_name_list[] = {"param_page.temp1", "param_page.temp2", "param_page.temp3"};
-				for (uint8_t i = 0; i < sizeof(temp_name_list) / sizeof(temp_name_list[0]); i++)
-				{
-					command_set_comp_val(temp_name_list[i], "val", weld_controller->weld_temp[i]);
-				}
-
-				char *alarm_name_list[] = {
-					"temp_page.alarm1",
-					"temp_page.alarm2",
-					"temp_page.alarm3",
-					"temp_page.alarm4",
-					"temp_page.alarm5",
-					"temp_page.alarm6",
-				};
-				for (uint8_t i = 0; i < sizeof(alarm_name_list) / sizeof(alarm_name_list[0]); i++)
-				{
-					command_set_comp_val(alarm_name_list[i], "val", weld_controller->alarm_temp[i]);
-				}
-
-				command_set_comp_val("temp_page.GAIN1", "val", weld_controller->temp_gain1 * 100);
-				command_set_comp_val("temp_page.GAIN2", "val", weld_controller->temp_gain2 * 100);
-
-				/*reset host action*/
-				Host_action = 0;
-			}
-			/*
-			Host_action = 20 means that the whole page of data is changed,
-			and the modified data is synchronized to the parameter array and touch screen.
-			*/
-			else if (Host_action == 20)
-			{
-				/*data update*/
-				remember_array = Host_GP;
-
-				for (uint8_t i = 0; i < sizeof(weld_controller->weld_time) / sizeof(uint16_t); i++)
-				{
-					weld_controller->weld_time[i] = ModBus_time[i];
-				}
-
-				for (uint8_t i = 0; i < sizeof(weld_controller->weld_temp) / sizeof(uint16_t); i++)
-				{
-					weld_controller->weld_temp[i] = ModBus_temp[i];
-				}
-
-				for (uint8_t i = 0; i < sizeof(weld_controller->alarm_temp) / sizeof(uint16_t); i++)
-				{
-					weld_controller->alarm_temp[i] = ModBus_alarm_temp[i];
-				}
-
-				/*save user data to EEPROM*/
-				/*time1-time5*/
-				for (uint8_t i = 0; i < TIME_NUM; i++)
-				{
-					SPI_Save_Word(weld_controller->weld_time[i], TIME_BASE(remember_array) + ADDR_OFFSET * i);
-				}
-				/*temp1-temp3*/
-				for (uint8_t i = 0; i < TEMP_NUM; i++)
-				{
-					SPI_Save_Word(weld_controller->weld_temp[i], TEMP_BASE(remember_array) + ADDR_OFFSET * i);
-				}
-				/*alarm1-alarm6*/
-				for (uint8_t i = 0; i < ALARM_NUM; i++)
-				{
-					SPI_Save_Word(weld_controller->alarm_temp[i], ALARM_BASE(remember_array) + ADDR_OFFSET * i);
-				}
-				/*gain1-gain2*/
-				SPI_Save_Word(weld_controller->temp_gain1 * 100, GAIN_BASE(remember_array));
-				SPI_Save_Word(weld_controller->temp_gain2 * 100, GAIN_BASE(remember_array) + ADDR_OFFSET);
-				Host_action = 0;
-			}
-
-			Hsot_Computer_Data_Sync();
-		}
-
-		OSTimeDlyHMSM(0, 0, 0, 25, OS_OPT_TIME_PERIODIC, &err);
+		OSTimeDlyHMSM(0, 0, 0, 20, OS_OPT_TIME_PERIODIC, &err);
 	}
 }
 
@@ -1851,6 +1614,7 @@ void usb_task(void *p_arg)
 {
 
 	OS_ERR err;
+
 	USBH_Init(&USB_OTG_Core,
 #ifdef USE_USB_OTG_FS
 			  USB_OTG_FS_CORE_ID,
@@ -1868,6 +1632,6 @@ void usb_task(void *p_arg)
 
 		/* Host Task handler */
 		USBH_Process(&USB_OTG_Core, &USB_Host);
-		OSTimeDlyHMSM(0, 0, 0, 20, OS_OPT_TIME_PERIODIC, &err);
+		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err);
 	}
 }

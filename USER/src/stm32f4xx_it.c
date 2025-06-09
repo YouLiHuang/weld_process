@@ -29,8 +29,10 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_it.h"
-#include "protect.h"
 
+/* user indludes--------------------------------------------------------------*/
+#include "protect.h"
+#include "modbus_bsp.h"
 #include "usb_bsp.h"
 #include "usb_hcd_int.h"
 #include "usbh_core.h"
@@ -44,6 +46,8 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
+extern void modbus_timer_irq(void);
+extern void modbus_serial_irq(void);
 /* Private functions ---------------------------------------------------------*/
 
 /******************************************************************************/
@@ -233,6 +237,25 @@ void TIM2_IRQHandler(void)
 {
   USB_OTG_BSP_TimerIRQ();
 }
+
+/**
+ * @description: TIM12_IRQHandler modbus timer
+ * @return {*}
+ */
+void TIM8_BRK_TIM12_IRQHandler(void)
+{
+  modbus_timer_irq();
+}
+
+/**
+ * @description: modbus serial irq
+ * @return {*}
+ */
+void USART3_IRQHandler(void)
+{
+   modbus_serial_irq();//UART4_IRQHandler
+}
+
 
 /**
  * @brief  This function handles PPP interrupt request.

@@ -41,14 +41,13 @@ PUTCHAR_PROTOTYPE
 
     /* Place your implementation of fputc here */
     /* e.g. write a character to the USART */
-    USART3->SR;
+    USART1->SR;
     /* Loop until the end of transmission */
-    BIT_ADDR(GPIOB_ODR_Addr, 9) = 1; // send mode
 
-    USART_SendData(USART3, ch);
-    while (USART_GetFlagStatus(USART3, USART_FLAG_TC) != SET)
+    USART_SendData(USART1, ch);
+    while (USART_GetFlagStatus(USART1, USART_FLAG_TC) != SET)
         ;
-    BIT_ADDR(GPIOB_ODR_Addr, 9) = 0; // receive mode
+
 
     return ch;
 }

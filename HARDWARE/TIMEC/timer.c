@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-15 19:17:48
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-22 09:42:09
+ * @LastEditTime: 2025-06-07 09:12:46
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -18,8 +18,7 @@
 #include "usart.h"
 #include "protect.h"
 #include "Kalman.h"
-#include "crc16.h"
-#include "tempcomp.h"
+
 #include "touchscreen.h"
 #include "dynamic_correct.h"
 
@@ -29,8 +28,6 @@ extern uint8_t err_comp;
 extern weld_ctrl *weld_controller;
 /*温度补偿部分*/
 extern Kalman kfp;
-extern dynamical_comp dynam_comp;
-last_temp_sotre lasttemp;
 uint16_t kalman_comp_temp = 0;
 
 /*错误处理*/
@@ -119,20 +116,15 @@ void reset_temp_draw_ctrl(Temp_draw_ctrl *ctrl, const uint16_t welding_time[])
 	{
 		ctrl->temp_buf[i] = 0;
 	}
-
-	// for (uint8_t i = 0; i < sizeof(ctrl->display_temp) / sizeof(ctrl->display_temp[0]); i++)
-	// {
-	// 	ctrl->display_temp[i] = 0;
-	// }
 }
 
 /**
- * @description: Timer 3 configuration, welding cycle time recording, 1ms interrupt
+ * @description: APH1 defalut clock=168M/4=42M pre(=4)!=1 so APB1_TIM3_CLK=42M*2=84M
  * @return {*}
  */
-void TIM3_Int_Init(void)
+void TIM3_INIT(void)
 {
-	uint16_t arr = 2000 - 1;
+	uint16_t arr = 1000 - 1;
 	uint16_t psc = 84 - 1;
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
@@ -157,12 +149,12 @@ void TIM3_Int_Init(void)
 }
 
 /**
- * @description:  Timer initialization, clock frequency 168MHz, tim3 is PID control timer, record welding process temperature (1ms interrupt)
+ * @description:  APH1 defalut clock=168M/4=42M pre(=4)!=1 so APB1_TIM5_CLK=42M*2=84M
  * @return {*}
  */
-void TIM5_Int_Init(void)
+void TIM5_INIT(void)
 {
-	uint16_t arr = 2000 - 1;
+	uint16_t arr = 1000 - 1;
 	uint16_t psc = 84 - 1;
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
@@ -189,10 +181,6 @@ void TIM5_Int_Init(void)
 
 static volatile uint16_t current_temp_comp = 0;
 
-#if REVERSE_CHECK
-static uint16_t last_temp;
-#endif
-
 /**
  * @description: Timer 5 interrupt function - real-time closed-loop control of welding
  * @return {*}
@@ -209,32 +197,19 @@ void TIM5_IRQHandler(void)
 
 		/*feedback*/
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
-
 #if KALMAN_FILTER == 1
-		uint16_t kalman_filter_temp = KalmanFilter(&kfp, weld_controller->realtime_temp); // 卡尔曼滤波
-#if COMPENSATION == 1
-		slid_windows(&lasttemp, kalman_filter_temp);				// 滑动窗口
-		kalman_comp_temp = dynamic_temp_comp(lasttemp, dynam_comp); // 动态补偿
-		current_temp_comp = kalman_comp_temp;						// 获取当前温度估计值
-#else
-		current_temp_comp = kalman_filter_temp;
-		weld_controller->realtime_temp = current_temp_comp;
-#endif
-#else
-		current_temp_comp = weld_controller->realtime_temp;
+		uint16_t kalman_filter_temp = KalmanFilter(&kfp, weld_controller->realtime_temp);
 #endif
 
+		/*Time updates*/
+		weld_controller->step_time_tick++;
 		/*real-time control*/
 		switch (weld_controller->state)
 		{
 		case PRE_STATE:
-			weld_controller->step_time_tick++;
 			break;
 			/*--------------------------------------------------------------------first step----------------------------------------------------------------------*/
 		case FIRST_STATE:
-			/*Time updates*/
-			weld_controller->step_time_tick++;
-
 			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + err_comp,
 														 weld_controller->realtime_temp,
 														 weld_controller->Duty_Cycle,
@@ -245,8 +220,6 @@ void TIM5_IRQHandler(void)
 			/*--------------------------------------------------------------------second step----------------------------------------------------------------------*/
 		case SECOND_STATE:
 
-			/*Time updates*/
-			weld_controller->step_time_tick++;
 #if PID_DEBUG == 0
 			if (weld_controller->enter_transition_flag == false)
 			{
@@ -304,16 +277,7 @@ void TIM5_IRQHandler(void)
 			break;
 
 			/*--------------------------------------------------------------------third step----------------------------------------------------------------------*/
-			/*
-			In the cooling process, the temperature control requirements are not high,
-			and it should be possible to give a descending curve with a specified slope,
-			and the starting value of the PDC refers to the end value of the previous stage
-			*/
 		case THIRD_STATE:
-			/*Time updates*/
-			weld_controller->step_time_tick++;
-			/*Algorithm control - slow down, temporarily do not implement, directly close the output*/
-			/*...*/
 			break;
 		}
 

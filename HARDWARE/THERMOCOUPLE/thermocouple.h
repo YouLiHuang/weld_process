@@ -7,8 +7,8 @@
  * @
  * @Copyright (c) 2025 by huangyouli, All Rights Reserved. 
  */
-#ifndef _THERIO_H
-#define _THERIO_H
+#ifndef _THERMO_H
+#define _THERMO_H
 
 #include "sys.h"
 #include "stdbool.h"

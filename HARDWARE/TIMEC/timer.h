@@ -1,11 +1,11 @@
-/*** 
+/***
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-05-21 21:36:35
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-22 09:41:17
- * @Description: 
+ * @LastEditTime: 2025-06-07 09:13:28
+ * @Description:
  * @
- * @Copyright (c) 2025 by huangyouli, All Rights Reserved. 
+ * @Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
 /***
  * @Author: huangyouli.scut@gmail.com
@@ -20,9 +20,6 @@
 #define _TIMER_H
 #include "sys.h"
 #include "stdbool.h"
-
-void TIM3_Int_Init(void);
-void TIM5_Int_Init(void);
 
 typedef struct Temp_draw_controller
 {
@@ -51,5 +48,8 @@ typedef struct Temp_draw_controller
 } Temp_draw_ctrl;
 Temp_draw_ctrl *new_temp_draw_ctrl(uint16_t *buf, uint16_t len1, uint16_t len2, uint16_t len3);
 void reset_temp_draw_ctrl(Temp_draw_ctrl *ctrl, const uint16_t welding_time[]);
+
+void TIM3_INIT(void);
+void TIM5_INIT(void);
 
 #endif

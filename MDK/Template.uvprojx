@@ -10,14 +10,14 @@
       <TargetName>Template</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pCCUsed>5060750::V5.06 update 6 (build 750)::ARMCC</pCCUsed>
+      <pCCUsed>5060960::V5.06 update 7 (build 960)::.\ARMCC</pCCUsed>
       <uAC6>0</uAC6>
       <TargetOption>
         <TargetCommonOption>
           <Device>STM32F407ZG</Device>
           <Vendor>STMicroelectronics</Vendor>
-          <PackID>Keil.STM32F4xx_DFP.2.13.0</PackID>
-          <PackURL>http://www.keil.com/pack</PackURL>
+          <PackID>Keil.STM32F4xx_DFP.3.0.0</PackID>
+          <PackURL>https://www.keil.com/pack/</PackURL>
           <Cpu>IROM(0x08000000,0x100000) IRAM(0x20000000,0x20000) IRAM2(0x10000000,0x10000) CPUTYPE("Cortex-M4") FPU2 CLOCK(12000000) ELITTLE</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
           <StartupFile></StartupFile>
@@ -184,7 +184,6 @@
             <hadXRAM>0</hadXRAM>
             <uocXRam>0</uocXRam>
             <RvdsVP>2</RvdsVP>
-            <RvdsMve>0</RvdsMve>
             <hadIRAM2>1</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
@@ -338,7 +337,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F40_41xxx,USE_STDPERIPH_DRIVER,__FPU_USED=1</Define>
               <Undefine></Undefine>
-              <IncludePath>.\inc;..\CORE;..\SYSTEM\usart;..\SYSTEM\delay;..\SYSTEM\sys;..\USER\inc;..\UCOSIII\uC-CPU;..\UCOSIII\uC-LIB;..\UCOSIII\uCOS-III;..\UCOSIII\UCOS_BSP;..\UCOSIII\uCOS_CONFIG;..\UCOSIII\uCOS-III\Source;..\UCOSIII\uC-CPU\ARM-Cortex-M4\RealView;..\UCOSIII\uC-LIB\Ports\ARM-Cortex-M4\RealView;..\UCOSIII\uCOS-III\Ports\ARM-Cortex-M4\Generic\RealView;..\HARDWARE\CRC16;..\HARDWARE\ADC;..\HARDWARE\PWM;..\HARDWARE\SPI;..\HARDWARE\TIMEC;..\HARDWARE\PROTECT;..\HARDWARE\KEY;..\HARDWARE\TOUCH_SCREEN;..\HARDWARE\PINCTRL;..\HARDWARE\SDIO;..\HARDWARE\usart;..\LIB\STM32F4xx_StdPeriph_Driver\inc;..\LIB\STM32_USB_Device_Library\Core\inc;..\LIB\STM32_USB_Device_Library\Class\msc\inc;..\LIB\STM32_USB_HOST_Library\Core\inc;..\LIB\STM32_USB_HOST_Library\Class\MSC\inc;..\LIB\STM32_USB_OTG_Driver\inc;..\LIB\FATFS\src</IncludePath>
+              <IncludePath>.\inc;..\CORE;..\SYSTEM\usart;..\SYSTEM\delay;..\SYSTEM\sys;..\USER\inc;..\UCOSIII\uC-CPU;..\UCOSIII\uC-LIB;..\UCOSIII\uCOS-III;..\UCOSIII\UCOS_BSP;..\UCOSIII\uCOS_CONFIG;..\UCOSIII\uCOS-III\Source;..\UCOSIII\uC-CPU\ARM-Cortex-M4\RealView;..\UCOSIII\uC-LIB\Ports\ARM-Cortex-M4\RealView;..\UCOSIII\uCOS-III\Ports\ARM-Cortex-M4\Generic\RealView;..\HARDWARE\ADC;..\HARDWARE\PWM;..\HARDWARE\SPI;..\HARDWARE\TIMEC;..\HARDWARE\PROTECT;..\HARDWARE\KEY;..\HARDWARE\TOUCH_SCREEN;..\HARDWARE\PINCTRL;..\HARDWARE\SDIO;..\HARDWARE\usart;..\HARDWARE\IO_CTRL;..\HARDWARE\THERMOCOUPLE;..\HARDWARE\MODBUS;..\LIB\STM32F4xx_StdPeriph_Driver\inc;..\LIB\STM32_USB_Device_Library\Core\inc;..\LIB\STM32_USB_Device_Library\Class\msc\inc;..\LIB\STM32_USB_HOST_Library\Core\inc;..\LIB\STM32_USB_HOST_Library\Class\MSC\inc;..\LIB\STM32_USB_OTG_Driver\inc;..\LIB\FATFS\src;..\LIB\FreeModbus\port;..\LIB\FreeModbus\modbus\rtu;..\LIB\FreeModbus\modbus\include</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -488,16 +487,6 @@
           <GroupName>HARDWARE</GroupName>
           <Files>
             <File>
-              <FileName>key.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\KEY\key.c</FilePath>
-            </File>
-            <File>
-              <FileName>crc16.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\CRC16\crc16.c</FilePath>
-            </File>
-            <File>
               <FileName>spi.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\SPI\spi.c</FilePath>
@@ -533,9 +522,19 @@
               <FilePath>..\HARDWARE\usart\usart.c</FilePath>
             </File>
             <File>
-              <FileName>thermocoupleIO.c</FileName>
+              <FileName>io_ctrl.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\HARDWARE\PINCTRL\thermocoupleIO.c</FilePath>
+              <FilePath>..\HARDWARE\IO_CTRL\io_ctrl.c</FilePath>
+            </File>
+            <File>
+              <FileName>thermocouple.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\THERMOCOUPLE\thermocouple.c</FilePath>
+            </File>
+            <File>
+              <FileName>modebus_bsp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\MODBUS\modebus_bsp.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -845,6 +844,96 @@
           </Files>
         </Group>
         <Group>
+          <GroupName>MODBUS</GroupName>
+          <Files>
+            <File>
+              <FileName>mbfunccoils.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\LIB\FreeModbus\modbus\functions\mbfunccoils.c</FilePath>
+            </File>
+            <File>
+              <FileName>mbfuncdiag.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\LIB\FreeModbus\modbus\functions\mbfuncdiag.c</FilePath>
+            </File>
+            <File>
+              <FileName>mbfuncdisc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\LIB\FreeModbus\modbus\functions\mbfuncdisc.c</FilePath>
+            </File>
+            <File>
+              <FileName>mbfuncfile.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\LIB\FreeModbus\modbus\functions\mbfuncfile.c</FilePath>
+            </File>
+            <File>
+              <FileName>mbfuncholding.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\LIB\FreeModbus\modbus\functions\mbfuncholding.c</FilePath>
+            </File>
+            <File>
+              <FileName>mbfuncinput.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\LIB\FreeModbus\modbus\functions\mbfuncinput.c</FilePath>
+            </File>
+            <File>
+              <FileName>mbfuncother.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\LIB\FreeModbus\modbus\functions\mbfuncother.c</FilePath>
+            </File>
+            <File>
+              <FileName>mbutils.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\LIB\FreeModbus\modbus\functions\mbutils.c</FilePath>
+            </File>
+            <File>
+              <FileName>mbcrc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\LIB\FreeModbus\modbus\rtu\mbcrc.c</FilePath>
+            </File>
+            <File>
+              <FileName>mbrtu.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\LIB\FreeModbus\modbus\rtu\mbrtu.c</FilePath>
+            </File>
+            <File>
+              <FileName>mb.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\LIB\FreeModbus\modbus\mb.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>MODBUS_PORT</GroupName>
+          <Files>
+            <File>
+              <FileName>port.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\LIB\FreeModbus\port\port.c</FilePath>
+            </File>
+            <File>
+              <FileName>port_bsp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\LIB\FreeModbus\port\port_bsp.c</FilePath>
+            </File>
+            <File>
+              <FileName>portevent.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\LIB\FreeModbus\port\portevent.c</FilePath>
+            </File>
+            <File>
+              <FileName>portserial.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\LIB\FreeModbus\port\portserial.c</FilePath>
+            </File>
+            <File>
+              <FileName>porttimer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\LIB\FreeModbus\port\porttimer.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
           <GroupName>USER</GroupName>
           <Files>
             <File>
@@ -896,6 +985,11 @@
               <FileName>usbh_msc_usr.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\USER\src\usbh_msc_usr.c</FilePath>
+            </File>
+            <File>
+              <FileName>modbus_app.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\src\modbus_app.c</FilePath>
             </File>
           </Files>
         </Group>

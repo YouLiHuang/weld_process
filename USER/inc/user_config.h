@@ -7,6 +7,7 @@
 #define FILE_MAX_NAME_LEN 20
 #define WRITE_CSV_ENABLE 0
 #define EXPLORE_DISK_ENABLE 0
+#define MODBUSSLAVE 1
 
 /* debug enable ---------------------------------------------------------------------------------*/
 #define TEMP_ADJUST 0     // Temperature calibration enable

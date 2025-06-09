@@ -1,5 +1,5 @@
 #include "user_config.h"
-#include "ThermocoupleIO.h"
+#include "thermocouple.h"
 
 void Check_IO_init(void)
 {

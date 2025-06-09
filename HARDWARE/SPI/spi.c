@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-13 19:22:56
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-12 16:31:10
+ * @LastEditTime: 2025-06-07 09:23:36
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -10,26 +10,20 @@
 #include "user_config.h"
 #include "spi.h"
 #include "delay.h"
-#include "key.h"
+#include "io_ctrl.h"
 #include "touchscreen.h"
 #include "usart.h"
 #include "welding_process.h"
 
-/*--------------------------------------------------------------新触摸屏相关组件列表--------------------------------------------------------------*/
+/*--------------------------------------------------------------Variables--------------------------------------------------------------*/
 extern Page_Param *page_param;
 extern Component_Queue *param_page_list;
 extern Component_Queue *temp_page_list;
 extern weld_ctrl *weld_controller;
-extern Steady_state_coefficient steady_coefficient; // Steady-state fitting curve coefficient
-/*-----------------------------------------------------------------------------------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------上位机通信相关数据----------------------------------------------------------------*/
-extern uint8_t ID_OF_MAS;	   // 焊机485通讯机号，默认是零
-extern u32 BOUND_SET;		   // 焊机波特率设定，默认是115200
-extern uint8_t last_id_of_mas; // 机号存储
-/*-----------------------------------------------------------------------------------------------------------------------------------------------*/
-
-extern int remember_array;
+extern Steady_state_coefficient steady_coefficient;
+extern uint8_t ID_OF_DEVICE;
+/*--------------------------------------------------------------------------------------------------------------------------------------*/
+static int remember_array;
 static void WREN(void);
 
 void SPI1_Init(void)
@@ -37,29 +31,32 @@ void SPI1_Init(void)
 	GPIO_InitTypeDef GPIO_InitStructure;
 	SPI_InitTypeDef SPI_InitStructure;
 
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE); // 使能GPIOB时钟
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);  // 使能SPI1时钟
+	/*RCC Config*/
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
 
-	// GPIOB13(SCK)&GPIOB14(MISO)&GPIOB14(MISO)GPIOB15(MOSI)初始化
+	/*GPIO INIT*/
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;	   // 复用功能
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;	   // 推挽输出
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz; // 100MHz
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;	   // 上拉
-	GPIO_Init(GPIOB, &GPIO_InitStructure);			   // 初始化
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);
 
-	// GPIOB12(CS)
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;		   // PB12
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;	   // 输出
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;	   // 推挽输出
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz; // 100MHz
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;	   // 上拉
-	GPIO_Init(GPIOB, &GPIO_InitStructure);			   // 初始化
+	/*CS PIN Config*/
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);
 	CSN = 1;
-	GPIO_PinAFConfig(GPIOB, GPIO_PinSource13, GPIO_AF_SPI2); // PB13复用为 SPI1
-	GPIO_PinAFConfig(GPIOB, GPIO_PinSource14, GPIO_AF_SPI2); // PB14复用为 SPI1
-	GPIO_PinAFConfig(GPIOB, GPIO_PinSource15, GPIO_AF_SPI2); // PB15复用为 SPI1
+	/*SPI1 PIN*/
+	GPIO_PinAFConfig(GPIOB, GPIO_PinSource13, GPIO_AF_SPI2);
+	GPIO_PinAFConfig(GPIOB, GPIO_PinSource14, GPIO_AF_SPI2);
+	GPIO_PinAFConfig(GPIOB, GPIO_PinSource15, GPIO_AF_SPI2);
 
+	/*SPI Config*/
 	SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;	// 设置SPI单向或者双向的数据模式:SPI设置为双线双向全双工
 	SPI_InitStructure.SPI_Mode = SPI_Mode_Master;						// 设置SPI工作模式:设置为主SPI
 	SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;					// 设置SPI的数据大小:SPI发送接收8位帧结构
@@ -70,22 +67,20 @@ void SPI1_Init(void)
 	SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;					// 指定数据传输从MSB位还是LSB位开始:数据传输从MSB位开始
 	SPI_InitStructure.SPI_CRCPolynomial = 7;							// CRC值计算的多项式
 	SPI_Init(SPI2, &SPI_InitStructure);									// 根据SPI_InitStruct中指定的参数初始化外设SPIx寄存器
-
-	SPI_Cmd(SPI2, ENABLE); // 使能SPI外?
+	SPI_Cmd(SPI2, ENABLE);
 }
 
-// 发送数据函数(1个字节)
 static void SPI_Sendbyte(uint8_t data)
 {
 	while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_TXE) == RESET)
-		; // 等待发送区空
+		;
 
-	SPI_I2S_SendData(SPI2, data); // 通过外设SPIx发送一个byte数据
+	SPI_I2S_SendData(SPI2, data);
 
 	while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_RXNE) == RESET)
-		; // 等待接收完一个byte
+		;
 
-	SPI_I2S_ReceiveData(SPI2); // 返回通过SPIx最近接收的数据
+	SPI_I2S_ReceiveData(SPI2);
 }
 
 static uint8_t SPI_Readbyte(void)
@@ -110,9 +105,9 @@ static void WREN(void)
 
 void SPI_Save_Word(uint16_t data, uint16_t addr)
 {
-	WREN(); // SPI_Sendbyte(0x06)写使能
+	WREN();
 	CSN = 0;
-	SPI_Sendbyte(0x02); // w_code
+	SPI_Sendbyte(0x02);
 	SPI_Sendbyte(addr >> 8);
 	SPI_Sendbyte(addr);
 	SPI_Sendbyte(data >> 8);
@@ -125,7 +120,7 @@ uint16_t SPI_Load_Word(uint16_t addr)
 {
 	uint16_t tmp;
 	CSN = 0;
-	SPI_Sendbyte(0x03); // READ
+	SPI_Sendbyte(0x03);
 	SPI_Sendbyte(addr >> 8);
 	SPI_Sendbyte(addr);
 	tmp = SPI_Readbyte() << 8;
@@ -174,9 +169,9 @@ void Load_data_from_mem(void)
 	TRAN1 = 1;
 	delay_ms(2000);
 	TRAN1 = 0;
-
+	// 从内存加载首个GP值
 	remember_array = 0;
-	remember_array = SPI_Load_Word(0); // 从内存加载首个GP值
+	remember_array = SPI_Load_Word(0);
 	if (remember_array >= 20)
 		remember_array = 0;
 
@@ -220,7 +215,8 @@ void Load_data_from_mem(void)
 	}
 	command_set_comp_val_raw("temp_page.GAIN1", "val", weld_controller->temp_gain1 * 100);
 	command_set_comp_val_raw("temp_page.GAIN2", "val", weld_controller->temp_gain2 * 100);
-	command_set_comp_val_raw("temp_page.switch", "val", 0); // 默认自动模式
+	/*默认自动模式*/
+	command_set_comp_val_raw("temp_page.switch", "val", 0);
 
 	/*参数页面UI初始化*/
 	command_send("page 1");
@@ -418,56 +414,4 @@ void Load_Coefficient(int array_of_data)
 		weld_controller->ss_coefficient.slope = gain_raw1 / 100.0;
 		weld_controller->ss_coefficient.intercept = gain_raw2;
 	}
-}
-
-/**
- * @description: 焊机号以及上位机通信初始化
- * @return {*}
- */
-void Host_computer_reset(void)
-{
-	/*获取用户设定机号*/
-	last_id_of_mas = SPI_Load_Word(0x06);
-	if (last_id_of_mas > 15)
-		last_id_of_mas = 0;
-	/*焊机485通讯机号，默认是零*/
-	ID_OF_MAS = last_id_of_mas;
-
-	u32 last_bound_set = 0; // 上次波特率存储值
-	/*获取用户设定波特率*/
-	last_bound_set = SPI_Load_Word(0x08);
-	last_bound_set = (last_bound_set) | ((u32)(SPI_Load_Word(0x0a) << 16));
-	/*添加一个波特率范围检测...*/
-	if (last_bound_set == 0)
-		last_bound_set = 115200;
-
-	BOUND_SET = last_bound_set;
-	/*重新设定上位机波特率*/
-	usart3_set_bound(BOUND_SET);
-
-#if COMMUNICATE
-
-	/*和上位机通信*/
-	uint8_t Mas_ID_stauts[5] = {0};
-	Mas_ID_stauts[0] = 0x01;
-	Mas_ID_stauts[1] = 0x01;		 // 指令码
-	Mas_ID_stauts[2] = ID_OF_MAS;	 // 机号地址
-	Mas_ID_stauts[3] = 0x00;		 // GP
-	Mas_ID_stauts[4] = 0x01;		 // 表示焊机工作
-	BIT_ADDR(GPIOB_ODR_Addr, 9) = 1; // 设置为发送模式
-	for (int t1 = 0; t1 < 5; t1++)
-	{
-		USART3->SR;
-		USART_SendData(USART3, Mas_ID_stauts[t1]);
-		while (USART_GetFlagStatus(USART3, USART_FLAG_TC) != SET)
-			; // 把请求类型发送过去
-	}
-	BIT_ADDR(GPIOB_ODR_Addr, 9) = 0; // 设置为接收模式
-#endif
-
-	/*添加触摸屏更新接口...*/
-	/*...*/
-
-	/*翻到参数设置页面*/
-	command_send_raw("page param_page");
 }
