@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-10 19:04:36
+ * @LastEditTime: 2025-06-11 07:53:29
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -644,10 +644,10 @@ void error_task(void *p_arg)
 			TIM_Cmd(TIM4, DISABLE);
 			TIM_Cmd(TIM1, DISABLE);
 
-			TIM_Cmd(TIM3, DISABLE);						// 焊接周期计数关闭
-			TIM_ClearITPendingBit(TIM3, TIM_IT_Update); // 清除中断标志位
-			TIM_Cmd(TIM5, DISABLE);						// 实时控制器关闭
-			TIM_ClearITPendingBit(TIM5, TIM_IT_Update); // 清除中断5标志位
+			TIM_Cmd(TIM3, DISABLE);						
+			TIM_ClearITPendingBit(TIM3, TIM_IT_Update); 
+			TIM_Cmd(TIM5, DISABLE);						
+			TIM_ClearITPendingBit(TIM5, TIM_IT_Update); 
 			TIM3->CNT = 0;
 			TIM5->CNT = 0;
 
@@ -692,8 +692,14 @@ void error_task(void *p_arg)
 
 static void Power_on_check(void)
 {
-#if POWER_ON_CHECK == 1
+
 	OS_ERR err;
+	uint16_t tmp_ccmr1 = 0; // 重新设定pwm模式
+	uint16_t start_temp = 0;
+	uint16_t end_temp = 0;
+
+#if POWER_ON_CHECK == 1
+
 	/*1、开机自检需要检测当前是哪一路热电偶*/
 	GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
 	GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
@@ -747,12 +753,48 @@ static void Power_on_check(void)
 	// case J_TYPE:
 	// 	current_Thermocouple->Bias = SPI_Load_Word(CARLIBRATION_BASE(remember_array) + 2 * ADDR_OFFSET);
 	// 	break;
-
-	// default:
-	// 	break;
 	// }
 
 #endif
+
+	/*reserve check*/
+	start_temp = temp_convert(current_Thermocouple);
+
+	/*PWM Config*/
+	tmp_ccmr1 = TIM1->CCMR1;
+	tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
+	tmp_ccmr1 |= ((uint16_t)0x0060);
+	TIM1->CCMR1 = tmp_ccmr1;
+
+	tmp_ccmr1 = TIM4->CCMR1;
+	tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
+	tmp_ccmr1 |= ((uint16_t)0x0060);
+	TIM4->CCMR1 = tmp_ccmr1;
+
+	/*PWM ON*/
+	TIM_SetCompare1(TIM1, PD_MAX / 8);
+	TIM_SetCompare1(TIM4, PD_MAX / 8);
+	TIM_Cmd(TIM4, ENABLE);
+	TIM_Cmd(TIM1, ENABLE);
+
+	/*heat 100ms*/
+	delay_ms(100);
+
+	/*PWM OFF*/
+	TIM_SetCompare1(TIM1, 0);
+	TIM_SetCompare1(TIM4, 0);
+	TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
+	TIM_ForcedOC1Config(TIM4, TIM_ForcedAction_InActive);
+	TIM_Cmd(TIM4, DISABLE);
+	TIM_Cmd(TIM1, DISABLE);
+
+	end_temp = temp_convert(current_Thermocouple);
+
+	if (end_temp < start_temp)
+	{
+		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+	}
 }
 
 static void Temp_updata_realtime()
@@ -810,16 +852,9 @@ static void Thermocouple_check(void)
 	/*no Thermocouple detect*/
 	if (check_state == false)
 	{
-		if (err_ctrl->sensor_err_cnt++ > SENSOR_ERR_THRESHOLD)
-		{
-			err_ctrl->sensor_err_cnt = 0;
-			Page_to(page_param, ALARM_PAGE);
-			err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
-		}
+		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
 	}
-	else
-		err_ctrl->sensor_err_cnt = 0;
 }
 
 static void voltage_check(void)
@@ -943,7 +978,6 @@ void main_task(void *p_arg)
 #if OVER_LOAD_CHECK
 		Overload_check();
 #endif
-		Thermocouple_check();
 
 		recv = (START_TYPE *)OSQPend(&key_msg, 0, OS_OPT_PEND_BLOCKING, msg_size, NULL, &err);
 		if (err == OS_ERR_NONE && recv != NULL)
@@ -951,6 +985,10 @@ void main_task(void *p_arg)
 			start_type = (*recv);
 			welding_process(start_type);
 		}
+
+		Thermocouple_check();
+		/*display Real-time temperature*/
+		Temp_updata_realtime();
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
@@ -1606,8 +1644,7 @@ void read_task(void *p_arg)
 		{
 			page_process(page_param->id);
 		}
-		/*display Real-time temperature*/
-		Temp_updata_realtime();
+
 		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err);
 	}
 }
@@ -1615,8 +1652,6 @@ void read_task(void *p_arg)
 /*-------------------------------------------------------------------------------------------------------------------------*/
 /*----------------------------------------------The upper computer communication thread------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
-
-
 
 /**
  * @description: The upper computer communication thread

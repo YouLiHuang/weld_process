@@ -32,7 +32,7 @@
 /*threshold kinds*/
 #define OVER_TEMP_THRESHOLD 20
 #define LOW_TEMP_THRESHOLD 20
-#define SENSOR_ERR_THRESHOLD 10
+#define SENSOR_ERR_THRESHOLD 1
 #define REVERSE_ERR_THRESHOLD 20
 
 typedef bool (*err_callback)(u8 index);
