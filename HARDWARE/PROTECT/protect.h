@@ -21,6 +21,7 @@
 #define CURRENT_PIN GPIO_Pin_0
 #define RECTIFICATION_PIN GPIO_Pin_9
 #define RADIATOR_PIN GPIO_Pin_10
+#define WATER_PIN GPIO_Pin_11
 
 /*user config*/
 #define OVER_VOLTAGE 3500
@@ -45,6 +46,8 @@ typedef enum mERROR_TYPE
     VOLTAGE_TOO_HIGH,
     VOLTAGE_TOO_LOW,
     MCU_OVER_HEAT,
+    IGBT_OVER_HEAT,
+    RADIATOR,
     TRANSFORMER_OVER_HEAT,
     SENSOR_ERROR
 

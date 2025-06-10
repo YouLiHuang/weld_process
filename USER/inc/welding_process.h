@@ -13,6 +13,7 @@
 
 #include "sys.h"
 #include "pid.h"
+#include "io_ctrl.h"
 
 /*state*/
 typedef enum WELD_STATE
@@ -107,6 +108,6 @@ WELD_MODE get_weld_flag(void);
 
 void pid_param_dynamic_reload(void *controller, pid_fitting_curve fitting_curves, uint16_t setting);
 void user_value_convert_to_string(char *buffer, const uint8_t buf_len, const uint16_t value);
-void welding_process(void);
+void welding_process(START_TYPE type);
 
 #endif

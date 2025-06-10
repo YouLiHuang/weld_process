@@ -11,7 +11,7 @@
 #include "includes.h" //ucos 使用
 #endif
 
-uint8_t USART_RX_BUF[USART_REC_LEN];	// 接收缓冲,最大USART_REC_LEN个字节.
+uint8_t USART_RX_BUF[USART_REC_LEN]; // 接收缓冲,最大USART_REC_LEN个字节.
 
 uint16_t ModBus_time[6];	   // 焊接时间6段
 uint16_t ModBus_temp[3];	   // 焊接温度3段
@@ -36,9 +36,8 @@ extern OS_SEM PAGE_UPDATE_SEM;
 extern OS_SEM COMP_VAL_GET_SEM;
 extern OS_SEM COMP_STR_GET_SEM;
 extern OS_SEM ALARM_RESET_SEM;
-extern OS_SEM COMPUTER_DATA_SYN_SEM; // 上位机数据同步信号
-extern OS_SEM HOST_WELD_CTRL_SEM;	 // 上位机开启焊接信号
-extern OS_SEM SENSOR_UPDATE_SEM;	 // 热电偶校准信号
+extern OS_SEM HOST_WELD_CTRL_SEM; // 上位机开启焊接信号
+extern OS_SEM SENSOR_UPDATE_SEM;  // 热电偶校准信号
 
 /*焊接控制器*/
 extern weld_ctrl *weld_controller;
@@ -195,4 +194,3 @@ void UART4_IRQHandler(void)
 	OSIntExit();
 #endif
 }
-

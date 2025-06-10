@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-19 09:10:26
+ * @LastEditTime: 2025-06-10 10:00:03
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -137,7 +137,7 @@ void err_cnt_clear(Error_ctrl *ctrl)
 }
 
 /*--------------------------------------------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------------------------硬件配置---------------------------------------------------------------*/
+/*----------------------------------------------------------------bsp init--------------------------------------------------------------*/
 /*--------------------------------------------------------------------------------------------------------------------------------------*/
 
 // PC9-整流管温度
@@ -171,6 +171,8 @@ void Temp_Protect_IO_Config(void)
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
 	GPIO_Init(TEMP_OVERLOAD_GPIO, &GPIO_InitStructure);
 }
+
+
 
 /**
  * @description: External interrupt triggered by over temperature

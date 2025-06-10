@@ -2,12 +2,12 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-09 17:29:31
+ * @LastEditTime: 2025-06-10 14:42:22
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
- 
+
 /*user*/
 #include "user_config.h"
 #include "includes.h"
@@ -76,19 +76,23 @@ OS_TCB USB_TaskTCB;
 CPU_STK USB_TASK_STK[USB_STK_SIZE];
 void usb_task(void *p_arg);
 
+#define MSG_LEN 4
+
 /* Private function prototypes -----------------------------------------------*/
 
-/*Error handling callbacks*/
+/*Error handling callbacks ---------------------------------------------------*/
 static bool Temp_up_err_callback(uint8_t index);
 static bool Temp_down_err_callback(uint8_t index);
 static bool Current_out_of_ctrl_callback(uint8_t index);
 static bool Thermocouple_recheck_callback(uint8_t index);
-/*Error reset callback*/
+static bool Transformer_over_heat_callback(uint8_t index);
+/*Error reset callback -------------------------------------------------------*/
 static bool Thermocouple_reset_callback(uint8_t index);
 static bool Current_out_of_ctrl_reset_callback(uint8_t index);
 static bool Temp_up_reset_callback(uint8_t index);
 static bool Temp_down_reset_callback(uint8_t index);
-/*main task functions*/
+static bool Transformer_reset_callback(uint8_t index);
+/*main task functions --------------------------------------------------------*/
 static void Power_on_check(void);
 static void Power_on_check(void);
 static void Temp_updata_realtime(void);
@@ -104,7 +108,7 @@ Calibration is required separately, but the software layer is consistent*/
 // K：0.218*3300/4096=0.1756
 static Thermocouple Thermocouple_Lists[] = {
 	{E_TYPE, 0.17, 0, 0},
-	{K_TYPE, 0.17, 0, 0}, 
+	{K_TYPE, 0.17, 0, 0},
 	{J_TYPE, 0.17, 0, 0},
 };
 
@@ -115,8 +119,9 @@ const error_match_list match_list[] = {
 	{VOLTAGE_TOO_HIGH, "f4", NULL, NULL},
 	{VOLTAGE_TOO_LOW, "f5", NULL, NULL},
 	{MCU_OVER_HEAT, "f6", NULL, NULL},
-	{TRANSFORMER_OVER_HEAT, "f7", NULL, NULL},
+	{TRANSFORMER_OVER_HEAT, "f7", Transformer_over_heat_callback, Transformer_reset_callback},
 	{SENSOR_ERROR, "f8", Thermocouple_recheck_callback, Thermocouple_reset_callback},
+	{RADIATOR, "f9", NULL, NULL},
 };
 
 static char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "UP_DOWN"};
@@ -152,14 +157,13 @@ extern uint32_t baud_list[11];
 extern uint8_t USART_RX_BUF[USART_REC_LEN];
 // Temperature preservation buffer
 extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN];
-// The maximum length of a serial message queue
-#define UART_Q_NUM 100
-// Serial data queue
-OS_Q UART_Msg;
 /*UART3 Resource Protection: Mutex (Temporarily Unused)*/
 OS_MUTEX UARTMutex;
 
+OS_Q key_msg;
 /*Thread Synchronization: Semaphore*/
+// START SEM
+OS_SEM WELD_START_SEM;
 // Page refresh signal
 OS_SEM PAGE_UPDATE_SEM;
 // The component property value successfully obtains the signal
@@ -170,14 +174,10 @@ OS_SEM COMP_STR_GET_SEM;
 OS_SEM ALARM_RESET_SEM;
 // Thermocouple calibration signal
 OS_SEM SENSOR_UPDATE_SEM;
-// Host computer data synchronization signal
-OS_SEM COMPUTER_DATA_SYN_SEM;
 // The upper computer turns on the welding signal
 OS_SEM HOST_WELD_CTRL_SEM;
 // err sem
 OS_SEM ERROR_HANDLE_SEM;
-// draw sem
-OS_SEM TEMP_DISPLAY_SEM;
 // data save sem
 OS_SEM DATA_SAVE_SEM;
 
@@ -339,7 +339,7 @@ int main(void)
 #endif
 	log_bsp_init(115200);
 
-	KEYin_Init();			   // key IO init
+	IO_INIT();				   // key IO init
 	OUT_Init();				   // output pin init
 	Check_IO_init();		   // Thermocouple detection io initialization
 	SPI1_Init();			   // spi init
@@ -410,15 +410,15 @@ and the time slice length is 1 system clock beat, 1 ms
 #endif
 
 	OS_CRITICAL_ENTER();
-	// Create a message queue UART Msg
-	OSQCreate((OS_Q *)&UART_Msg,	  // 消息队列
-			  (CPU_CHAR *)"UART Msg", // 消息队列名称
-			  (OS_MSG_QTY)UART_Q_NUM, // 消息队列长度，这里设置为100
-			  (OS_ERR *)&err);		  // 错误码
 
 	// Create a mutex - serial port resource access (temporarily unused)
 	OSMutexCreate(&UARTMutex, "USART_Mutex", &err);
 
+	// Create a keys msg queue
+	OSQCreate(&key_msg, "keys msg", MSG_LEN, &err);
+
+	// WELD_START_SEM
+	OSSemCreate(&WELD_START_SEM, "weld start", 0, &err);
 	/*--------------------------------------------SEM use for UI--------------------------------------------*/
 	// Page update signals
 	OSSemCreate(&PAGE_UPDATE_SEM, "page update", 0, &err);
@@ -429,16 +429,11 @@ and the time slice length is 1 system clock beat, 1 ms
 	OSSemCreate(&SENSOR_UPDATE_SEM, "SENSOR_UPDATE_SEM", 0, &err);
 
 	/*--------------------------------------------SEM use for host computer-----------------------------------*/
-	// 创建上位机数据同步信号
-	OSSemCreate(&COMPUTER_DATA_SYN_SEM, "data sync", 0, &err);
-	if (err != OS_ERR_NONE)
-		// 创建上位机开启焊接信号量
-		OSSemCreate(&HOST_WELD_CTRL_SEM, "HOST_WELD_CTRL_SEM", 0, &err);
+	// 创建上位机开启焊接信号量
+	OSSemCreate(&HOST_WELD_CTRL_SEM, "HOST_WELD_CTRL_SEM", 0, &err);
 	/*--------------------------------------------other SEM----------------------------------------------------*/
 	//  创建报警复位信号量
 	OSSemCreate(&ALARM_RESET_SEM, "alarm reset", 0, &err);
-	// 创建绘图信号
-	OSSemCreate(&TEMP_DISPLAY_SEM, "temp draw sem", 0, &err);
 	// 创建报错信号
 	OSSemCreate(&ERROR_HANDLE_SEM, "err sem", 0, &err);
 	// data save sem
@@ -555,6 +550,12 @@ static bool Thermocouple_recheck_callback(uint8_t index)
 	return true;
 }
 
+static bool Transformer_over_heat_callback(uint8_t index)
+{
+	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
+	return true;
+}
+
 /*---------------------------------------------------------------------------------------*/
 /*--------------------------------------reset callback-----------------------------------*/
 /*---------------------------------------------------------------------------------------*/
@@ -572,11 +573,20 @@ static bool Thermocouple_reset_callback(uint8_t index)
 static bool Current_out_of_ctrl_reset_callback(uint8_t index)
 {
 
+	OS_ERR err;
 	bool ret = false;
-
-	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
-	err_ctrl->err_list[index]->state = false; // clear error state
-	ret = true;
+	if (GPIO_ReadInputDataBit(CURRENT_OVERLOAD_GPIO, CURRENT_PIN) != 0)
+	{
+		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
+		err_ctrl->err_list[index]->state = false; // clear error state
+		ret = true;
+	}
+	else
+	{
+		err_get_type(err_ctrl, CURRENT_OUT_OT_CTRL)->state = true;
+		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		ret = false;
+	}
 
 	return ret;
 }
@@ -591,6 +601,23 @@ static bool Temp_down_reset_callback(uint8_t index)
 {
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
 	err_ctrl->err_list[index]->state = false; // clear error state
+
+	return true;
+}
+
+static bool Transformer_reset_callback(uint8_t index)
+{
+	OS_ERR err;
+	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) != 0)
+	{
+		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
+		err_ctrl->err_list[index]->state = false; // clear error state
+	}
+	else
+	{
+		err_get_type(err_ctrl, TRANSFORMER_OVER_HEAT)->state = true;
+		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+	}
 
 	return true;
 }
@@ -825,6 +852,7 @@ static void Overload_check(void)
 	voltage_check();
 #endif
 
+	/*over current*/
 	if (GPIO_ReadInputDataBit(CURRENT_OVERLOAD_GPIO, CURRENT_PIN) == 0)
 	{
 		OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
@@ -835,31 +863,26 @@ static void Overload_check(void)
 			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 		}
 	}
-
-#if 0
+	/*transfoemer*/
 	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 0)
 	{
 		OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
 		if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 0)
 		{
-			err_get_type(err_ctrl, MCU_OVER_HEAT)->state = true;
-	
+			err_get_type(err_ctrl, TRANSFORMER_OVER_HEAT)->state = true;
 			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 		}
 	}
-
+	/*radiator*/
 	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 0)
 	{
 		OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
 		if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 0)
 		{
-			err_get_type(err_ctrl, MCU_OVER_HEAT)->state = true;
-	
+			err_get_type(err_ctrl, RADIATOR)->state = true;
 			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 		}
 	}
-
-#endif
 
 	/*temp overload protect 1*/
 	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
@@ -910,6 +933,9 @@ void main_task(void *p_arg)
 {
 
 	OS_ERR err;
+	START_TYPE start_type;
+	START_TYPE *recv;
+	OS_MSG_SIZE *msg_size;
 	Power_on_check();
 	while (1)
 	{
@@ -918,7 +944,13 @@ void main_task(void *p_arg)
 		Overload_check();
 #endif
 		Thermocouple_check();
-		welding_process();
+
+		recv = (START_TYPE *)OSQPend(&key_msg, 0, OS_OPT_PEND_BLOCKING, msg_size, NULL, &err);
+		if (err == OS_ERR_NONE && recv != NULL)
+		{
+			start_type = (*recv);
+			welding_process(start_type);
+		}
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}

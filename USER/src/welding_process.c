@@ -1,8 +1,7 @@
 #include "user_config.h"
 #include "welding_process.h"
-
 #include "includes.h"
-#include "io_ctrl.h"
+
 #include "pwm.h"
 #include "pid.h"
 #include "adc.h"
@@ -50,7 +49,6 @@ Kalman kfp;
 #endif
 
 /*-----------------------------------------------------temp plot-----------------------------------------------------------------*/
-extern OS_SEM TEMP_DISPLAY_SEM;						 // Plot event signals
 extern Temp_draw_ctrl *temp_draw_ctrl;				 // Drawing controllers
 extern Page_Param *page_param;						 // Real-time page parameters
 extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN]; // Temperature preservation buffer
@@ -387,39 +385,36 @@ static void display_temp_cal(void)
 }
 
 /**
- * @description: load data from eeprom
+ * @description:
+ * @param {START_TYPE} type
  * @return {*}
  */
-static void Load_Data()
+static void Load_Data(START_TYPE type)
 {
-	uint8_t GP_Temp = 0;
-	uint8_t key = 0;
-	/*The scan button reads the corresponding parameter group data according to the startup mode and sends it to the touch screen*/
-	GP_Temp = get_comp(param_page_list, "GP")->val;
-	if ((GP_Temp % 2 == 0))
+	int GP = get_comp(param_page_list, "GP")->val;
+
+	switch (type)
 	{
-		key = new_key_scan();
-		if (key == KEY_PC1_PRES)
+	case KEY0:
+		if (GP >= 0 && (GP % 2 != 0))
 		{
-			GP_Temp += 1;
-			Load_param(weld_controller, GP_Temp);
-			Load_param_alarm(weld_controller, GP_Temp);
-			command_set_comp_val("GP", "val", GP_Temp);
+			GP--;
+			Load_param(weld_controller, GP);
+			Load_param_alarm(weld_controller, GP);
+			command_set_comp_val("GP", "val", GP);
 		}
-	}
-	else
-	{
-		key = new_key_scan();
-		if (key == KEY_PC0_PRES)
+
+		break;
+	case KEY1:
+		if (GP < 19 && (GP % 2 == 0))
 		{
-			if (GP_Temp != 0)
-			{
-				GP_Temp -= 1;
-				Load_param(weld_controller, GP_Temp);
-				Load_param_alarm(weld_controller, GP_Temp);
-			}
-			command_set_comp_val("GP", "val", GP_Temp);
+			GP++;
+			Load_param(weld_controller, GP);
+			Load_param_alarm(weld_controller, GP);
+			command_set_comp_val("GP", "val", GP);
 		}
+
+		break;
 	}
 }
 
@@ -894,6 +889,7 @@ static void weld_real_time_ctrl()
 {
 
 	OS_ERR err;
+
 	/*变量初始化以及相关初始化工作：控制器复位、初始化、缓存擦除、参数限幅*/
 	Weld_Preparation();
 
@@ -951,10 +947,11 @@ STOP_LABEL:
 }
 
 /**
- * @description: Welding real-time control portal
+ * @description:
+ * @param {START_TYPE} type
  * @return {*}
  */
-void welding_process(void)
+void welding_process(START_TYPE type)
 {
 	/*The welding is stopped when the countdown timer reaches the end*/
 	if (weld_controller->weld_count == 0 && weld_controller->Count_Dir == DOWN)
@@ -971,12 +968,10 @@ void welding_process(void)
 	TIM_Cmd(TIM5, DISABLE);
 	TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
 
-	/*Scan buttons to load different parameter sets based on the specific button pressed.*/
-	Load_Data();
+	/*load different parameter sets based on the specific button pressed.*/
+	Load_Data(type);
 
-	/*----------------------------------------------------------------------------------------------------------------------------------------------*/
-	/*----------------------------------------------------------------焊接实时控制部分---------------------------------------------------------------*/
-	/*----------------------------------------------------------------------------------------------------------------------------------------------*/
+	/*----------------------------------------------- real-time control ---------------------------------------------------*/
 
 	/*-------------------------------------------------------连点模式-------------------------------------------------------*/
 	if (page_param->key3 == CTW && page_param->key2 == ION)
@@ -1015,9 +1010,6 @@ void welding_process(void)
 			/*存储数据到U盘*/
 			OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
 
-			/*三段温度显示&计数值更新*/
-			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
-
 			/*焊接间隔*/
 			OVER = 0;
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
@@ -1040,8 +1032,6 @@ void welding_process(void)
 			simulate_weld();
 			/*设置连续焊接间隔——同时也腾出时间片*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
-			/*三段温度显示&计数值更新*/
-			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
 
 			key = new_key_scan();
 			if (!(key == KEY_PC1_PRES || key == KEY_PC0_PRES))
@@ -1086,9 +1076,6 @@ void welding_process(void)
 			/*存储数据到U盘*/
 			OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
 
-			/*三段温度显示&计数值更新*/
-			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
-
 			OVER = 0;
 			/*设置焊接间隔*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
@@ -1131,9 +1118,6 @@ void welding_process(void)
 				reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
 			}
 
-			/*三段温度显示&计数值更新*/
-			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
-
 			OVER = 0;
 			/*设置焊接间隔*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
@@ -1153,8 +1137,6 @@ void welding_process(void)
 			simulate_weld();
 			/*设置连续焊接间隔——同时也腾出时间片*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
-			/*三段温度显示&计数值更新*/
-			OSSemPost(&TEMP_DISPLAY_SEM, OS_OPT_POST_ALL, &err);
 			OVER = 0;
 			/*设置焊接间隔*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);

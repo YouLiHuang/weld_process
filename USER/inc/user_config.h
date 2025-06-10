@@ -8,6 +8,7 @@
 #define WRITE_CSV_ENABLE 0
 #define EXPLORE_DISK_ENABLE 0
 #define MODBUSSLAVE 1
+#define START_IO_ENABLE 0
 
 /* debug enable ---------------------------------------------------------------------------------*/
 #define TEMP_ADJUST 0     // Temperature calibration enable

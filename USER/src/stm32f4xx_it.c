@@ -253,9 +253,28 @@ void TIM8_BRK_TIM12_IRQHandler(void)
  */
 void USART3_IRQHandler(void)
 {
-   modbus_serial_irq();//UART4_IRQHandler
+  modbus_serial_irq(); // UART4_IRQHandler
 }
 
+extern void Start_signal_irq(void);
+void EXTI0_IRQHandler(void)
+{
+  Start_signal_irq();
+}
+
+void EXTI1_IRQHandler(void)
+{
+  Start_signal_irq();
+}
+
+void EXTI2_IRQHandler(void)
+{
+  Start_signal_irq();
+}
+void EXTI3_IRQHandler(void)
+{
+  Start_signal_irq();
+}
 
 /**
  * @brief  This function handles PPP interrupt request.
