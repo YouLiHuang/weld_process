@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-01-03 19:23:40
+ * @LastEditTime: 2025-06-10 19:17:10
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -15,12 +15,10 @@
 
 const u32 baud_list[] = {2400, 4800, 9600, 19200, 31200, 38400, 57600, 115200, 230400, 250000, 256000, 512000, 921600};
 
-extern OS_Q UART_Msg;           // 串口数据队列
 extern Page_Param *page_param;  // 记录当前所在界面id及RDY三个按钮的状态
 extern OS_SEM PAGE_UPDATE_SEM;  // 页面更新信号
 extern OS_SEM COMP_VAL_GET_SEM; // 组件属性值成功获取信号
 extern OS_SEM COMP_STR_GET_SEM; // 组件属性值(字符串型)成功获取信号
-//////////////////////////////////////////////////////////////////////////////////////////////页面参数API//////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * @description:

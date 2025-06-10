@@ -68,7 +68,8 @@
         "user_config.h": "c",
         "ff.h": "c",
         "usb_core.h": "c",
-        "io_ctrl.h": "c"
+        "io_ctrl.h": "c",
+        "pwm.h": "c"
     },
     // 头部注释
     "fileheader.customMade": {

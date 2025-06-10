@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-10 14:42:22
+ * @LastEditTime: 2025-06-10 19:04:36
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -158,7 +158,7 @@ extern uint8_t USART_RX_BUF[USART_REC_LEN];
 // Temperature preservation buffer
 extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN];
 /*UART3 Resource Protection: Mutex (Temporarily Unused)*/
-OS_MUTEX UARTMutex;
+OS_MUTEX ModBus_Mux;
 
 OS_Q key_msg;
 /*Thread Synchronization: Semaphore*/
@@ -331,7 +331,7 @@ int main(void)
 	TIM3_INIT();									// PID TIMER
 	TIM5_INIT();									// COUNT TIMER
 	uart_init(115200);								// Touch screen communication interface initialization
-#if MODBUSSLAVE
+#if MODBUSSLAVE_ENABLE
 	eMBInit(MB_RTU, 1, 3, 115200, MB_PAR_NONE, 1);
 	eMBEnable();
 #else
@@ -412,7 +412,7 @@ and the time slice length is 1 system clock beat, 1 ms
 	OS_CRITICAL_ENTER();
 
 	// Create a mutex - serial port resource access (temporarily unused)
-	OSMutexCreate(&UARTMutex, "USART_Mutex", &err);
+	OSMutexCreate(&ModBus_Mux, "MODBUS_Mutex", &err);
 
 	// Create a keys msg queue
 	OSQCreate(&key_msg, "keys msg", MSG_LEN, &err);
@@ -1616,6 +1616,8 @@ void read_task(void *p_arg)
 /*----------------------------------------------The upper computer communication thread------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
 
+
+
 /**
  * @description: The upper computer communication thread
  * @param {void} *p_arg
@@ -1628,8 +1630,9 @@ void computer_read_task(void *p_arg)
 
 	while (1)
 	{
-#if MODBUSSLAVE
+#if MODBUSSLAVE_ENABLE
 		(void)eMBPoll();
+
 #else
 		printf("> MODBUS NOT SUPPORT!\n");
 #endif

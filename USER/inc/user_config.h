@@ -5,10 +5,6 @@
 #define USE_STM32_DEMO 0 // USB test code enable
 #define MAX_SAVE_TIMES 100
 #define FILE_MAX_NAME_LEN 20
-#define WRITE_CSV_ENABLE 0
-#define EXPLORE_DISK_ENABLE 0
-#define MODBUSSLAVE 1
-#define START_IO_ENABLE 0
 
 /* debug enable ---------------------------------------------------------------------------------*/
 #define TEMP_ADJUST 0     // Temperature calibration enable
@@ -21,6 +17,10 @@
 #define KALMAN_FILTER 0 // filter enable
 
 /* Functional enable -----------------------------------------------------------------------------*/
+#define WRITE_CSV_ENABLE 0
+#define EXPLORE_DISK_ENABLE 0
+#define MODBUSSLAVE_ENABLE 1
+#define START_IO_ENABLE 0
 #define PID_DEBUG 0             // pid debug enable
 #define COMMUNICATE 0           // Communication with the Upper computer enable
 #define REALTIME_TEMP_DISPLAY 1 // Real-time temperature plotting enable
