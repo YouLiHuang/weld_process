@@ -604,19 +604,19 @@ static void First_Step()
 			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 			break;
 		}
-		// low temp
-		if (weld_controller->realtime_temp < weld_controller->first_step_start_temp - 10)
-		{
-			if (err_ctrl->temp_low_cnt++ > err_ctrl->temp_low_threshold)
-			{
-				stop_weld();
-				err_get_type(err_ctrl, TEMP_DOWN)->state = true;
-				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-				OS_ERR err;
-				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-				break;
-			}
-		}
+		// // low temp
+		// if (weld_controller->realtime_temp < weld_controller->first_step_start_temp - 10)
+		// {
+		// 	if (err_ctrl->temp_low_cnt++ > err_ctrl->temp_low_threshold)
+		// 	{
+		// 		stop_weld();
+		// 		err_get_type(err_ctrl, TEMP_DOWN)->state = true;
+		// 		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+		// 		OS_ERR err;
+		// 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		// 		break;
+		// 	}
+		// }
 
 		/*limit output*/
 		if (weld_controller->Duty_Cycle > PD_MAX)
