@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-11 20:12:15
+ * @LastEditTime: 2025-06-11 20:19:10
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -179,6 +179,7 @@ OS_SEM HOST_WELD_CTRL_SEM;
 OS_SEM ERROR_HANDLE_SEM;
 // data save sem
 OS_SEM DATA_SAVE_SEM;
+
 
 /*A list of new interface components*/
 // Record the ID of the current screen and the status of the three buttons
@@ -1454,7 +1455,6 @@ static void page_process(Page_ID id)
 		uint16_t delta_tick = 0;	 // 坐标间隔
 		uint16_t total_tick_len = 0; // 横坐标总长度
 		uint16_t win_width = 0;		 // 绘图区域占据的实际窗口大小
-		uint16_t draw_delta = 0;
 
 		/*实时温度显示*/
 		command_set_comp_val("step3", "val", weld_controller->realtime_temp);
@@ -1500,20 +1500,6 @@ static void page_process(Page_ID id)
 		/*display Real-time temperature*/
 		Temp_updata_realtime();
 
-		/*绘制上次温度曲线*/
-		if (temp_draw_ctrl->third_step_index_end % win_width == 0)
-		{
-			draw_delta = temp_draw_ctrl->third_step_index_end / win_width;
-		}
-		else
-		{
-			draw_delta = temp_draw_ctrl->third_step_index_end / win_width + 1;
-		}
-		for (uint16_t i = 0; i < temp_draw_ctrl->third_step_index_end;)
-		{
-			draw_point(realtime_temp_buf[i]);
-			i += draw_delta;
-		}
 	}
 	break;
 

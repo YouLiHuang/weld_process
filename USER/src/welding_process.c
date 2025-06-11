@@ -1016,6 +1016,8 @@ void welding_process(START_TYPE type)
 			/*save data to disk*/
 			OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
 
+
+
 			/*weld interval*/
 			OVER = 0;
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
