@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-15 19:17:48
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-07 09:12:46
+ * @LastEditTime: 2025-06-11 08:04:55
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -22,7 +22,7 @@
 #include "touchscreen.h"
 #include "dynamic_correct.h"
 
-extern uint8_t err_comp;
+extern int err_comp;
 
 /*实时控制*/
 extern weld_ctrl *weld_controller;

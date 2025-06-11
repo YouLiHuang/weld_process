@@ -24,9 +24,9 @@ uint16_t usRegHoldingBuf[REG_HOLDING_NREGS] = {0x1234, 0x5678, 0x4321, 0x8765, 0
 uint16_t usRegHoldingStart = REG_HOLDING_START;
 
 // coil state
-uint8_t ucRegCoilsBuf[REG_COILS_SIZE / 8] = {0x01, 0x02};
+uint8_t ucRegCoilsBuf[REG_COILS_SIZE / 8] = {0x00};
 // switch state
-uint8_t ucRegDiscreteBuf[REG_DISCRETE_SIZE / 8] = {0x01, 0x02};
+uint8_t ucRegDiscreteBuf[REG_DISCRETE_SIZE / 8] = {0x00};
 
 /**
  * @description: Modbus slave input register callback function.
