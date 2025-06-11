@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-11 08:08:28
+ * @LastEditTime: 2025-06-11 19:40:17
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -348,23 +348,24 @@ int main(void)
 	Touchscreen_init();
 	Load_data_from_mem();
 
-	/*Hardware test*/
-	/*...*/
-	//	while(1)
-	//	{
-	//			TIM_SetCompare1(TIM1, PD_MAX / 8);
-	//			TIM_SetCompare1(TIM4, PD_MAX / 8);
-	//			TIM_Cmd(TIM4, ENABLE);
-	//			TIM_Cmd(TIM1, ENABLE);
-	//			delay_ms(500);
-	//			TIM_SetCompare1(TIM1, PD_MAX / 4);
-	//			TIM_SetCompare1(TIM4, PD_MAX / 4);
-	//			delay_ms(500);
-	//			TIM_SetCompare1(TIM1, PD_MAX );
-	//			TIM_SetCompare1(TIM4, PD_MAX );
-	//			delay_ms(500);
-	//
-	//	}
+/*Hardware test*/
+/*...*/
+#if PWM_DEBUG_MODE
+	while (1)
+	{
+		TIM_SetCompare1(TIM1, PD_MAX / 8);
+		TIM_SetCompare1(TIM4, PD_MAX / 8);
+		TIM_Cmd(TIM4, ENABLE);
+		TIM_Cmd(TIM1, ENABLE);
+		delay_ms(500);
+		TIM_SetCompare1(TIM1, PD_MAX / 4);
+		TIM_SetCompare1(TIM4, PD_MAX / 4);
+		delay_ms(500);
+		TIM_SetCompare1(TIM1, PD_MAX);
+		TIM_SetCompare1(TIM4, PD_MAX);
+		delay_ms(500);
+	}
+#endif
 
 	/*-----------------------------------------------------------System level data objects-----------------------------------------------------------------*/
 	/*UCOSIII init*/
@@ -788,8 +789,50 @@ static void Power_on_check(void)
 
 static void Temp_updata_realtime()
 {
+	OS_ERR err;
+
 	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
-	command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
+	
+	switch (current_Thermocouple->type)
+	{
+	case E_TYPE:
+		if (page_param->id == WAVE_PAGE)
+		{
+			command_set_comp_val("step3", "val", weld_controller->realtime_temp);
+		}
+		else
+		{
+			command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
+		}
+
+		break;
+	case K_TYPE:
+
+		if (page_param->id == WAVE_PAGE)
+		{
+			command_set_comp_val("step2", "val", weld_controller->realtime_temp);
+		}
+		else
+		{
+			command_set_comp_val("temp22", "val", weld_controller->realtime_temp);
+		}
+		break;
+	case J_TYPE:
+		if (page_param->id == WAVE_PAGE)
+		{
+			command_set_comp_val("step1", "val", weld_controller->realtime_temp);
+		}
+		else
+		{
+			command_set_comp_val("temp11", "val", weld_controller->realtime_temp);
+		}
+		break;
+
+	default:
+		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		break;
+	}
 }
 
 static void Thermocouple_check(void)
@@ -957,6 +1000,7 @@ void main_task(void *p_arg)
 {
 
 	OS_ERR err;
+	uint8_t key;
 	Power_on_check();
 	while (1)
 	{
@@ -965,22 +1009,29 @@ void main_task(void *p_arg)
 		Overload_check();
 #endif
 
-		switch (start_type)
+		/*trigger by exit irq(keys are pressed)*/
+		OSSemPend(&WELD_START_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+		if (err == OS_ERR_NONE)
 		{
+			key = key_scan();
+			if (key == KEY_PC0_PRES || key == KEY_PC1_PRES)
+			{
+				/*only check sensor before weld(avoid temp display error)*/
+				switch (start_type)
+				{
 
-		case KEY0:
-			start_type = START_IDEAL;
-			Thermocouple_check();
-			welding_process(KEY0);
-			break;
-		case KEY1:
-			start_type = START_IDEAL;
-			Thermocouple_check();
-			welding_process(KEY0);
-			break;
-
-		default:
-			break;
+				case KEY0:
+					start_type = START_IDEAL;
+					Thermocouple_check();
+					welding_process(KEY0);
+					break;
+				case KEY1:
+					start_type = START_IDEAL;
+					Thermocouple_check();
+					welding_process(KEY0);
+					break;
+				}
+			}
 		}
 
 		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
@@ -1451,7 +1502,7 @@ static void page_process(Page_ID id)
 		command_get_comp_val(param_page_list, "GP", "val");
 
 		parse_key_action(page_param->id);
-		
+
 		command_set_comp_val("count", "val", weld_controller->weld_count);
 
 		/*display average temperature*/
@@ -1464,6 +1515,9 @@ static void page_process(Page_ID id)
 		command_get_variable_val(&current_date.Day, "rtc2");
 		command_get_variable_val(&current_date.Hour, "rtc3");
 		command_get_variable_val(&current_date.Minute, "rtc4");
+
+		/*display Real-time temperature*/
+		Temp_updata_realtime();
 	}
 	break;
 
@@ -1492,9 +1546,11 @@ static void page_process(Page_ID id)
 		/*display average temperature*/
 		command_set_comp_val(temp_display_name[0], "val", temp_draw_ctrl->display_temp[0]);
 		command_set_comp_val(temp_display_name[1], "val", temp_draw_ctrl->display_temp[1]);
-	
+
 		command_set_comp_val("count", "val", weld_controller->weld_count);
-		
+
+		/*display Real-time temperature*/
+		Temp_updata_realtime();
 	}
 	break;
 
@@ -1558,6 +1614,9 @@ static void page_process(Page_ID id)
 		/*显示三段温度*/
 		command_set_comp_val("step1", "val", temp_draw_ctrl->display_temp[0]);
 		command_set_comp_val("step2", "val", temp_draw_ctrl->display_temp[1]);
+
+		/*display Real-time temperature*/
+		Temp_updata_realtime();
 
 		/*绘制上次温度曲线*/
 		/*...*/
@@ -1625,6 +1684,9 @@ static void page_process(Page_ID id)
 			uint8_t index = get_comp(setting_page_list, "baudrate")->val;
 			/*set bounds*/
 		}
+
+		/*display Real-time temperature*/
+		Temp_updata_realtime();
 	}
 	break;
 
@@ -1650,9 +1712,6 @@ void read_task(void *p_arg)
 		{
 			page_process(page_param->id);
 		}
-
-		/*display Real-time temperature*/
-		Temp_updata_realtime();
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);
 	}

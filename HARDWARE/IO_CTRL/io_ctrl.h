@@ -68,6 +68,6 @@ void INPUT_IO_INIT(void);
 void OUT_Init(void);
 void START_IO_INIT(void);
 
-uint8_t new_key_scan(void);
+uint8_t key_scan(void);
 
 #endif

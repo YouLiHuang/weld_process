@@ -354,7 +354,7 @@ static void down_temp_line()
 			break;
 
 		/*stop draw start another weld*/
-		key = new_key_scan();
+		key = key_scan();
 		if (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
 			break;
 
@@ -382,6 +382,26 @@ static void display_temp_cal(void)
 	temp_draw_ctrl->display_temp[1] = sum / (temp_draw_ctrl->second_step_index_end - temp_draw_ctrl->second_step_stable_index + 1);
 	/*step 3*/
 	temp_draw_ctrl->display_temp[2] = weld_controller->weld_temp[2];
+}
+
+/**
+ * @description: PWM deinit
+ * @return {*}
+ */
+static void PMW_TIMER_DEINIT(void)
+{
+	/*TIMER DEINIT*/
+	TIM_SetCompare1(TIM1, 0);
+	TIM_SetCompare1(TIM4, 0);
+	TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
+	TIM_ForcedOC1Config(TIM4, TIM_ForcedAction_InActive);
+	TIM_Cmd(TIM1, DISABLE);
+	TIM_Cmd(TIM4, DISABLE);
+
+	TIM_Cmd(TIM3, DISABLE);
+	TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+	TIM_Cmd(TIM5, DISABLE);
+	TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
 }
 
 /**
@@ -729,10 +749,10 @@ static void Second_Step()
 		}
 
 		/*fast rise step*/
-		// if (weld_controller->step_time_tick < FAST_RISE_TIME && weld_controller->Duty_Cycle < fast_rise_duty)
-		// {
-		// 	weld_controller->Duty_Cycle = fast_rise_duty;
-		// }
+		if (weld_controller->step_time_tick < FAST_RISE_TIME && weld_controller->Duty_Cycle < fast_rise_duty)
+		{
+			weld_controller->Duty_Cycle = fast_rise_duty;
+		}
 #endif
 
 		/*limit output*/
@@ -852,7 +872,6 @@ static void End_of_Weld()
  */
 static void simulate_weld()
 {
-	OS_ERR err;
 	/*IO控制*/
 	RLY10 = 1; // 气阀1启动
 	RLY11 = 1; // 气阀2启动
@@ -879,7 +898,6 @@ static void simulate_weld()
 		weld_controller->weld_count++;
 	else if (weld_controller->Count_Dir == DOWN && weld_controller->weld_count > 0)
 		weld_controller->weld_count--;
-
 }
 
 /**
@@ -893,22 +911,19 @@ static void weld_real_time_ctrl()
 
 	/*变量初始化以及相关初始化工作：控制器复位、初始化、缓存擦除、参数限幅*/
 	Weld_Preparation();
-
-	/*开启焊接*/
 	start_of_weld();
-
-	/*预压*/
 	Preload();
-	/*一阶段*/
+
+	/*first step*/
 	if (weld_controller->weld_time[1] != 0)
 	{
-		weld_controller->first_step_start_temp = temp_convert(current_Thermocouple); // 起始温度
-		First_Step();																 // 一阶段
-		if (true == err_occur(err_ctrl))											 // 唤醒错误处理线程
+		weld_controller->first_step_start_temp = temp_convert(current_Thermocouple);
+		First_Step();
+		if (true == err_occur(err_ctrl))
 			goto STOP_LABEL;
 	}
 
-	/*二阶段*/
+	/*second step*/
 	if (weld_controller->weld_time[2] != 0)
 	{
 		reset_forword_ctrl(weld_controller->pid_ctrl);
@@ -916,25 +931,25 @@ static void weld_real_time_ctrl()
 		reset_forword_ctrl(pid_ctrl_debug);
 		reset_forword_ctrl(weld_controller->pid_ctrl);
 #endif
-		weld_controller->second_step_start_temp = temp_convert(current_Thermocouple); // 起始温度
-		Second_Step();																  // 二阶段
-		if (true == err_occur(err_ctrl))											  // 唤醒错误处理线程
+		weld_controller->second_step_start_temp = temp_convert(current_Thermocouple);
+		Second_Step();
+		if (true == err_occur(err_ctrl))
 			goto STOP_LABEL;
 	}
 
-	/*三阶段*/
+	/*third step*/
 	if (weld_controller->weld_time[3] != 0)
 	{
-		weld_controller->third_step_start_temp = temp_convert(current_Thermocouple); // 起始温度
-		Third_Step();																 // 三阶段
-		if (true == err_occur(err_ctrl))											 // 唤醒错误处理线程
+		weld_controller->third_step_start_temp = temp_convert(current_Thermocouple);
+		Third_Step();
+		if (true == err_occur(err_ctrl))
 			goto STOP_LABEL;
 	}
 
-	/*结束一轮焊接*/
+	/*end*/
 	End_of_Weld();
 
-	/*动态修正参数*/
+	/*dynamic algorithm*/
 	dynamic_pwm_adjust();							  // final pwm dynamic
 	if (get_comp(temp_page_list, "switch")->val == 1) // gain dynamic
 		dynamic_param_adjust();
@@ -958,139 +973,128 @@ void welding_process(START_TYPE type)
 	if (weld_controller->weld_count == 0 && weld_controller->Count_Dir == DOWN)
 		return;
 
-	/*TIMER DEINIT*/
-	TIM_SetCompare1(TIM1, 0);
-	TIM_SetCompare1(TIM4, 0);
-	TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
-	TIM_ForcedOC1Config(TIM4, TIM_ForcedAction_InActive);
-	TIM_Cmd(TIM1, DISABLE);
-	TIM_Cmd(TIM4, DISABLE);
-
-	TIM_Cmd(TIM3, DISABLE);
-	TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
-	TIM_Cmd(TIM5, DISABLE);
-	TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
+	/*PWM deinit*/
+	PMW_TIMER_DEINIT();
 
 	/*load different parameter sets based on the specific button pressed.*/
 	Load_Data(type);
 
 	/*----------------------------------------------- real-time control ---------------------------------------------------*/
 
-	/*-------------------------------------------------------连点模式-------------------------------------------------------*/
+	/*-------------------------------------------------------CTW-------------------------------------------------------*/
 	if (page_param->key3 == CTW && page_param->key2 == ION)
 	{
 		OS_ERR err;
 		uint8_t key = 0;
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
-		key = new_key_scan();
-		/*不松开脚踏就进入持续焊接模式*/
+		key = key_scan();
+		/*weld until release key*/
 		while (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
 		{
 			if (true == err_occur(err_ctrl))
 				break;
 
-			/*焊前擦除上次温度显示*/
+			/*clear touch screen*/
 			if (page_param->id == WAVE_PAGE)
 			{
 				command_send("cle wave_line.id,0");
 				OSTimeDly(5, OS_OPT_TIME_DLY, &err);
 			}
-			/*进入焊接的条件*/
+			/*emter weld*/
 			if (page_param->key1 != RDY || weld_controller->realtime_temp > weld_controller->weld_temp[2])
 				return;
 
-			/*实时焊接控制*/
+			/*weld real-time control*/
 			weld_real_time_ctrl();
 
-			/*计算三段显示温度值*/
+			/*calculate three temperature to display*/
 			display_temp_cal();
 
-			/*绘制降温曲线*/
+			/*plot temp line(down)*/
 			down_temp_line();
 
-			/*存储数据到U盘*/
+			/*save data to disk*/
 			OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
 
-			/*焊接间隔*/
+			/*weld interval*/
 			OVER = 0;
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 
-			/*循环焊接*/
-			key = new_key_scan();
+			/*weld loop*/
+			key = key_scan();
 			if (!(key == KEY_PC1_PRES || key == KEY_PC0_PRES))
 				break;
 		}
 	}
-	/*模拟焊接*/
+	/*simulate weld*/
 	else if (page_param->key3 == CTW && page_param->key2 == IOFF)
 	{
 		OS_ERR err;
 		uint8_t key = 0;
-		key = new_key_scan();
+		key = key_scan();
 		while (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
 		{
 
 			simulate_weld();
-			/*设置连续焊接间隔——同时也腾出时间片*/
+			/*weld interval*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
-
-			key = new_key_scan();
+			key = key_scan();
 			if (!(key == KEY_PC1_PRES || key == KEY_PC0_PRES))
 				break;
 		}
 	}
 
-	/*-------------------------------------------------------单点模式-------------------------------------------------------*/
+	/*------------------------------------------------------SGW-------------------------------------------------------*/
 	if (page_param->key3 == SGW && page_param->key2 == ION)
 	{
 		OS_ERR err;
 		uint8_t key = 0;
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
-		/*焊前擦除上次温度显示*/
+		/*clear screen*/
 		if (page_param->id == WAVE_PAGE)
 		{
 			command_send("cle wave_line.id,0");
 			OSTimeDly(5, OS_OPT_TIME_DLY, &err);
 		}
 
-		/*进入焊接的条件*/
+		/*enter weld*/
 		if (page_param->key1 != RDY || weld_controller->realtime_temp > weld_controller->weld_temp[2])
 			return;
 
-		/*实时焊接控制*/
+		/*weld real-time control*/
 		weld_real_time_ctrl();
 
-		/*计算三段显示温度值*/
+		/*calculate three temperature to display*/
 		display_temp_cal();
 
-		/*绘制降温曲线*/
+		/*plot temp line(down)*/
 		if (page_param->id == WAVE_PAGE)
 		{
 			down_temp_line();
 		}
 
-		/*存储数据到U盘*/
+		/*save data to disk*/
 		OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
 
+		/*weld interval*/
 		OVER = 0;
-		/*设置焊接间隔*/
 		OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 
-		/*等待释放按钮*/
+		/*wait until release key*/
 		while (1)
 		{
-			key = new_key_scan();
+			key = key_scan();
 			if (key != KEY_PC1_PRES && key != KEY_PC0_PRES)
 				break;
 			OSTimeDly(10, OS_OPT_TIME_DLY, &err);
 		}
 	}
-	/*模拟焊接*/
+	/*weld simulate*/
 	else if (page_param->key3 == SGW && page_param->key2 == IOFF)
 	{
 		OS_ERR err;
 		simulate_weld();
-		/*设置连续焊接间隔——同时也腾出时间片*/
+		/*weld interval*/
 		OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 		OVER = 0;
 	}

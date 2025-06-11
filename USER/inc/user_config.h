@@ -11,6 +11,7 @@
 #define VOLTAGE_CHECK 1   // Overvoltage and undervoltage alarm enable
 #define OVER_LOAD_CHECK 1 // Overload protection enable
 #define POWER_ON_CHECK 1  // Boot detection enable
+#define PWM_DEBUG_MODE 0
 
 /* Algorithm enable ------------------------------------------------------------------------------*/
 #define COMPENSATION 0  // Compensation e nable
@@ -33,7 +34,7 @@
 #define USER_SET_MIN_TEMP 200.0 // User-set minimum temperature
 #define MAX_WELD_TIME 9999      // Maximum welding time
 /*Temperature control parameters*/
-#define FAST_RISE_TIME 200           // Cold-start temperature compensation time
+#define FAST_RISE_TIME 150           // Cold-start temperature compensation time
 #define COMPENSATION_THRESHOLD 0.98f // Heat compensation temperature detection threshold
 #define TRANSITION_TIME 100          // Thermal compensation time
 #define TRANSITION_TIME_BASE 0.1     // coefficients of heat compensation time - Baseline value

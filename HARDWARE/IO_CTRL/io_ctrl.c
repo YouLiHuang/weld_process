@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-18 19:08:13
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-10 11:42:02
+ * @LastEditTime: 2025-06-11 19:23:46
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -14,6 +14,7 @@
 #include "protect.h"
 
 START_TYPE start_type = START_IDEAL;
+extern OS_SEM WELD_START_SEM;
 
 /**
  * @description: PC0-PC3:START SIGNAL
@@ -71,6 +72,7 @@ void START_IO_INIT(void)
 void Start_signal_irq(void)
 {
 
+	OS_ERR err;
 #if SYSTEM_SUPPORT_OS // 使用UCOS操作系统
 	OSIntEnter();
 #endif
@@ -85,6 +87,8 @@ void Start_signal_irq(void)
 		{
 			/*notify main task to start weld*/
 			start_type = KEY0;
+
+			OSSemPost(&WELD_START_SEM, OS_OPT_POST_ALL, &err);
 		}
 	}
 	else if (EXTI_GetITStatus(EXTI_Line1) != RESET)
@@ -173,11 +177,12 @@ void OUT_Init(void)
  * @description:
  * @return {*}
  */
-uint8_t new_key_scan()
+uint8_t key_scan()
 {
+	OS_ERR err;
 	if (KEY_PC0 == 0 || KEY_PC1 == 0 || KEY_PC2 == 0 || KEY_PC3 == 0 || KEY_In4 == 0)
 	{
-		delay_ms(10);
+		OSTimeDly(20, OS_OPT_TIME_DLY, &err);
 		if (KEY_PC0 == 0)
 			return KEY_PC0_PRES;
 		else if (KEY_PC1 == 0)
