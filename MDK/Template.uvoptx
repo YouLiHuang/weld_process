@@ -587,6 +587,11 @@
           <WinNumber>2</WinNumber>
           <ItemText>key_msg</ItemText>
         </Ww>
+        <Ww>
+          <count>20</count>
+          <WinNumber>2</WinNumber>
+          <ItemText>start_type</ItemText>
+        </Ww>
       </WatchWindow2>
       <MemoryWindow1>
         <Mm>

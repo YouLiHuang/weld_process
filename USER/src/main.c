@@ -263,7 +263,7 @@ uint8_t ID_OF_DEVICE = 0;
 extern uint16_t remember_array;
 extern USBH_HOST USB_Host __ALIGN_END;
 extern USB_OTG_CORE_HANDLE USB_OTG_Core __ALIGN_END;
-
+extern START_TYPE start_type;
 int main(void)
 {
 
@@ -319,15 +319,12 @@ int main(void)
 	/*绘图控制器初始化*/
 	temp_draw_ctrl = new_temp_draw_ctrl(realtime_temp_buf, 500, 2000, 500);
 
-	/*默认e型热电偶*/
-	current_Thermocouple = &Thermocouple_Lists[0];
-
 	/*------------------------------------------------------Hardware layer data initialization-----------------------------------------------------------*/
 	/*Peripheral initialization*/
 	delay_init(168);								// clock init
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); // Interrupt Group Configuration
-	TIM1_PWM_Init();								// tim1 PWM
-	TIM4_PWM_Init();								// tim4 PWM
+	TIM1_PWM_Init();								// tim1 PWM(change RCC must init first)
+	TIM4_PWM_Init();								// tim4 PWM(change RCC must init first)
 	TIM3_INIT();									// PID TIMER
 	TIM5_INIT();									// COUNT TIMER
 	uart_init(115200);								// Touch screen communication interface initialization
@@ -339,20 +336,35 @@ int main(void)
 #endif
 	log_bsp_init(115200);
 
-	START_IO_INIT();
-	IO_INIT();				   // key IO init
-	OUT_Init();				   // output pin init
-	Check_IO_init();		   // Thermocouple detection io initialization
-	SPI1_Init();			   // spi init
-	ADC_DMA_INIT();			   // ADC init
-	Current_Check_IO_Config(); // Current detection io configuration
-	Temp_Protect_IO_Config();  // temp overload init
+	/*IO Config*/
+	START_IO_INIT(); // start signals
+	INPUT_IO_INIT(); // input IO init
+	OUT_Init();		 // output pin init
+	Check_IO_init(); // Thermocouple detection io initialization
 
 	/*user device init*/
+	SPI1_Init();	// spi init
+	ADC_DMA_INIT(); // ADC init
 	Touchscreen_init();
 	Load_data_from_mem();
+
 	/*Hardware test*/
 	/*...*/
+	//	while(1)
+	//	{
+	//			TIM_SetCompare1(TIM1, PD_MAX / 8);
+	//			TIM_SetCompare1(TIM4, PD_MAX / 8);
+	//			TIM_Cmd(TIM4, ENABLE);
+	//			TIM_Cmd(TIM1, ENABLE);
+	//			delay_ms(500);
+	//			TIM_SetCompare1(TIM1, PD_MAX / 4);
+	//			TIM_SetCompare1(TIM4, PD_MAX / 4);
+	//			delay_ms(500);
+	//			TIM_SetCompare1(TIM1, PD_MAX );
+	//			TIM_SetCompare1(TIM4, PD_MAX );
+	//			delay_ms(500);
+	//
+	//	}
 
 	/*-----------------------------------------------------------System level data objects-----------------------------------------------------------------*/
 	/*UCOSIII init*/
@@ -414,14 +426,8 @@ and the time slice length is 1 system clock beat, 1 ms
 
 	// Create a mutex - serial port resource access (temporarily unused)
 	OSMutexCreate(&ModBus_Mux, "MODBUS_Mutex", &err);
-
 	// Create a keys msg queue
 	OSQCreate(&key_msg, "keys msg", MSG_LEN, &err);
-	if (err != OS_ERR_NONE)
-	{
-		printf("> err\n");
-	}
-
 	// WELD_START_SEM
 	OSSemCreate(&WELD_START_SEM, "weld start", 0, &err);
 	/*--------------------------------------------SEM use for UI--------------------------------------------*/
@@ -699,7 +705,6 @@ static void Power_on_check(void)
 {
 
 	OS_ERR err;
-	uint16_t tmp_ccmr1 = 0; // 重新设定pwm模式
 	uint16_t start_temp = 0;
 	uint16_t end_temp = 0;
 
@@ -749,20 +754,6 @@ static void Power_on_check(void)
 		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 	}
-
-	/*load last time adjust data*/
-	// switch (current_Thermocouple->type)
-	// {
-	// case K_TYPE:
-	// 	current_Thermocouple->Bias = SPI_Load_Word(CARLIBRATION_BASE(remember_array));
-	// 	break;
-	// case E_TYPE:
-	// 	current_Thermocouple->Bias = SPI_Load_Word(CARLIBRATION_BASE(remember_array) + ADDR_OFFSET);
-	// 	break;
-	// case J_TYPE:
-	// 	current_Thermocouple->Bias = SPI_Load_Word(CARLIBRATION_BASE(remember_array) + 2 * ADDR_OFFSET);
-	// 	break;
-	// }
 
 #endif
 
@@ -966,9 +957,6 @@ void main_task(void *p_arg)
 {
 
 	OS_ERR err;
-	START_TYPE start_type;
-	START_TYPE *recv;
-	OS_MSG_SIZE msg_size;
 	Power_on_check();
 	while (1)
 	{
@@ -977,15 +965,23 @@ void main_task(void *p_arg)
 		Overload_check();
 #endif
 
-		recv = (START_TYPE *)OSQPend(&key_msg, 0, OS_OPT_PEND_NON_BLOCKING, &msg_size, NULL, &err);
-		if (err == OS_ERR_NONE && recv != NULL)
+		switch (start_type)
 		{
-			Thermocouple_check();
-			start_type = (*recv);
-			welding_process(start_type);
-		}
 
-		
+		case KEY0:
+			start_type = START_IDEAL;
+			Thermocouple_check();
+			welding_process(KEY0);
+			break;
+		case KEY1:
+			start_type = START_IDEAL;
+			Thermocouple_check();
+			welding_process(KEY0);
+			break;
+
+		default:
+			break;
+		}
 
 		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
@@ -1203,9 +1199,12 @@ static void key_action_callback_param(Component_Queue *page_list)
 	// 4、SCH——>SCH：正在修改参数
 	else if (SCH == comp->val)
 	{
+		uint16_t count;
+		uint8_t GP;
+
 		/*Ⅰ、从内存加载参数*/
-		uint8_t GP = get_comp(page_list, "GP")->val; // 当前设定的GP值
-		if (GP != page_param->GP && GP <= GP_MAX)	 // GP值和上次不一致（用户修改）
+		GP = get_comp(page_list, "GP")->val;	  // 当前设定的GP值
+		if (GP != page_param->GP && GP <= GP_MAX) // GP值和上次不一致（用户修改）
 		{
 			/*降低内存读写次数*/
 			Load_param(weld_controller, GP);
@@ -1236,8 +1235,11 @@ static void key_action_callback_param(Component_Queue *page_list)
 			/*参数读取*/
 			command_get_comp_val(page_list, weld_time_name_list[i], "val");
 		}
-		/*读取焊接计数值*/
-		command_get_comp_val(page_list, "count", "val");
+		/*get count , which would be changed by user*/
+		command_get_comp_val(param_page_list, "count", "val");
+		count = get_comp(param_page_list, "count")->val;
+		if (weld_controller->weld_count != count)
+			weld_controller->weld_count = count;
 	}
 	// 状态同步
 	page_param->GP = get_comp(page_list, "GP")->val;
@@ -1335,8 +1337,10 @@ static void key_action_callback_temp(Component_Queue *page_list)
 	// 4、SCH——>SCH：正在修改参数
 	else if (SCH == comp->val)
 	{
+		uint16_t count;
+		uint16_t GP;
 		/*Ⅰ、根据GP加载参数*/
-		uint8_t GP = get_comp(page_list, "GP")->val; // 当前设定的GP值GP值和上次不一致 降低内存读写次数
+		GP = get_comp(page_list, "GP")->val; // 当前设定的GP值GP值和上次不一致 降低内存读写次数
 		if (GP != page_param->GP && GP <= GP_MAX)
 		{
 			/*加载参数*/
@@ -1366,9 +1370,11 @@ static void key_action_callback_temp(Component_Queue *page_list)
 			/*参数读取*/
 			command_get_comp_val(page_list, alarm_temp_name_list[i], "val");
 		}
-
-		/*读取焊接计数值*/
-		command_get_comp_val(page_list, "count", "val");
+		/*get count , which would be changed by user*/
+		command_get_comp_val(param_page_list, "count", "val");
+		count = get_comp(param_page_list, "count")->val;
+		if (weld_controller->weld_count != count)
+			weld_controller->weld_count = count;
 	}
 
 	// 状态同步
@@ -1443,13 +1449,10 @@ static void page_process(Page_ID id)
 
 		/*get current array number*/
 		command_get_comp_val(param_page_list, "GP", "val");
-		/*get count , which would be changed by user*/
-		command_get_comp_val(param_page_list, "count", "val");
-		uint16_t count = get_comp(param_page_list, "count")->val;
-		if (weld_controller->weld_count != count)
-			weld_controller->weld_count = count;
 
 		parse_key_action(page_param->id);
+		
+		command_set_comp_val("count", "val", weld_controller->weld_count);
 
 		/*display average temperature*/
 		command_set_comp_val(temp_display_name[0], "val", temp_draw_ctrl->display_temp[0]);
@@ -1489,6 +1492,9 @@ static void page_process(Page_ID id)
 		/*display average temperature*/
 		command_set_comp_val(temp_display_name[0], "val", temp_draw_ctrl->display_temp[0]);
 		command_set_comp_val(temp_display_name[1], "val", temp_draw_ctrl->display_temp[1]);
+	
+		command_set_comp_val("count", "val", weld_controller->weld_count);
+		
 	}
 	break;
 
@@ -1554,6 +1560,7 @@ static void page_process(Page_ID id)
 		command_set_comp_val("step2", "val", temp_draw_ctrl->display_temp[1]);
 
 		/*绘制上次温度曲线*/
+		/*...*/
 	}
 	break;
 

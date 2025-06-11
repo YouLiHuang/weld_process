@@ -11,10 +11,9 @@
 #include "delay.h"
 #include "includes.h"
 #include "user_config.h"
+#include "protect.h"
 
-extern OS_SEM WELD_START_SEM;
-extern OS_Q key_msg;
-START_TYPE start_type;
+START_TYPE start_type = START_IDEAL;
 
 /**
  * @description: PC0-PC3:START SIGNAL
@@ -71,7 +70,7 @@ void START_IO_INIT(void)
 
 void Start_signal_irq(void)
 {
-	OS_ERR err;
+
 #if SYSTEM_SUPPORT_OS // 使用UCOS操作系统
 	OSIntEnter();
 #endif
@@ -80,26 +79,24 @@ void Start_signal_irq(void)
 	{
 		EXTI_ClearITPendingBit(EXTI_Line0);
 		/*software delay*/
-		for (int i = 0; i < 1000; i++)
+		for (int i = 0; i < 5000; i++)
 			;
 		if (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_0) == RESET)
 		{
 			/*notify main task to start weld*/
 			start_type = KEY0;
-			OSQPost(&key_msg, &start_type, sizeof(start_type), OS_OPT_POST_ALL | OS_OPT_POST_FIFO, &err);
 		}
 	}
 	else if (EXTI_GetITStatus(EXTI_Line1) != RESET)
 	{
 		EXTI_ClearITPendingBit(EXTI_Line1);
 		/*software delay*/
-		for (int i = 0; i < 1000; i++)
+		for (int i = 0; i < 5000; i++)
 			;
 		if (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_1) == RESET)
 		{
 			/*notify main task to start weld*/
 			start_type = KEY1;
-			OSQPost(&key_msg, &start_type, sizeof(start_type), OS_OPT_POST_ALL | OS_OPT_POST_FIFO, &err);
 		}
 	}
 #if START_IO_ENABLE
@@ -133,17 +130,25 @@ void Start_signal_irq(void)
  * @description:  PA3 PC7:reserve PC8：reset PC9:TEMP1 PC10:TEMP2 PC11:water
  * @return {*}
  */
-void IO_INIT(void)
+void INPUT_IO_INIT(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
 
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10 | GPIO_Pin_11;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10 | GPIO_Pin_11;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+	/*defalut high level/low level trigger*/
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStructure.GPIO_Pin = CURRENT_PIN;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+	GPIO_Init(CURRENT_OVERLOAD_GPIO, &GPIO_InitStructure);
 }
 
 /**

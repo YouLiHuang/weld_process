@@ -729,10 +729,10 @@ static void Second_Step()
 		}
 
 		/*fast rise step*/
-		if (weld_controller->step_time_tick < FAST_RISE_TIME && weld_controller->Duty_Cycle < fast_rise_duty)
-		{
-			weld_controller->Duty_Cycle = fast_rise_duty;
-		}
+		// if (weld_controller->step_time_tick < FAST_RISE_TIME && weld_controller->Duty_Cycle < fast_rise_duty)
+		// {
+		// 	weld_controller->Duty_Cycle = fast_rise_duty;
+		// }
 #endif
 
 		/*limit output*/
@@ -852,7 +852,7 @@ static void End_of_Weld()
  */
 static void simulate_weld()
 {
-
+	OS_ERR err;
 	/*IO控制*/
 	RLY10 = 1; // 气阀1启动
 	RLY11 = 1; // 气阀2启动
@@ -880,8 +880,6 @@ static void simulate_weld()
 	else if (weld_controller->Count_Dir == DOWN && weld_controller->weld_count > 0)
 		weld_controller->weld_count--;
 
-	command_set_comp_val("param_page.count", "val", weld_controller->weld_count);
-	command_set_comp_val("temp_page.count", "val", weld_controller->weld_count);
 }
 
 /**
@@ -961,6 +959,8 @@ void welding_process(START_TYPE type)
 		return;
 
 	/*TIMER DEINIT*/
+	TIM_SetCompare1(TIM1, 0);
+	TIM_SetCompare1(TIM4, 0);
 	TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
 	TIM_ForcedOC1Config(TIM4, TIM_ForcedAction_InActive);
 	TIM_Cmd(TIM1, DISABLE);
@@ -1084,7 +1084,6 @@ void welding_process(START_TYPE type)
 				break;
 			OSTimeDly(10, OS_OPT_TIME_DLY, &err);
 		}
-
 	}
 	/*模拟焊接*/
 	else if (page_param->key3 == SGW && page_param->key2 == IOFF)
@@ -1094,7 +1093,5 @@ void welding_process(START_TYPE type)
 		/*设置连续焊接间隔——同时也腾出时间片*/
 		OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 		OVER = 0;
-		/*设置焊接间隔*/
-		OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 	}
 }

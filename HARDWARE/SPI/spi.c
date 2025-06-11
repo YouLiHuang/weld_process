@@ -134,9 +134,9 @@ void Load_data_from_mem(void)
 {
 #if RESET_SPI_DATA
 	/*数据初始化*/
-	int time_init[] = {100, 300, 2500, 200, 50};
-	int temp_init[] = {200, 450, 150};
-	int alarm_temp[] = {400, 100, 650, 200, 650, 200};
+	int time_init[] = {100, 500, 2500, 500, 100};
+	int temp_init[] = {250, 400, 150};
+	int alarm_temp[] = {400, 100, 650, 100, 650, 100};
 
 	for (int array_of_data = 1; array_of_data < 20; array_of_data++)
 	{
@@ -159,8 +159,8 @@ void Load_data_from_mem(void)
 		}
 
 		// gain1 gain2
-		SPI_Save_Word(95 + array_of_data, GAIN_BASE(array_of_data));
-		SPI_Save_Word(95 + array_of_data, GAIN_BASE(array_of_data) + ADDR_OFFSET);
+		SPI_Save_Word(72 + array_of_data, GAIN_BASE(array_of_data));
+		SPI_Save_Word(60 + array_of_data, GAIN_BASE(array_of_data) + ADDR_OFFSET);
 	}
 #endif
 

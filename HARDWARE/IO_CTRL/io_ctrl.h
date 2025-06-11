@@ -56,15 +56,17 @@
 
 typedef enum START_TYPE
 {
-    KEY0 = 1,
+    START_IDEAL = 0,
+    KEY0,
     KEY1,
     START1,
     START2
 
 } START_TYPE;
 
-void IO_INIT(void);
+void INPUT_IO_INIT(void);
 void OUT_Init(void);
+void START_IO_INIT(void);
 
 uint8_t new_key_scan(void);
 
