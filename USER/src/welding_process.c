@@ -428,11 +428,9 @@ static void Weld_Preparation()
 	/*表示进入焊接过程*/
 	welding_flag = BUSY_MODE;
 	/*----------------------------------------时间刻度复位----------------------------------------*/
-	weld_controller->step_time_tick = 0; // 焊接周期计数值
-	weld_controller->weld_time_tick = 0; // 单段焊接时间计数
-
+	weld_controller->step_time_tick = 0; 
+	weld_controller->weld_time_tick = 0; 
 	/*------------------------------------------参数限制------------------------------------------*/
-
 	err_comp = 0.2 * weld_controller->weld_temp[0] - 30;
 	if (err_comp > 50)
 		err_comp = 50;
