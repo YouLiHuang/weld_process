@@ -432,6 +432,11 @@ static void Weld_Preparation()
 	weld_controller->weld_time_tick = 0; // 单段焊接时间计数
 
 	/*------------------------------------------参数限制------------------------------------------*/
+
+	err_comp = 0.2 * weld_controller->weld_temp[0] - 30;
+	if (err_comp > 50)
+		err_comp = 50;
+
 	if (weld_controller->weld_time[1] > 999)
 		weld_controller->weld_time[1] = 999;
 	if (weld_controller->weld_time[2] > 9999)
@@ -479,10 +484,6 @@ static void Weld_Preparation()
 	Kalman_Init(&kfp);	  // 卡尔曼滤波器初始化，初始值归零
 	kalman_comp_temp = 0; // 卡尔曼估计值初始化
 #endif
-
-	err_comp = 0.2 * weld_controller->weld_temp[0] - 30;
-	if (err_comp > 50)
-		err_comp = 50;
 
 	/*------------------------------------------绘图部分------------------------------------------*/
 	reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
