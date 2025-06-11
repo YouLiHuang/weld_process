@@ -180,7 +180,6 @@ OS_SEM ERROR_HANDLE_SEM;
 // data save sem
 OS_SEM DATA_SAVE_SEM;
 
-
 /*A list of new interface components*/
 // Record the ID of the current screen and the status of the three buttons
 Page_Param *page_param = NULL;
@@ -317,6 +316,7 @@ int main(void)
 												match_list[i].reset_callback);
 		register_error(err_ctrl, handle);
 	}
+	err_clear(err_ctrl);
 
 	/*绘图控制器初始化*/
 	temp_draw_ctrl = new_temp_draw_ctrl(realtime_temp_buf, 500, 2000, 500);
@@ -636,7 +636,7 @@ static void Power_on_check(void)
 	GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
 	GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
 
-	OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err);
+	OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err);
 
 	if (GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E) != 0)
 	{
@@ -682,13 +682,13 @@ static void Power_on_check(void)
 	start_temp = temp_convert(current_Thermocouple);
 
 	/*PWM ON*/
-	TIM_SetCompare1(TIM1, PD_MAX / 4);
-	TIM_SetCompare1(TIM4, PD_MAX / 4);
+	TIM_SetCompare1(TIM1, PD_MAX / 6);
+	TIM_SetCompare1(TIM4, PD_MAX / 6);
 	TIM_Cmd(TIM4, ENABLE);
 	TIM_Cmd(TIM1, ENABLE);
 
 	/*heat 100ms*/
-	delay_ms(100);
+	OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err);
 
 	/*PWM OFF*/
 	TIM_SetCompare1(TIM1, 0);
@@ -1499,7 +1499,6 @@ static void page_process(Page_ID id)
 
 		/*display Real-time temperature*/
 		Temp_updata_realtime();
-
 	}
 	break;
 

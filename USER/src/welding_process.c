@@ -332,6 +332,7 @@ static void pid_dynamic_reload(void)
 
 static void down_temp_line()
 {
+	OS_ERR err;
 	uint16_t index = 0;
 	uint16_t weld_win_width = 0;
 	uint16_t win_width = 0;
@@ -362,10 +363,11 @@ static void down_temp_line()
 		if (temp > MAX_TEMP_DISPLAY)			   // limit
 			temp = MAX_TEMP_DISPLAY;
 
-		temp_display = temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY;			  // Coordinate scaling
-		draw_point(temp_display);											  // draw
-		command_set_comp_val("step3", "val", weld_controller->realtime_temp); // display realtime temp
-		delay_ms(temp_draw_ctrl->delta_tick);								  // Sampling interval
+		temp_display = temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY;						// Coordinate scaling
+		draw_point(temp_display);														// draw
+		command_set_comp_val("step3", "val", weld_controller->realtime_temp);			// display realtime temp
+		OSTimeDlyHMSM(0, 0, 0, temp_draw_ctrl->delta_tick, OS_OPT_TIME_PERIODIC, &err); // Sampling interval
+		// delay_ms(temp_draw_ctrl->delta_tick);
 		index++;
 	}
 }
@@ -1015,8 +1017,6 @@ void welding_process(START_TYPE type)
 
 			/*save data to disk*/
 			OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
-
-
 
 			/*weld interval*/
 			OVER = 0;
