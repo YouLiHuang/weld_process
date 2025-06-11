@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-11 20:00:13
+ * @LastEditTime: 2025-06-11 20:12:15
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -1454,6 +1454,7 @@ static void page_process(Page_ID id)
 		uint16_t delta_tick = 0;	 // 坐标间隔
 		uint16_t total_tick_len = 0; // 横坐标总长度
 		uint16_t win_width = 0;		 // 绘图区域占据的实际窗口大小
+		uint16_t draw_delta = 0;
 
 		/*实时温度显示*/
 		command_set_comp_val("step3", "val", weld_controller->realtime_temp);
@@ -1461,7 +1462,7 @@ static void page_process(Page_ID id)
 		/*更新坐标*/
 		for (uint8_t i = 0; i < 5; i++)
 			total_time += weld_controller->weld_time[i];
-		/*坐标划分*/
+		/*坐标划分ms*/
 		if (total_time <= 500)
 			delta_tick = 100;
 		else if (total_time > 500 && total_time <= 1000)
@@ -1500,7 +1501,19 @@ static void page_process(Page_ID id)
 		Temp_updata_realtime();
 
 		/*绘制上次温度曲线*/
-		/*...*/
+		if (temp_draw_ctrl->third_step_index_end % win_width == 0)
+		{
+			draw_delta = temp_draw_ctrl->third_step_index_end / win_width;
+		}
+		else
+		{
+			draw_delta = temp_draw_ctrl->third_step_index_end / win_width + 1;
+		}
+		for (uint16_t i = 0; i < temp_draw_ctrl->third_step_index_end;)
+		{
+			draw_point(realtime_temp_buf[i]);
+			i += draw_delta;
+		}
 	}
 	break;
 
