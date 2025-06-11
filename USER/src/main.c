@@ -969,7 +969,7 @@ void main_task(void *p_arg)
 	START_TYPE start_type;
 	START_TYPE *recv;
 	OS_MSG_SIZE msg_size;
-	// Power_on_check();
+	Power_on_check();
 	while (1)
 	{
 
@@ -980,11 +980,12 @@ void main_task(void *p_arg)
 		recv = (START_TYPE *)OSQPend(&key_msg, 0, OS_OPT_PEND_NON_BLOCKING, &msg_size, NULL, &err);
 		if (err == OS_ERR_NONE && recv != NULL)
 		{
+			Thermocouple_check();
 			start_type = (*recv);
 			welding_process(start_type);
 		}
 
-		Thermocouple_check();
+		
 
 		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
