@@ -977,7 +977,7 @@ void main_task(void *p_arg)
 		Overload_check();
 #endif
 
-		recv = (START_TYPE *)OSQPend(&key_msg, 0, OS_OPT_PEND_BLOCKING, &msg_size, NULL, &err);
+		recv = (START_TYPE *)OSQPend(&key_msg, 0, OS_OPT_PEND_NON_BLOCKING, &msg_size, NULL, &err);
 		if (err == OS_ERR_NONE && recv != NULL)
 		{
 			start_type = (*recv);
