@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-11 19:50:35
+ * @LastEditTime: 2025-06-11 19:53:15
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -94,11 +94,15 @@ static bool Temp_down_reset_callback(uint8_t index);
 static bool Transformer_reset_callback(uint8_t index);
 /*main task functions --------------------------------------------------------*/
 static void Power_on_check(void);
-static void Power_on_check(void);
 static void Temp_updata_realtime(void);
 static void Thermocouple_check(void);
 static void voltage_check(void);
 static void Overload_check(void);
+/*screen task functions -------------------------------------------------------*/
+static void key_action_callback_param(Component_Queue *page_list);
+static void key_action_callback_temp(Component_Queue *page_list);
+static void parse_key_action(Page_ID id);
+static void page_process(Page_ID id);
 
 /*Using hardware calibration mode,
 different thermocouples have different board-level amplification coefficients.
@@ -424,10 +428,10 @@ and the time slice length is 1 system clock beat, 1 ms
 	// Thermocouple calibration signal
 	OSSemCreate(&SENSOR_UPDATE_SEM, "SENSOR_UPDATE_SEM", 0, &err);
 
-	/*--------------------------------------------SEM use for host computer-----------------------------------*/
+	/*--------------------------------------------SEM use for host computer----------------------------------*/
 	// 创建上位机开启焊接信号量
 	OSSemCreate(&HOST_WELD_CTRL_SEM, "HOST_WELD_CTRL_SEM", 0, &err);
-	/*--------------------------------------------other SEM----------------------------------------------------*/
+	/*--------------------------------------------other SEM--------------------------------------------------*/
 	//  创建报警复位信号量
 	OSSemCreate(&ALARM_RESET_SEM, "alarm reset", 0, &err);
 	// 创建报错信号
@@ -517,7 +521,6 @@ and the time slice length is 1 system clock beat, 1 ms
 	OSTaskDel((OS_TCB *)0, &err); // 删除start_task任务自身
 }
 
-static void Thermocouple_check(void);
 /*--------------------------------------------------------------------------------------*/
 /*--------------------------------------err callback------------------------------------*/
 /*--------------------------------------------------------------------------------------*/
@@ -1032,9 +1035,7 @@ static void Thermocouple_err_eliminate()
 }
 #endif
 
-static void key_action_callback_param(Component_Queue *page_list);
-static void key_action_callback_temp(Component_Queue *page_list);
-static void parse_key_action(Page_ID id);
+
 static void key_action_callback_param(Component_Queue *page_list)
 {
 
@@ -1717,7 +1718,7 @@ void read_task(void *p_arg)
 }
 
 /*-------------------------------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------The upper computer communication thread------------------------------------*/
+/*--------------------------------------------------------MODBUS Thread----------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
 
 /**
@@ -1744,7 +1745,7 @@ void computer_read_task(void *p_arg)
 }
 
 /*-------------------------------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------USB read-write thread---------------------------------------------------*/
+/*-------------------------------------------------USB read-write Thread---------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
 
 void usb_task(void *p_arg)
