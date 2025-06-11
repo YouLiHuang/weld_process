@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-11 07:53:29
+ * @LastEditTime: 2025-06-11 08:08:28
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -1552,9 +1552,11 @@ static void page_process(Page_ID id)
 		for (uint8_t i = 0; i < sizeof(tick_name) / sizeof(char *); i++)
 			command_set_comp_val(tick_name[i], "val", (1 + i) * delta_tick);
 
-		/*4、显示三段温度*/
+		/*显示三段温度*/
 		command_set_comp_val("step1", "val", temp_draw_ctrl->display_temp[0]);
 		command_set_comp_val("step2", "val", temp_draw_ctrl->display_temp[1]);
+
+		/*绘制上次温度曲线*/
 	}
 	break;
 
@@ -1598,7 +1600,7 @@ static void page_process(Page_ID id)
 		if (OS_ERR_NONE == err)
 		{
 #if TEMP_ADJUST
-			if (weld_controller->realtime_temp < 2 * ROOM_TEMP && weld_controller->realtime_temp > 0.5 * ROOM_TEMP) // 在室温下才允许校准（10-40°C范围内才允许校准）
+			if (weld_controller->realtime_temp < 2 * ROOM_TEMP && weld_controller->realtime_temp > 0.5 * ROOM_TEMP) 
 				Thermocouple_err_eliminate();
 			else // 焊头尚未冷却，警报
 				command_set_comp_val("warning", "aph", 127);
