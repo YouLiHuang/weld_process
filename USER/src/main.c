@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-11 19:58:56
+ * @LastEditTime: 2025-06-11 20:00:13
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -630,7 +630,7 @@ static void Power_on_check(void)
 
 #if POWER_ON_CHECK == 1
 
-	/*1、开机自检需要检测当前是哪一路热电偶*/
+	/*check if senor is already*/
 	GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
 	GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
 	GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
