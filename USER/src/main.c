@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-11 19:53:15
+ * @LastEditTime: 2025-06-11 19:58:56
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -681,8 +681,8 @@ static void Power_on_check(void)
 	start_temp = temp_convert(current_Thermocouple);
 
 	/*PWM ON*/
-	TIM_SetCompare1(TIM1, PD_MAX / 8);
-	TIM_SetCompare1(TIM4, PD_MAX / 8);
+	TIM_SetCompare1(TIM1, PD_MAX / 4);
+	TIM_SetCompare1(TIM4, PD_MAX / 4);
 	TIM_Cmd(TIM4, ENABLE);
 	TIM_Cmd(TIM1, ENABLE);
 
