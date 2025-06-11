@@ -481,6 +481,8 @@ static void Weld_Preparation()
 #endif
 
 	err_comp = 0.2 * weld_controller->weld_temp[0] - 30;
+	if (err_comp > 50)
+		err_comp = 50;
 
 	/*------------------------------------------绘图部分------------------------------------------*/
 	reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
