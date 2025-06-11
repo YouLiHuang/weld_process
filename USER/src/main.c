@@ -155,12 +155,7 @@ static char *gain_name_list[] = {
 	"GAIN2"};
 
 /* Private variables ---------------------------------------------------------*/
-// 11 default baud rates
-extern uint32_t baud_list[11];
-// The serial port of the touch screen receives buffering
-extern uint8_t USART_RX_BUF[USART_REC_LEN];
-// Temperature preservation buffer
-extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN];
+
 /*UART3 Resource Protection: Mutex (Temporarily Unused)*/
 OS_MUTEX ModBus_Mux;
 
@@ -263,11 +258,13 @@ static char *wave_page_name_list[] = {
 	"kd"};
 
 uint8_t ID_OF_DEVICE = 0;
-/*Touchscreen communication parameters*/
-extern uint16_t remember_array;
+
 extern USBH_HOST USB_Host __ALIGN_END;
 extern USB_OTG_CORE_HANDLE USB_OTG_Core __ALIGN_END;
 extern START_TYPE start_type;
+// Temperature preservation buffer
+extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN];
+
 int main(void)
 {
 
@@ -1034,7 +1031,6 @@ static void Thermocouple_err_eliminate()
 	}
 }
 #endif
-
 
 static void key_action_callback_param(Component_Queue *page_list)
 {
