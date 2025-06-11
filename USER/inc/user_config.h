@@ -11,7 +11,7 @@
 #define VOLTAGE_CHECK 1   // Overvoltage and undervoltage alarm enable
 #define OVER_LOAD_CHECK 1 // Overload protection enable
 #define POWER_ON_CHECK 1  // Boot detection enable
-#define PWM_DEBUG_MODE 0
+
 
 /* Algorithm enable ------------------------------------------------------------------------------*/
 #define COMPENSATION 0  // Compensation e nable

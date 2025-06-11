@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-11 19:40:17
+ * @LastEditTime: 2025-06-11 19:50:35
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -348,24 +348,8 @@ int main(void)
 	Touchscreen_init();
 	Load_data_from_mem();
 
-/*Hardware test*/
-/*...*/
-#if PWM_DEBUG_MODE
-	while (1)
-	{
-		TIM_SetCompare1(TIM1, PD_MAX / 8);
-		TIM_SetCompare1(TIM4, PD_MAX / 8);
-		TIM_Cmd(TIM4, ENABLE);
-		TIM_Cmd(TIM1, ENABLE);
-		delay_ms(500);
-		TIM_SetCompare1(TIM1, PD_MAX / 4);
-		TIM_SetCompare1(TIM4, PD_MAX / 4);
-		delay_ms(500);
-		TIM_SetCompare1(TIM1, PD_MAX);
-		TIM_SetCompare1(TIM4, PD_MAX);
-		delay_ms(500);
-	}
-#endif
+	/*Hardware test*/
+	/*...*/
 
 	/*-----------------------------------------------------------System level data objects-----------------------------------------------------------------*/
 	/*UCOSIII init*/
@@ -616,7 +600,6 @@ static bool Temp_down_reset_callback(uint8_t index)
 
 	return true;
 }
-
 static bool Transformer_reset_callback(uint8_t index)
 {
 	OS_ERR err;
@@ -634,72 +617,8 @@ static bool Transformer_reset_callback(uint8_t index)
 	return true;
 }
 
-/*-------------------------------------------------------------------------------------------------------------------------*/
-/*------------------------------------------------------err Thread---------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------------------------------*/
-
-void error_task(void *p_arg)
-{
-	OS_ERR err;
-
-	while (1)
-	{
-		OSSemPend(&ERROR_HANDLE_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
-		if (OS_ERR_NONE == err)
-		{
-
-			/*PWM OFF / Timer Reset*/
-			TIM_SetCompare1(TIM1, 0);
-			TIM_SetCompare1(TIM4, 0);
-			TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
-			TIM_ForcedOC1Config(TIM4, TIM_ForcedAction_InActive);
-			TIM_Cmd(TIM4, DISABLE);
-			TIM_Cmd(TIM1, DISABLE);
-
-			TIM_Cmd(TIM3, DISABLE);
-			TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
-			TIM_Cmd(TIM5, DISABLE);
-			TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
-			TIM3->CNT = 0;
-			TIM5->CNT = 0;
-
-			ERROR1 = 1; // error signal
-			RLY10 = 0;	// Valve1 off
-			RLY11 = 0;	// Valve2 off
-			RLY12 = 0;	// Valve3 off
-
-			/*err handle*/
-			Page_to(page_param, ALARM_PAGE);
-			page_param->id = ALARM_PAGE;
-			for (uint8_t i = 0; i < err_ctrl->max_len; i++)
-			{
-				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
-					err_ctrl->err_list[i]->error_callback(i);
-			}
-
-			/*wait until user reset*/
-			OSSemPend(&ALARM_RESET_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
-			if (err == OS_ERR_NONE)
-			{
-				ERROR1 = 0; // error signal reset
-				for (uint8_t i = 0; i < err_ctrl->max_len; i++)
-				{
-					if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->reset_callback != NULL)
-						err_ctrl->err_list[i]->reset_callback(i);
-				}
-			}
-		}
-
-		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err);
-	}
-}
-
-/*-------------------------------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------main Thread-------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------------------------------*/
-
 /*--------------------------------------------------------------------------------------*/
-/*------------------------------Condition Monitoring API--------------------------------*/
+/*-----------------------------------main task  API-------------------------------------*/
 /*--------------------------------------------------------------------------------------*/
 
 static void Power_on_check(void)
@@ -787,54 +706,10 @@ static void Power_on_check(void)
 	}
 }
 
-static void Temp_updata_realtime()
-{
-	OS_ERR err;
-
-	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
-	
-	switch (current_Thermocouple->type)
-	{
-	case E_TYPE:
-		if (page_param->id == WAVE_PAGE)
-		{
-			command_set_comp_val("step3", "val", weld_controller->realtime_temp);
-		}
-		else
-		{
-			command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
-		}
-
-		break;
-	case K_TYPE:
-
-		if (page_param->id == WAVE_PAGE)
-		{
-			command_set_comp_val("step2", "val", weld_controller->realtime_temp);
-		}
-		else
-		{
-			command_set_comp_val("temp22", "val", weld_controller->realtime_temp);
-		}
-		break;
-	case J_TYPE:
-		if (page_param->id == WAVE_PAGE)
-		{
-			command_set_comp_val("step1", "val", weld_controller->realtime_temp);
-		}
-		else
-		{
-			command_set_comp_val("temp11", "val", weld_controller->realtime_temp);
-		}
-		break;
-
-	default:
-		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-		break;
-	}
-}
-
+/**
+ * @description: sensor check
+ * @return {*}
+ */
 static void Thermocouple_check(void)
 {
 
@@ -889,6 +764,10 @@ static void Thermocouple_check(void)
 	}
 }
 
+/**
+ * @description: voltage check
+ * @return {*}
+ */
 static void voltage_check(void)
 {
 	uint16_t ADC_Voltage = 0;
@@ -911,6 +790,10 @@ static void voltage_check(void)
 	}
 }
 
+/**
+ * @description: over load check
+ * @return {*}
+ */
 static void Overload_check(void)
 {
 	OS_ERR err;
@@ -991,60 +874,61 @@ static void Overload_check(void)
 	}
 }
 
-/**
- * @description: main task
- * @param {void} *p_arg
- * @return {*}
- */
-void main_task(void *p_arg)
-{
-
-	OS_ERR err;
-	uint8_t key;
-	Power_on_check();
-	while (1)
-	{
-
-#if OVER_LOAD_CHECK
-		Overload_check();
-#endif
-
-		/*trigger by exit irq(keys are pressed)*/
-		OSSemPend(&WELD_START_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
-		if (err == OS_ERR_NONE)
-		{
-			key = key_scan();
-			if (key == KEY_PC0_PRES || key == KEY_PC1_PRES)
-			{
-				/*only check sensor before weld(avoid temp display error)*/
-				switch (start_type)
-				{
-
-				case KEY0:
-					start_type = START_IDEAL;
-					Thermocouple_check();
-					welding_process(KEY0);
-					break;
-				case KEY1:
-					start_type = START_IDEAL;
-					Thermocouple_check();
-					welding_process(KEY0);
-					break;
-				}
-			}
-		}
-
-		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
-	}
-}
-
-/*-------------------------------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------------touch screan Thread--------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------------------------------*/
-
 /*--------------------------------------------------------------------------------------*/
 /*----------------------Touchscreen communication thread internal API-------------------*/
 /*--------------------------------------------------------------------------------------*/
+/**
+ * @description: real-time temp display
+ * @return {*}
+ */
+static void Temp_updata_realtime()
+{
+	OS_ERR err;
+
+	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
+
+	switch (current_Thermocouple->type)
+	{
+	case E_TYPE:
+		if (page_param->id == WAVE_PAGE)
+		{
+			command_set_comp_val("step3", "val", weld_controller->realtime_temp);
+		}
+		else
+		{
+			command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
+		}
+
+		break;
+	case K_TYPE:
+
+		if (page_param->id == WAVE_PAGE)
+		{
+			command_set_comp_val("step2", "val", weld_controller->realtime_temp);
+		}
+		else
+		{
+			command_set_comp_val("temp22", "val", weld_controller->realtime_temp);
+		}
+		break;
+	case J_TYPE:
+		if (page_param->id == WAVE_PAGE)
+		{
+			command_set_comp_val("step1", "val", weld_controller->realtime_temp);
+		}
+		else
+		{
+			command_set_comp_val("temp11", "val", weld_controller->realtime_temp);
+		}
+		break;
+
+	default:
+		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		break;
+	}
+}
+
 #if TEMP_ADJUST
 /**
  * @description: Thermocouple adjust
@@ -1695,6 +1579,121 @@ static void page_process(Page_ID id)
 		break;
 	}
 }
+
+/*-------------------------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------err Thread---------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------------------------------*/
+
+void error_task(void *p_arg)
+{
+	OS_ERR err;
+
+	while (1)
+	{
+		OSSemPend(&ERROR_HANDLE_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+		if (OS_ERR_NONE == err)
+		{
+
+			/*PWM OFF / Timer Reset*/
+			TIM_SetCompare1(TIM1, 0);
+			TIM_SetCompare1(TIM4, 0);
+			TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
+			TIM_ForcedOC1Config(TIM4, TIM_ForcedAction_InActive);
+			TIM_Cmd(TIM4, DISABLE);
+			TIM_Cmd(TIM1, DISABLE);
+
+			TIM_Cmd(TIM3, DISABLE);
+			TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+			TIM_Cmd(TIM5, DISABLE);
+			TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
+			TIM3->CNT = 0;
+			TIM5->CNT = 0;
+
+			ERROR1 = 1; // error signal
+			RLY10 = 0;	// Valve1 off
+			RLY11 = 0;	// Valve2 off
+			RLY12 = 0;	// Valve3 off
+
+			/*err handle*/
+			Page_to(page_param, ALARM_PAGE);
+			page_param->id = ALARM_PAGE;
+			for (uint8_t i = 0; i < err_ctrl->max_len; i++)
+			{
+				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
+					err_ctrl->err_list[i]->error_callback(i);
+			}
+
+			/*wait until user reset*/
+			OSSemPend(&ALARM_RESET_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+			if (err == OS_ERR_NONE)
+			{
+				ERROR1 = 0; // error signal reset
+				for (uint8_t i = 0; i < err_ctrl->max_len; i++)
+				{
+					if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->reset_callback != NULL)
+						err_ctrl->err_list[i]->reset_callback(i);
+				}
+			}
+		}
+
+		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err);
+	}
+}
+
+/*-------------------------------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------main Thread-------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------------------------------*/
+
+/**
+ * @description: main task
+ * @param {void} *p_arg
+ * @return {*}
+ */
+void main_task(void *p_arg)
+{
+
+	OS_ERR err;
+	uint8_t key;
+	Power_on_check();
+	while (1)
+	{
+
+#if OVER_LOAD_CHECK
+		Overload_check();
+#endif
+
+		/*trigger by exit irq(keys are pressed)*/
+		OSSemPend(&WELD_START_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+		if (err == OS_ERR_NONE)
+		{
+			key = key_scan();
+			if (key == KEY_PC0_PRES || key == KEY_PC1_PRES)
+			{
+				/*only check sensor before weld(avoid temp display error)*/
+				switch (start_type)
+				{
+
+				case KEY0:
+					start_type = START_IDEAL;
+					Thermocouple_check();
+					welding_process(KEY0);
+					break;
+				case KEY1:
+					start_type = START_IDEAL;
+					Thermocouple_check();
+					welding_process(KEY0);
+					break;
+				}
+			}
+		}
+
+		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
+	}
+}
+
+/*-------------------------------------------------------------------------------------------------------------------------*/
+/*----------------------------------------------------touch screan Thread--------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------------------------------*/
 
 /**
  * @description: Touchscreen communication threads
