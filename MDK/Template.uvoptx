@@ -582,6 +582,11 @@
           <WinNumber>2</WinNumber>
           <ItemText>err_comp,0x0A</ItemText>
         </Ww>
+        <Ww>
+          <count>19</count>
+          <WinNumber>2</WinNumber>
+          <ItemText>key_msg</ItemText>
+        </Ww>
       </WatchWindow2>
       <MemoryWindow1>
         <Mm>

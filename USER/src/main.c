@@ -58,7 +58,7 @@ CPU_STK MAIN_TASK_STK[MAIN_STK_SIZE];
 void main_task(void *p_arg);
 
 #define READ_TASK_PRIO 6
-#define READ_STK_SIZE 2048
+#define READ_STK_SIZE 3072
 OS_TCB READ_TaskTCB;
 CPU_STK READ_TASK_STK[READ_STK_SIZE];
 
@@ -76,7 +76,7 @@ OS_TCB USB_TaskTCB;
 CPU_STK USB_TASK_STK[USB_STK_SIZE];
 void usb_task(void *p_arg);
 
-#define MSG_LEN 4
+#define MSG_LEN 1
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -339,6 +339,7 @@ int main(void)
 #endif
 	log_bsp_init(115200);
 
+	START_IO_INIT();
 	IO_INIT();				   // key IO init
 	OUT_Init();				   // output pin init
 	Check_IO_init();		   // Thermocouple detection io initialization
@@ -416,6 +417,10 @@ and the time slice length is 1 system clock beat, 1 ms
 
 	// Create a keys msg queue
 	OSQCreate(&key_msg, "keys msg", MSG_LEN, &err);
+	if (err != OS_ERR_NONE)
+	{
+		printf("> err\n");
+	}
 
 	// WELD_START_SEM
 	OSSemCreate(&WELD_START_SEM, "weld start", 0, &err);
@@ -644,10 +649,10 @@ void error_task(void *p_arg)
 			TIM_Cmd(TIM4, DISABLE);
 			TIM_Cmd(TIM1, DISABLE);
 
-			TIM_Cmd(TIM3, DISABLE);						
-			TIM_ClearITPendingBit(TIM3, TIM_IT_Update); 
-			TIM_Cmd(TIM5, DISABLE);						
-			TIM_ClearITPendingBit(TIM5, TIM_IT_Update); 
+			TIM_Cmd(TIM3, DISABLE);
+			TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+			TIM_Cmd(TIM5, DISABLE);
+			TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
 			TIM3->CNT = 0;
 			TIM5->CNT = 0;
 
@@ -734,6 +739,10 @@ static void Power_on_check(void)
 		}
 	}
 
+	GPIO_ResetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
+	GPIO_ResetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
+	GPIO_ResetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
+
 	/*no Thermocouple detect*/
 	if (current_Thermocouple == NULL)
 	{
@@ -759,17 +768,6 @@ static void Power_on_check(void)
 
 	/*reserve check*/
 	start_temp = temp_convert(current_Thermocouple);
-
-	/*PWM Config*/
-	tmp_ccmr1 = TIM1->CCMR1;
-	tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
-	tmp_ccmr1 |= ((uint16_t)0x0060);
-	TIM1->CCMR1 = tmp_ccmr1;
-
-	tmp_ccmr1 = TIM4->CCMR1;
-	tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
-	tmp_ccmr1 |= ((uint16_t)0x0060);
-	TIM4->CCMR1 = tmp_ccmr1;
 
 	/*PWM ON*/
 	TIM_SetCompare1(TIM1, PD_MAX / 8);
@@ -899,25 +897,25 @@ static void Overload_check(void)
 		}
 	}
 	/*transfoemer*/
-	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 0)
-	{
-		OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
-		if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 0)
-		{
-			err_get_type(err_ctrl, TRANSFORMER_OVER_HEAT)->state = true;
-			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-		}
-	}
+	//	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 0)
+	//	{
+	//		OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
+	//		if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 0)
+	//		{
+	//			err_get_type(err_ctrl, TRANSFORMER_OVER_HEAT)->state = true;
+	//			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+	//		}
+	//	}
 	/*radiator*/
-	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 0)
-	{
-		OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
-		if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 0)
-		{
-			err_get_type(err_ctrl, RADIATOR)->state = true;
-			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-		}
-	}
+	//	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 0)
+	//	{
+	//		OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
+	//		if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 0)
+	//		{
+	//			err_get_type(err_ctrl, RADIATOR)->state = true;
+	//			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+	//		}
+	//	}
 
 	/*temp overload protect 1*/
 	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
@@ -970,8 +968,8 @@ void main_task(void *p_arg)
 	OS_ERR err;
 	START_TYPE start_type;
 	START_TYPE *recv;
-	OS_MSG_SIZE *msg_size;
-	Power_on_check();
+	OS_MSG_SIZE msg_size;
+	// Power_on_check();
 	while (1)
 	{
 
@@ -979,7 +977,7 @@ void main_task(void *p_arg)
 		Overload_check();
 #endif
 
-		recv = (START_TYPE *)OSQPend(&key_msg, 0, OS_OPT_PEND_BLOCKING, msg_size, NULL, &err);
+		recv = (START_TYPE *)OSQPend(&key_msg, 0, OS_OPT_PEND_BLOCKING, &msg_size, NULL, &err);
 		if (err == OS_ERR_NONE && recv != NULL)
 		{
 			start_type = (*recv);
@@ -987,10 +985,8 @@ void main_task(void *p_arg)
 		}
 
 		Thermocouple_check();
-		/*display Real-time temperature*/
-		Temp_updata_realtime();
 
-		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err); // 休眠
+		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
 }
 
@@ -1600,7 +1596,7 @@ static void page_process(Page_ID id)
 		if (OS_ERR_NONE == err)
 		{
 #if TEMP_ADJUST
-			if (weld_controller->realtime_temp < 2 * ROOM_TEMP && weld_controller->realtime_temp > 0.5 * ROOM_TEMP) 
+			if (weld_controller->realtime_temp < 2 * ROOM_TEMP && weld_controller->realtime_temp > 0.5 * ROOM_TEMP)
 				Thermocouple_err_eliminate();
 			else // 焊头尚未冷却，警报
 				command_set_comp_val("warning", "aph", 127);
@@ -1647,7 +1643,10 @@ void read_task(void *p_arg)
 			page_process(page_param->id);
 		}
 
-		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err);
+		/*display Real-time temperature*/
+		Temp_updata_realtime();
+
+		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);
 	}
 }
 

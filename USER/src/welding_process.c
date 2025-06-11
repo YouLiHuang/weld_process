@@ -994,8 +994,6 @@ void welding_process(START_TYPE type)
 			{
 				command_send("cle wave_line.id,0");
 				OSTimeDly(5, OS_OPT_TIME_DLY, &err);
-				command_send("cle wave_line.id,0");
-				OSTimeDly(5, OS_OPT_TIME_DLY, &err);
 			}
 			/*进入焊接的条件*/
 			if (page_param->key1 != RDY || weld_controller->realtime_temp > weld_controller->weld_temp[2])
@@ -1048,101 +1046,55 @@ void welding_process(START_TYPE type)
 		OS_ERR err;
 		uint8_t key = 0;
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
-		key = new_key_scan();
-		if (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
+		/*焊前擦除上次温度显示*/
+		if (page_param->id == WAVE_PAGE)
 		{
-			/*焊前擦除上次温度显示*/
-			if (page_param->id == WAVE_PAGE)
-			{
-				command_send("cle wave_line.id,0");
-				OSTimeDly(5, OS_OPT_TIME_DLY, &err);
-				command_send("cle wave_line.id,0");
-				OSTimeDly(5, OS_OPT_TIME_DLY, &err);
-			}
-
-			/*进入焊接的条件*/
-			if (page_param->key1 != RDY || weld_controller->realtime_temp > weld_controller->weld_temp[2])
-				return;
-
-			/*实时焊接控制*/
-			weld_real_time_ctrl();
-
-			/*计算三段显示温度值*/
-			display_temp_cal();
-
-			/*绘制降温曲线*/
-			if (page_param->id == WAVE_PAGE)
-			{
-				down_temp_line();
-			}
-
-			/*存储数据到U盘*/
-			OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
-
-			OVER = 0;
-			/*设置焊接间隔*/
-			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
-
-			/*等待释放按钮*/
-			while (1)
-			{
-				key = new_key_scan();
-				if (key != KEY_PC1_PRES && key != KEY_PC0_PRES)
-					break;
-				OSTimeDly(10, OS_OPT_TIME_DLY, &err);
-			}
+			command_send("cle wave_line.id,0");
+			OSTimeDly(5, OS_OPT_TIME_DLY, &err);
 		}
 
-#if HOST_WELD_CTRL == 1
-		/*485启动模式*/
-		OSSemPend(&HOST_WELD_CTRL_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
-		if (err == OS_ERR_NONE)
+		/*进入焊接的条件*/
+		if (page_param->key1 != RDY || weld_controller->realtime_temp > weld_controller->weld_temp[2])
+			return;
+
+		/*实时焊接控制*/
+		weld_real_time_ctrl();
+
+		/*计算三段显示温度值*/
+		display_temp_cal();
+
+		/*绘制降温曲线*/
+		if (page_param->id == WAVE_PAGE)
 		{
-			/*焊前擦除上次温度显示*/
-			if (page_param->id == WAVE_PAGE)
-			{
-				command_send("cle wave_line.id,0");
-				OSTimeDly(2, OS_OPT_TIME_DLY, &err);
-				command_send("cle wave_line.id,0");
-				OSTimeDly(2, OS_OPT_TIME_DLY, &err);
-			}
-
-			/*进入焊接的条件*/
-			if (page_param->key1 != RDY || weld_controller->realtime_temp > weld_controller->weld_temp[2])
-				return;
-
-			/*实时焊接控制*/
-			weld_real_time_ctrl();
-
-			/*绘制降温曲线*/
-			if (page_param->id == WAVE_PAGE)
-			{
-				down_temp_line();
-				reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
-			}
-
-			OVER = 0;
-			/*设置焊接间隔*/
-			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
+			down_temp_line();
 		}
 
-#endif
+		/*存储数据到U盘*/
+		OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
+
+		OVER = 0;
+		/*设置焊接间隔*/
+		OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
+
+		/*等待释放按钮*/
+		while (1)
+		{
+			key = new_key_scan();
+			if (key != KEY_PC1_PRES && key != KEY_PC0_PRES)
+				break;
+			OSTimeDly(10, OS_OPT_TIME_DLY, &err);
+		}
+
 	}
 	/*模拟焊接*/
 	else if (page_param->key3 == SGW && page_param->key2 == IOFF)
 	{
 		OS_ERR err;
-		uint8_t key = 0;
-		key = new_key_scan();
-		if (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
-		{
-
-			simulate_weld();
-			/*设置连续焊接间隔——同时也腾出时间片*/
-			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
-			OVER = 0;
-			/*设置焊接间隔*/
-			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
-		}
+		simulate_weld();
+		/*设置连续焊接间隔——同时也腾出时间片*/
+		OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
+		OVER = 0;
+		/*设置焊接间隔*/
+		OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 	}
 }
