@@ -52,6 +52,7 @@ Kalman kfp;
 extern Temp_draw_ctrl *temp_draw_ctrl;				 // Drawing controllers
 extern Page_Param *page_param;						 // Real-time page parameters
 extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN]; // Temperature preservation buffer
+extern OS_MUTEX PLOT_Mux;
 /*--------------------------------------------------------------------------------------------------------------------------------*/
 
 extern Thermocouple *current_Thermocouple; // The current thermocouple object
@@ -348,6 +349,7 @@ static void down_temp_line()
 	if (win_width >= WIN_WIDTH / 2)
 		win_width = WIN_WIDTH / 2;
 
+	OSMutexPend(&PLOT_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 	while (index < win_width)
 	{
 		if (get_weld_flag() == BUSY_MODE)
@@ -364,11 +366,11 @@ static void down_temp_line()
 
 		temp_display = temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY;						// Coordinate scaling
 		draw_point(temp_display);														// draw
-		command_set_comp_val("step3", "val", weld_controller->realtime_temp);			// display realtime temp
+		command_set_comp_val("step3", "val", temp);										// display realtime temp
 		OSTimeDlyHMSM(0, 0, 0, temp_draw_ctrl->delta_tick, OS_OPT_TIME_PERIODIC, &err); // Sampling interval
-		// delay_ms(temp_draw_ctrl->delta_tick);
 		index++;
 	}
+	OSMutexPost(&PLOT_Mux, OS_OPT_POST_NONE, &err);
 }
 
 static void display_temp_cal(void)
@@ -453,10 +455,10 @@ static void Weld_Preparation()
 	weld_controller->weld_time_tick = 0;
 	/*------------------------------------------参数限制------------------------------------------*/
 	err_comp = 0.2 * weld_controller->weld_temp[0] - 30;
-	if (err_comp > 30)
-		err_comp = 30;
-	if (err_comp < -30)
-		err_comp = -30;
+	if (err_comp > 20)
+		err_comp = 20;
+	if (err_comp < -10)
+		err_comp = -10;
 
 	if (weld_controller->weld_time[1] > 999)
 		weld_controller->weld_time[1] = 999;
@@ -649,9 +651,18 @@ static void First_Step()
 		TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
 
 #if REALTIME_TEMP_DISPLAY == 1
-		if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
+		if (weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
 		{
-			draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
+			switch (page_param->id)
+			{
+			case WAVE_PAGE:
+				draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
+				command_set_comp_val("step3", "val", weld_controller->realtime_temp);
+				break;
+			case PARAM_PAGE:
+				command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
+				break;
+			}
 		}
 #endif
 	}
@@ -763,11 +774,19 @@ static void Second_Step()
 		TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
 
 #if REALTIME_TEMP_DISPLAY == 1
-		if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
+		if (weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
 		{
-			draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
+			switch (page_param->id)
+			{
+			case WAVE_PAGE:
+				draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
+				command_set_comp_val("step3", "val", weld_controller->realtime_temp);
+				break;
+			case PARAM_PAGE:
+				command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
+				break;
+			}
 		}
-
 #endif
 	}
 
@@ -811,8 +830,19 @@ static void Third_Step()
 		}
 
 #if REALTIME_TEMP_DISPLAY == 1
-		if (page_param->id == WAVE_PAGE && weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
-			draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
+		if (weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
+		{
+			switch (page_param->id)
+			{
+			case WAVE_PAGE:
+				draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
+				command_set_comp_val("step3", "val", weld_controller->realtime_temp);
+				break;
+			case PARAM_PAGE:
+				command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
+				break;
+			}
+		}
 #endif
 
 		/*limit output execute*/
@@ -983,52 +1013,57 @@ void welding_process(START_TYPE type)
 	/*----------------------------------------------- real-time control ---------------------------------------------------*/
 
 	/*-------------------------------------------------------CTW-------------------------------------------------------*/
-	if (page_param->key3 == CTW && page_param->key2 == ION)
+	if (page_param->key3 == CTW && page_param->key2 == ION && page_param->key1 == RDY)
 	{
 		OS_ERR err;
 		uint8_t key = 0;
-		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
+
 		key = key_scan();
+
 		/*weld until release key*/
 		while (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
 		{
-			if (true == err_occur(err_ctrl))
-				break;
 
-			/*clear touch screen*/
-			if (page_param->id == WAVE_PAGE)
-			{
-				command_send("cle wave_line.id,0");
-				OSTimeDly(5, OS_OPT_TIME_DLY, &err);
-			}
+			weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 			/*emter weld*/
-			if (page_param->key1 != RDY || weld_controller->realtime_temp > weld_controller->weld_temp[2])
-				return;
+			if (weld_controller->realtime_temp < weld_controller->weld_temp[2])
+			{
+				if (true == err_occur(err_ctrl))
+					break;
 
-			/*weld real-time control*/
-			weld_real_time_ctrl();
+				/*clear touch screen*/
+				if (page_param->id == WAVE_PAGE)
+				{
+					command_send("cle wave_line.id,0");
+					OSTimeDly(5, OS_OPT_TIME_DLY, &err);
+				}
 
-			/*calculate three temperature to display*/
-			display_temp_cal();
+				/*weld real-time control*/
+				weld_real_time_ctrl();
 
-			/*plot temp line(down)*/
-			down_temp_line();
+				/*calculate three temperature to display*/
+				display_temp_cal();
 
-			/*save data to disk*/
-			OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
+				/*plot temp line(down)*/
+				if (page_param->id == WAVE_PAGE)
+				{
+					down_temp_line();
+				}
 
-			/*weld interval*/
-			OVER = 0;
-			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
+				/*save data to disk*/
+				OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
 
-			/*weld loop*/
+				/*weld interval*/
+				OVER = 0;
+				OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
+			}
+
+			/*check if key release*/
 			key = key_scan();
-			if (!(key == KEY_PC1_PRES || key == KEY_PC0_PRES))
-				break;
 		}
 	}
 	/*simulate weld*/
-	else if (page_param->key3 == CTW && page_param->key2 == IOFF)
+	else if (page_param->key3 == CTW && page_param->key2 == IOFF && page_param->key1 == RDY)
 	{
 		OS_ERR err;
 		uint8_t key = 0;
@@ -1046,52 +1081,56 @@ void welding_process(START_TYPE type)
 	}
 
 	/*------------------------------------------------------SGW-------------------------------------------------------*/
-	if (page_param->key3 == SGW && page_param->key2 == ION)
+	if (page_param->key3 == SGW && page_param->key2 == ION && page_param->key1 == RDY)
 	{
 		OS_ERR err;
 		uint8_t key = 0;
-		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
-		/*clear screen*/
-		if (page_param->id == WAVE_PAGE)
+
+		key = key_scan();
+		if (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
 		{
-			command_send("cle wave_line.id,0");
-			OSTimeDly(5, OS_OPT_TIME_DLY, &err);
-		}
+			/*clear screen*/
+			if (page_param->id == WAVE_PAGE)
+			{
+				command_send("cle wave_line.id,0");
+				OSTimeDly(5, OS_OPT_TIME_DLY, &err);
+			}
+			/*enter weld*/
+			weld_controller->realtime_temp = temp_convert(current_Thermocouple);
+			if (weld_controller->realtime_temp > weld_controller->weld_temp[2])
+				return;
 
-		/*enter weld*/
-		if (page_param->key1 != RDY || weld_controller->realtime_temp > weld_controller->weld_temp[2])
-			return;
+			/*weld real-time control*/
+			weld_real_time_ctrl();
 
-		/*weld real-time control*/
-		weld_real_time_ctrl();
+			/*calculate three temperature to display*/
+			display_temp_cal();
 
-		/*calculate three temperature to display*/
-		display_temp_cal();
+			/*plot temp line(down)*/
+			if (page_param->id == WAVE_PAGE)
+			{
+				down_temp_line();
+			}
 
-		/*plot temp line(down)*/
-		if (page_param->id == WAVE_PAGE)
-		{
-			down_temp_line();
-		}
+			/*save data to disk*/
+			OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
 
-		/*save data to disk*/
-		OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
+			/*weld interval*/
+			OVER = 0;
+			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 
-		/*weld interval*/
-		OVER = 0;
-		OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
-
-		/*wait until release key*/
-		while (1)
-		{
-			key = key_scan();
-			if (key != KEY_PC1_PRES && key != KEY_PC0_PRES)
-				break;
-			OSTimeDly(10, OS_OPT_TIME_DLY, &err);
+			/*wait until release key*/
+			while (1)
+			{
+				key = key_scan();
+				if (key != KEY_PC1_PRES && key != KEY_PC0_PRES)
+					break;
+				OSTimeDly(10, OS_OPT_TIME_DLY, &err);
+			}
 		}
 	}
 	/*weld simulate*/
-	else if (page_param->key3 == SGW && page_param->key2 == IOFF)
+	else if (page_param->key3 == SGW && page_param->key2 == IOFF && page_param->key1 == RDY)
 	{
 		OS_ERR err;
 		simulate_weld();

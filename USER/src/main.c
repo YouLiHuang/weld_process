@@ -76,8 +76,6 @@ OS_TCB USB_TaskTCB;
 CPU_STK USB_TASK_STK[USB_STK_SIZE];
 void usb_task(void *p_arg);
 
-#define MSG_LEN 1
-
 /* Private function prototypes -----------------------------------------------*/
 
 /*Error handling callbacks ---------------------------------------------------*/
@@ -86,12 +84,14 @@ static bool Temp_down_err_callback(uint8_t index);
 static bool Current_out_of_ctrl_callback(uint8_t index);
 static bool Thermocouple_recheck_callback(uint8_t index);
 static bool Transformer_over_heat_callback(uint8_t index);
+static bool Radiator_over_heat_callback(uint8_t index);
 /*Error reset callback -------------------------------------------------------*/
 static bool Thermocouple_reset_callback(uint8_t index);
 static bool Current_out_of_ctrl_reset_callback(uint8_t index);
 static bool Temp_up_reset_callback(uint8_t index);
 static bool Temp_down_reset_callback(uint8_t index);
 static bool Transformer_reset_callback(uint8_t index);
+static bool Radiator_reset_callback(uint8_t index);
 /*main task functions --------------------------------------------------------*/
 static void Power_on_check(void);
 static void Temp_updata_realtime(void);
@@ -122,10 +122,11 @@ const error_match_list match_list[] = {
 	{TEMP_DOWN, "f3", Temp_down_err_callback, Temp_down_reset_callback},
 	{VOLTAGE_TOO_HIGH, "f4", NULL, NULL},
 	{VOLTAGE_TOO_LOW, "f5", NULL, NULL},
-	{MCU_OVER_HEAT, "f6", NULL, NULL},
+	{RADIATOR, "f6", Radiator_over_heat_callback, Radiator_reset_callback},
 	{TRANSFORMER_OVER_HEAT, "f7", Transformer_over_heat_callback, Transformer_reset_callback},
 	{SENSOR_ERROR, "f8", Thermocouple_recheck_callback, Thermocouple_reset_callback},
-	{RADIATOR, "f9", NULL, NULL},
+	{MCU_OVER_HEAT, "f9", NULL, NULL},
+
 };
 
 static char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "UP_DOWN"};
@@ -159,7 +160,9 @@ static char *gain_name_list[] = {
 /*UART3 Resource Protection: Mutex (Temporarily Unused)*/
 OS_MUTEX ModBus_Mux;
 
-OS_Q key_msg;
+/*UART4 Resource Protection: Mutex (Temporarily Unused)*/
+OS_MUTEX PLOT_Mux;
+
 /*Thread Synchronization: Semaphore*/
 // START SEM
 OS_SEM WELD_START_SEM;
@@ -411,8 +414,10 @@ and the time slice length is 1 system clock beat, 1 ms
 
 	// Create a mutex - serial port resource access (temporarily unused)
 	OSMutexCreate(&ModBus_Mux, "MODBUS_Mutex", &err);
-	// Create a keys msg queue
-	OSQCreate(&key_msg, "keys msg", MSG_LEN, &err);
+
+	// Create a mutex - serial port resource access (temporarily unused)
+	OSMutexCreate(&PLOT_Mux, "plot mux", &err);
+
 	// WELD_START_SEM
 	OSSemCreate(&WELD_START_SEM, "weld start", 0, &err);
 	/*--------------------------------------------SEM use for UI--------------------------------------------*/
@@ -538,11 +543,18 @@ static bool Current_out_of_ctrl_callback(uint8_t index)
 }
 static bool Thermocouple_recheck_callback(uint8_t index)
 {
+
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
 	return true;
 }
 
 static bool Transformer_over_heat_callback(uint8_t index)
+{
+	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
+	return true;
+}
+
+static bool Radiator_over_heat_callback(uint8_t index)
 {
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
 	return true;
@@ -556,16 +568,24 @@ static bool Thermocouple_reset_callback(uint8_t index)
 {
 	bool ret;
 
-	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
-	err_ctrl->err_list[index]->state = false; // clear error state
-	ret = true;
+	if (Thermocouple_check() == true)
+	{
+		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
+		err_ctrl->err_list[index]->state = false; // clear error state
+		ret = true;
+	}
+	else
+	{
+		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
+		err_ctrl->err_list[index]->state = true; // active error state
+		ret = true;
+	}
 
 	return ret;
 }
 static bool Current_out_of_ctrl_reset_callback(uint8_t index)
 {
 
-	OS_ERR err;
 	bool ret = false;
 	if (GPIO_ReadInputDataBit(CURRENT_OVERLOAD_GPIO, CURRENT_PIN) != 0)
 	{
@@ -575,8 +595,7 @@ static bool Current_out_of_ctrl_reset_callback(uint8_t index)
 	}
 	else
 	{
-		err_get_type(err_ctrl, CURRENT_OUT_OT_CTRL)->state = true;
-		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		err_ctrl->err_list[index]->state = true; // active error state
 		ret = false;
 	}
 
@@ -584,10 +603,26 @@ static bool Current_out_of_ctrl_reset_callback(uint8_t index)
 }
 static bool Temp_up_reset_callback(uint8_t index)
 {
-	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
-	err_ctrl->err_list[index]->state = false; // clear error state
 
-	return true;
+	bool ret = false;
+
+	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
+	if (weld_controller->realtime_temp < weld_controller->alarm_temp[0] &&
+		weld_controller->realtime_temp < weld_controller->alarm_temp[1] &&
+		weld_controller->realtime_temp < weld_controller->alarm_temp[2])
+	{
+		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
+		err_ctrl->err_list[index]->state = false; // clear error state
+		ret = true;
+	}
+	else
+	{
+		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
+		err_ctrl->err_list[index]->state = true; // active error state
+		ret = false;
+	}
+
+	return ret;
 }
 static bool Temp_down_reset_callback(uint8_t index)
 {
@@ -598,19 +633,38 @@ static bool Temp_down_reset_callback(uint8_t index)
 }
 static bool Transformer_reset_callback(uint8_t index)
 {
-	OS_ERR err;
-	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) != 0)
+	bool ret = false;
+	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) != 1)
 	{
 		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
 		err_ctrl->err_list[index]->state = false; // clear error state
+		ret = true;
 	}
 	else
 	{
-		err_get_type(err_ctrl, TRANSFORMER_OVER_HEAT)->state = true;
-		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
+		err_ctrl->err_list[index]->state = true; // active error state
 	}
 
-	return true;
+	return ret;
+}
+
+static bool Radiator_reset_callback(uint8_t index)
+{
+	bool ret;
+	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) != 1)
+	{
+		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
+		err_ctrl->err_list[index]->state = false; // clear error state
+		ret = true;
+	}
+	else
+	{
+		command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
+		err_ctrl->err_list[index]->state = true; // active error state
+		ret = true;
+	}
+	return ret;
 }
 
 /*--------------------------------------------------------------------------------------*/
@@ -677,8 +731,8 @@ static void Power_on_check(void)
 	start_temp = temp_convert(current_Thermocouple);
 
 	/*PWM ON*/
-	TIM_SetCompare1(TIM1, PD_MAX / 6);
-	TIM_SetCompare1(TIM4, PD_MAX / 6);
+	TIM_SetCompare1(TIM1, PD_MAX / 4);
+	TIM_SetCompare1(TIM4, PD_MAX / 4);
 	TIM_Cmd(TIM4, ENABLE);
 	TIM_Cmd(TIM1, ENABLE);
 
@@ -759,7 +813,7 @@ static bool Thermocouple_check(void)
 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
 	}
 
-	return !check_state;
+	return check_state;
 }
 
 /**
@@ -807,37 +861,38 @@ static void Overload_check(void)
 		if (GPIO_ReadInputDataBit(CURRENT_OVERLOAD_GPIO, CURRENT_PIN) == 0)
 		{
 			err_get_type(err_ctrl, CURRENT_OUT_OT_CTRL)->state = true;
-
-			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 		}
 	}
 	/*transfoemer*/
-	//	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 0)
-	//	{
-	//		OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
-	//		if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 0)
-	//		{
-	//			err_get_type(err_ctrl, TRANSFORMER_OVER_HEAT)->state = true;
-	//			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-	//		}
-	//	}
+	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 1)
+	{
+		OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
+		if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RECTIFICATION_PIN) == 1)
+		{
+			err_get_type(err_ctrl, TRANSFORMER_OVER_HEAT)->state = true;
+		}
+	}
 	/*radiator*/
-	//	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 0)
-	//	{
-	//		OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
-	//		if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 0)
-	//		{
-	//			err_get_type(err_ctrl, RADIATOR)->state = true;
-	//			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-	//		}
-	//	}
+	if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 1)
+	{
+		OSTimeDlyHMSM(0, 0, 0, 15, OS_OPT_TIME_PERIODIC, &err);
+		if (GPIO_ReadInputDataBit(TEMP_OVERLOAD_GPIO, RADIATOR_PIN) == 1)
+		{
+			err_get_type(err_ctrl, RADIATOR)->state = true;
+		}
+	}
 
 	/*temp overload protect 1*/
 	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 	if (weld_controller->realtime_temp > USER_SET_MAX_TEMP)
 	{
 		err_get_type(err_ctrl, TEMP_UP)->state = true;
-		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+	}
+
+	/*sensor maybe disconnect*/
+	if (weld_controller->realtime_temp < ROOM_TEMP - 5)
+	{
+		Thermocouple_check();
 	}
 
 	/*temp overload protect 2*/
@@ -847,7 +902,6 @@ static void Overload_check(void)
 		if (ADC_Value_avg(THERMOCOUPLE_CHANNEL_E) > ADC_SAMPLE_LIMIT)
 		{
 			err_get_type(err_ctrl, TEMP_UP)->state = true;
-			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 		}
 
 		break;
@@ -856,7 +910,6 @@ static void Overload_check(void)
 		if (ADC_Value_avg(THERMOCOUPLE_CHANNEL_J) > ADC_SAMPLE_LIMIT)
 		{
 			err_get_type(err_ctrl, TEMP_UP)->state = true;
-			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 		}
 
 		break;
@@ -865,10 +918,14 @@ static void Overload_check(void)
 		if (ADC_Value_avg(THERMOCOUPLE_CHANNEL_K) > ADC_SAMPLE_LIMIT)
 		{
 			err_get_type(err_ctrl, TEMP_UP)->state = true;
-			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 		}
 
 		break;
+	}
+
+	if (err_occur(err_ctrl))
+	{
+		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 	}
 }
 
@@ -884,7 +941,6 @@ static void Temp_updata_realtime()
 	OS_ERR err;
 
 	weld_controller->realtime_temp = temp_convert(current_Thermocouple);
-
 	switch (current_Thermocouple->type)
 	{
 	case E_TYPE:
@@ -1448,6 +1504,7 @@ static void page_process(Page_ID id)
 		}
 
 #endif
+		OS_ERR err;
 		uint16_t total_time = 0;	 // 总焊接时长
 		uint16_t delta_tick = 0;	 // 坐标间隔
 		uint16_t total_tick_len = 0; // 横坐标总长度
@@ -1495,7 +1552,9 @@ static void page_process(Page_ID id)
 		command_set_comp_val("step2", "val", temp_draw_ctrl->display_temp[1]);
 
 		/*display Real-time temperature*/
+		OSMutexPend(&PLOT_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		Temp_updata_realtime();
+		OSMutexPost(&PLOT_Mux, OS_OPT_POST_NONE, &err);
 	}
 	break;
 
@@ -1579,12 +1638,14 @@ static void page_process(Page_ID id)
 void error_task(void *p_arg)
 {
 	OS_ERR err;
+	bool err_wait = false;
 
 	while (1)
 	{
 		OSSemPend(&ERROR_HANDLE_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
 		if (OS_ERR_NONE == err)
 		{
+			OSSemSet(&ERROR_HANDLE_SEM, 0, &err);
 
 			/*PWM OFF / Timer Reset*/
 			TIM_SetCompare1(TIM1, 0);
@@ -1606,17 +1667,15 @@ void error_task(void *p_arg)
 			RLY11 = 0;	// Valve2 off
 			RLY12 = 0;	// Valve3 off
 
-			/*err handle*/
-			Page_to(page_param, ALARM_PAGE);
-			page_param->id = ALARM_PAGE;
-			for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
-			{
-				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
-					err_ctrl->err_list[i]->error_callback(i);
-			}
+			/*wait hanlde*/
+			err_wait = true;
+		}
 
+		/*err handle*/
+		while (err_wait)
+		{
 			/*wait until user reset*/
-			OSSemPend(&ALARM_RESET_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+			OSSemPend(&ALARM_RESET_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 			if (err == OS_ERR_NONE)
 			{
 				ERROR1 = 0; // error signal reset
@@ -1625,7 +1684,22 @@ void error_task(void *p_arg)
 					if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->reset_callback != NULL)
 						err_ctrl->err_list[i]->reset_callback(i);
 				}
+
+				/*exit*/
+				err_clear(err_ctrl);
+				err_wait = false;
+				OSSemSet(&ERROR_HANDLE_SEM, 0, &err);
+				break;
 			}
+
+			Page_to(page_param, ALARM_PAGE);
+			page_param->id = ALARM_PAGE;
+			for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
+			{
+				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
+					err_ctrl->err_list[i]->error_callback(i);
+			}
+			OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err);
 		}
 
 		OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_PERIODIC, &err);
@@ -1655,30 +1729,33 @@ void main_task(void *p_arg)
 		Overload_check();
 #endif
 
-		Thermocouple_check();
+		if (err_occur(err_ctrl))
+		{
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		}
 
 		/*trigger by exit irq(keys are pressed)*/
 		OSSemPend(&WELD_START_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
-			key = key_scan();
-			if (key == KEY_PC0_PRES || key == KEY_PC1_PRES)
+			/*only check sensor before weld(avoid temp display error)*/
+			switch (start_type)
 			{
-				/*only check sensor before weld(avoid temp display error)*/
-				switch (start_type)
-				{
 
-				case KEY0:
-					start_type = START_IDEAL;
-					Thermocouple_check();
+			case KEY0:
+				start_type = START_IDEAL;
+				if (Thermocouple_check() == true)
+				{
 					welding_process(KEY0);
-					break;
-				case KEY1:
-					start_type = START_IDEAL;
-					Thermocouple_check();
-					welding_process(KEY0);
-					break;
 				}
+				break;
+			case KEY1:
+				start_type = START_IDEAL;
+				if (Thermocouple_check() == true)
+				{
+					welding_process(KEY1);
+				}
+				break;
 			}
 		}
 
