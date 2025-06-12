@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-12 09:08:34
+ * @LastEditTime: 2025-06-12 20:11:14
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -1719,7 +1719,6 @@ void main_task(void *p_arg)
 {
 
 	OS_ERR err;
-	uint8_t key;
 	Power_on_check();
 	while (1)
 	{

@@ -12,7 +12,6 @@
 #define OVER_LOAD_CHECK 1 // Overload protection enable
 #define POWER_ON_CHECK 1  // Boot detection enable
 
-
 /* Algorithm enable ------------------------------------------------------------------------------*/
 #define COMPENSATION 0  // Compensation e nable
 #define KALMAN_FILTER 0 // filter enable
@@ -41,6 +40,9 @@
 #define TRANSITION_TIME_CORRECT 2.9  // coefficients of heat compensation time - Adjustment range
 #define DEFAULT_GAIN1 0.7            // Determine the compensation strength
 #define DEFAULT_GAIN2 0.64           // Determine the compensation time
+#define DEFAULT_SLOPE 1.3
+#define DEFAULT_INTERCEPT 1060
+#define FINAL_DUTY_LIMIT 2500
 
 #define DEFAULT_RISE_DUTY (PD_MAX * 0.5)
 #define MAX_RISE_STEP_DUTY (PD_MAX * 0.82)

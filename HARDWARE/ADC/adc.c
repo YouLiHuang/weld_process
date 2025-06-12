@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-03-12 20:18:54
+ * @LastEditTime: 2025-06-12 20:35:18
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -21,11 +21,11 @@ volatile unsigned short m_ADCValue[ADC_SAMPLE_PNUM][ADC_SAMPLE_CNUM] = {0}; // �
 
 /**
  * @description: ADC DAM config ，continuous sampling mode and DMA loop mode for data transmission
- * PCLK2=HCLK/APB2 Prescale2=168M/2=84M  ADC clock:PCLK2/4=84M/4=21M
- * there are 6 channels so，total time is：{12cycle（convert time）+10cycle（channle delay）+56cycle（sample time）}*6=468cycle
- * Therefore, the frequency of completing a round of sampling is 21M/468=45KHz
+ * PCLK2=HCLK/APB2 Prescale2=168M/4=42M  ADC clock:PCLK2/2=42M/2=21M
+ * there are 6 channels so，total time is：{12cycle（convert time）+5cycle（channle delay）+56cycle（sample time）}*6=438cycle
+ * Therefore, the frequency of completing a round of sampling is 21M/438=48KHz
  * DMA calculates the average value of every 15 points,
- * so for each point, the frequency of obtaining an effective value is about 3KHz.
+ * so for each channel, the frequency of obtaining an effective value is about 3KHz.
  * @return {*}
  */
 void ADC_DMA_INIT(void)
@@ -52,9 +52,9 @@ void ADC_DMA_INIT(void)
 	/* ADC Init-------------------------------------------------------------------------*/
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
 	ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent;
-	ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div4;
+	ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div2;
 	ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled;
-	ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_10Cycles;
+	ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;
 	ADC_CommonInit(&ADC_CommonInitStructure);
 
 	ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;

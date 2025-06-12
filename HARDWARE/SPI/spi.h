@@ -12,7 +12,7 @@
 #include "sys.h"
 #include "includes.h"
 
-#define RESET_SPI_DATA 1
+#define RESET_SPI_DATA 0
 #define ALARM_MAX_TEMP 700
 
 /*------------------mem config------------------*/

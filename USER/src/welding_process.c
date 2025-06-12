@@ -115,8 +115,8 @@ weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl)
 		ctrl->temp_gain1 = DEFAULT_GAIN1;
 		ctrl->temp_gain2 = DEFAULT_GAIN2;
 
-		ctrl->ss_coefficient.slope = 1.3;
-		ctrl->ss_coefficient.intercept = 1060;
+		ctrl->ss_coefficient.slope = DEFAULT_SLOPE;
+		ctrl->ss_coefficient.intercept = DEFAULT_INTERCEPT;
 
 		ctrl->user_hook_callback = stop_weld;
 
@@ -608,6 +608,8 @@ static void First_Step()
 	/*Steady-state estimation output (coefficients can be added here for correction)*/
 	weld_controller->final_duty = (corrct_factor.base + corrct_factor.amplitude * weld_controller->temp_gain2) *
 								  (ss.slope * weld_controller->weld_temp[0] + ss.intercept);
+	if (weld_controller->final_duty > FINAL_DUTY_LIMIT)
+		weld_controller->final_duty = FINAL_DUTY_LIMIT;
 
 #if PID_DEBUG
 	weld_controller->pid_ctrl = pid_ctrl;
@@ -704,6 +706,8 @@ static void Second_Step()
 	weld_controller->final_duty = (corrct_factor.base + corrct_factor.amplitude * weld_controller->temp_gain2) *
 								  (ss.slope * weld_controller->weld_temp[1] + ss.intercept);
 	fast_rise_duty = ss.slope * weld_controller->weld_temp[1] + ss.intercept;
+	if (weld_controller->final_duty > FINAL_DUTY_LIMIT)
+		weld_controller->final_duty = FINAL_DUTY_LIMIT;
 
 #if PID_DEBUG
 	weld_controller->pid_ctrl->kp = pid_ctrl_debug->kp;
