@@ -958,21 +958,21 @@ static void Temp_updata_realtime()
 
 		if (page_param->id == WAVE_PAGE)
 		{
-			command_set_comp_val("step2", "val", weld_controller->realtime_temp);
+			command_set_comp_val("step3", "val", weld_controller->realtime_temp);
 		}
 		else
 		{
-			command_set_comp_val("temp22", "val", weld_controller->realtime_temp);
+			command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
 		}
 		break;
 	case J_TYPE:
 		if (page_param->id == WAVE_PAGE)
 		{
-			command_set_comp_val("step1", "val", weld_controller->realtime_temp);
+			command_set_comp_val("step33", "val", weld_controller->realtime_temp);
 		}
 		else
 		{
-			command_set_comp_val("temp11", "val", weld_controller->realtime_temp);
+			command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
 		}
 		break;
 
