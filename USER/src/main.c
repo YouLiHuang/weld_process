@@ -890,11 +890,7 @@ static void Overload_check(void)
 	}
 
 	/*sensor maybe disconnect*/
-	if (weld_controller->realtime_temp < ROOM_TEMP - 5)
-	{
-		Thermocouple_check();
-	}
-
+	Thermocouple_check();
 	/*temp overload protect 2*/
 	switch (current_Thermocouple->type)
 	{

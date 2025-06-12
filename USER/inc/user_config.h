@@ -27,7 +27,7 @@
 #define HOST_WELD_CTRL 1        // Upper computer control welding enable
 
 /* Temperature control ---------------------------------------------------------------------------*/
-#define STABLE_ERR 5 // Steady-state error compensation
+#define STABLE_ERR 8 // Steady-state error compensation
 #define USER_FIRST_SET_MAX 300
 #define USER_SET_MAX_TEMP 650.0 // User-set maximum temperature
 #define USER_SET_MIN_TEMP 200.0 // User-set minimum temperature

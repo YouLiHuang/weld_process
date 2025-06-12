@@ -356,9 +356,12 @@ static void down_temp_line()
 			break;
 
 		/*stop draw start another weld*/
-		key = key_scan();
-		if (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
-			break;
+		if (page_param->key3 == SGW)
+		{
+			key = key_scan();
+			if (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
+				break;
+		}
 
 		temp = temp_convert(current_Thermocouple); // temp sample
 		if (temp > MAX_TEMP_DISPLAY)			   // limit
