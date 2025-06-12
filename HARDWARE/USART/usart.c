@@ -36,7 +36,6 @@ extern OS_SEM PAGE_UPDATE_SEM;
 extern OS_SEM COMP_VAL_GET_SEM;
 extern OS_SEM COMP_STR_GET_SEM;
 extern OS_SEM ALARM_RESET_SEM;
-extern OS_SEM HOST_WELD_CTRL_SEM; // 上位机开启焊接信号
 extern OS_SEM SENSOR_UPDATE_SEM;  // 热电偶校准信号
 
 /*焊接控制器*/

@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-11 20:19:10
+ * @LastEditTime: 2025-06-12 09:08:34
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -95,7 +95,7 @@ static bool Transformer_reset_callback(uint8_t index);
 /*main task functions --------------------------------------------------------*/
 static void Power_on_check(void);
 static void Temp_updata_realtime(void);
-static void Thermocouple_check(void);
+static bool Thermocouple_check(void);
 static void voltage_check(void);
 static void Overload_check(void);
 /*screen task functions -------------------------------------------------------*/
@@ -173,8 +173,6 @@ OS_SEM COMP_STR_GET_SEM;
 OS_SEM ALARM_RESET_SEM;
 // Thermocouple calibration signal
 OS_SEM SENSOR_UPDATE_SEM;
-// The upper computer turns on the welding signal
-OS_SEM HOST_WELD_CTRL_SEM;
 // err sem
 OS_SEM ERROR_HANDLE_SEM;
 // data save sem
@@ -426,9 +424,6 @@ and the time slice length is 1 system clock beat, 1 ms
 	// Thermocouple calibration signal
 	OSSemCreate(&SENSOR_UPDATE_SEM, "SENSOR_UPDATE_SEM", 0, &err);
 
-	/*--------------------------------------------SEM use for host computer----------------------------------*/
-	// 创建上位机开启焊接信号量
-	OSSemCreate(&HOST_WELD_CTRL_SEM, "HOST_WELD_CTRL_SEM", 0, &err);
 	/*--------------------------------------------other SEM--------------------------------------------------*/
 	//  创建报警复位信号量
 	OSSemCreate(&ALARM_RESET_SEM, "alarm reset", 0, &err);
@@ -711,7 +706,7 @@ static void Power_on_check(void)
  * @description: sensor check
  * @return {*}
  */
-static void Thermocouple_check(void)
+static bool Thermocouple_check(void)
 {
 
 	OS_ERR err;
@@ -763,6 +758,8 @@ static void Thermocouple_check(void)
 		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
 	}
+
+	return !check_state;
 }
 
 /**
@@ -1612,7 +1609,7 @@ void error_task(void *p_arg)
 			/*err handle*/
 			Page_to(page_param, ALARM_PAGE);
 			page_param->id = ALARM_PAGE;
-			for (uint8_t i = 0; i < err_ctrl->max_len; i++)
+			for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
 			{
 				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
 					err_ctrl->err_list[i]->error_callback(i);
@@ -1623,7 +1620,7 @@ void error_task(void *p_arg)
 			if (err == OS_ERR_NONE)
 			{
 				ERROR1 = 0; // error signal reset
-				for (uint8_t i = 0; i < err_ctrl->max_len; i++)
+				for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
 				{
 					if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->reset_callback != NULL)
 						err_ctrl->err_list[i]->reset_callback(i);
@@ -1653,12 +1650,15 @@ void main_task(void *p_arg)
 	while (1)
 	{
 
+		/*when the main task is ideal , check the sensor and current*/
 #if OVER_LOAD_CHECK
 		Overload_check();
 #endif
 
+		Thermocouple_check();
+
 		/*trigger by exit irq(keys are pressed)*/
-		OSSemPend(&WELD_START_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+		OSSemPend(&WELD_START_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
 			key = key_scan();

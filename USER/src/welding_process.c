@@ -55,7 +55,6 @@ extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN]; // Temperature preservation
 /*--------------------------------------------------------------------------------------------------------------------------------*/
 
 extern Thermocouple *current_Thermocouple; // The current thermocouple object
-extern OS_SEM HOST_WELD_CTRL_SEM;		   // The upper computer turns on the welding signal
 
 /*-------------------------------------------------------------- USB---------------------------------------------------------------*/
 extern OS_SEM DATA_SAVE_SEM;
