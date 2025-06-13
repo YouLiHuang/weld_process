@@ -166,9 +166,9 @@ void Load_data_from_mem(void)
 
 	// 软起动
 	delay_ms(2000);
-	TRAN1 = 1;
+	RLY_TRAN = 1;
 	delay_ms(2000);
-	TRAN1 = 0;
+	RLY_TRAN = 0;
 	// 从内存加载首个GP值
 	remember_array = 0;
 	remember_array = SPI_Load_Word(0);

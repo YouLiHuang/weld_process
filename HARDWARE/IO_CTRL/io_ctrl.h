@@ -38,21 +38,35 @@
 #define KEY_Res_PRES 9
 
 /*输出IO*/
-#define RLY10 PDout(0)  // 气阀1
-#define RLY11 PDout(1)  // 气阀2
-#define RLY12 PDout(2)  // 气阀3
-#define OVER PDout(3)   // 结束信号
-#define ERROR1 PDout(4) // 出错信号
-#define CUNT PDout(5)   // 计数
-#define RLY13 PDout(6)  // 交流接触器
-#define TRAN1 PDout(7)  // 变压器（交流接触器）
+#define RLY_AIR0 PDout(0)      // Air valve0
+#define RLY_AIR1 PDout(1)      // Air valv1
+#define RLY_AIR2 PDout(2)      // Air valve2
+#define RLY_OVER PDout(3)      // OVER
+#define RLY_ERR PDout(4)       // ERROR
+#define RLY_CNT PDout(5)       // CNT
+#define RLY_CONTACTOR PDout(6) // contactor
+#define RLY_TRAN PDout(7)      // transformer
+#define RLY_RESERVE0 PDout(8)  // reserve0
+#define RLY_RESERVE1 PDout(9)  // reserve1
+#define RLY_RESERVE2 PDout(10) // reserve2
+#define RLY_RESERVE3 PDout(11) // reserve3
+
+#define RLY1_AIR0_READ PDin(0)     // Air valve0
+#define RLY1_AIR1_READ PDin(1)     // Air valv1
+#define RLY1_AIR2_READ PDin(2)     // Air valve2
+#define RLY_OVER_READ PDin(3)      // OVER
+#define RLY_ERR_READ PDin(4)       // ERROR
+#define RLY_CNT_READ PDin(5)       // CNT
+#define RLY_CONTACTOR_READ PDin(6) // contactor
+#define RLY_TRAN_READ PDin(7)      // transformer
+#define RLY_RESERVE0_READ PDin(8)  // reserve0
+#define RLY_RESERVE1_READ PDin(9)  // reserve1
+#define RLY_RESERVE2_READ PDin(10) // reserve2
+#define RLY_RESERVE3_READ PDin(11) // reserve3
+
 /*AT25控制IO*/
 #define CSN PBout(12) // AT25 cs
-/*预留输出IO*/
-#define OUT1 PDout(8)  // 输出1
-#define OUT2 PDout(9)  // 输出2
-#define OUT3 PDout(10) // 输出3
-#define OUT4 PDout(11) // 输出4
+
 
 typedef enum START_TYPE
 {

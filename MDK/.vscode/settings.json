@@ -69,7 +69,8 @@
         "ff.h": "c",
         "usb_core.h": "c",
         "io_ctrl.h": "c",
-        "pwm.h": "c"
+        "pwm.h": "c",
+        "modbus_app.h": "c"
     },
     // 头部注释
     "fileheader.customMade": {

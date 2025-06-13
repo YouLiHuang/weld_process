@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-13 09:22:31
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-13 09:35:49
+ * @LastEditTime: 2025-06-13 12:22:56
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -523,11 +523,11 @@ static void Weld_Preparation()
 	/*------------------------------------------绘图部分------------------------------------------*/
 	reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
 	/*------------------------------------------IO控制-------------------------------------------*/
-	OVER = 0;  // 1为焊接结束信号
-	RLY10 = 1; // 气阀1启动
-	RLY11 = 1; // 气阀2启动
-	RLY12 = 1; // 气阀3启动
-	CUNT = 0;  // 1为计数，0清除计数信号
+	RLY_OVER = 0;  // 1为焊接结束信号
+	RLY_AIR0 = 1; // 气阀1启动
+	RLY_AIR1 = 1; // 气阀2启动
+	RLY_AIR2 = 1; // 气阀3启动
+	RLY_CNT = 0;  // 1为计数，0清除计数信号
 
 	/*------------------------------------------pwm部分-------------------------------------------*/
 	uint16_t tmp_ccmr1 = 0; // 重新设定pwm模式
@@ -635,7 +635,7 @@ static void First_Step()
 	while (weld_controller->step_time_tick < weld_controller->weld_time[1])
 	{
 		/*alarm*/
-		// over temp
+		// RLY_OVER temp
 		if (weld_controller->realtime_temp > weld_controller->alarm_temp[0])
 		{
 			stop_weld();
@@ -920,11 +920,11 @@ static void End_of_Weld()
 	command_set_comp_val("param_page.count", "val", weld_controller->weld_count);
 	command_set_comp_val("temp_page.count", "val", weld_controller->weld_count);
 
-	RLY10 = 0; // 气阀1关闭
-	RLY11 = 0; // 气阀2关闭
-	RLY12 = 0; // 气阀3关闭
-	CUNT = 1;  // 1为计数，0清除计数信号
-	OVER = 1;  // 1为焊接结束信号
+	RLY_AIR0 = 0; // 气阀1关闭
+	RLY_AIR1 = 0; // 气阀2关闭
+	RLY_AIR2 = 0; // 气阀3关闭
+	RLY_CNT = 1;  // 1为计数，0清除计数信号
+	RLY_OVER = 1;  // 1为焊接结束信号
 }
 
 /**
@@ -934,11 +934,11 @@ static void End_of_Weld()
 static void simulate_weld()
 {
 	/*IO控制*/
-	RLY10 = 1; // 气阀1启动
-	RLY11 = 1; // 气阀2启动
-	RLY12 = 1; // 气阀3启动
-	CUNT = 0;  // 1为计数，0清除计数信号
-	OVER = 0;  // 1为焊接结束信号
+	RLY_AIR0 = 1; // 气阀1启动
+	RLY_AIR1 = 1; // 气阀2启动
+	RLY_AIR2 = 1; // 气阀3启动
+	RLY_CNT = 0;  // 1为计数，0清除计数信号
+	RLY_OVER = 0;  // 1为焊接结束信号
 
 	weld_controller->step_time_tick = 0; // 实时控制器阶段性时间刻度复位
 	weld_controller->weld_time_tick = 0; // 焊接周期时间刻度复位
@@ -948,11 +948,11 @@ static void simulate_weld()
 	TIM_Cmd(TIM3, DISABLE);				 // 关闭时间统计计数器
 	weld_controller->weld_time_tick = 0; // 焊接周期时间刻度复位
 
-	RLY10 = 0; // 气阀1关闭
-	RLY11 = 0; // 气阀2关闭
-	RLY12 = 0; // 气阀3关闭
-	CUNT = 1;  // 1为计数，0清除计数信号
-	OVER = 1;  // 1为焊接结束信号
+	RLY_AIR0 = 0; // 气阀1关闭
+	RLY_AIR1 = 0; // 气阀2关闭
+	RLY_AIR2 = 0; // 气阀3关闭
+	RLY_CNT = 1;  // 1为计数，0清除计数信号
+	RLY_OVER = 1;  // 1为焊接结束信号
 
 	/*+++根据计数模式更新计数值+++*/
 	if (weld_controller->Count_Dir == UP)
@@ -1084,7 +1084,7 @@ void welding_process(START_TYPE type)
 				OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
 
 				/*weld interval*/
-				OVER = 0;
+				RLY_OVER = 0;
 				OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 			}
 
@@ -1150,7 +1150,7 @@ void welding_process(START_TYPE type)
 			OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
 
 			/*weld interval*/
-			OVER = 0;
+			RLY_OVER = 0;
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 
 			/*wait until release key*/
@@ -1172,6 +1172,6 @@ void welding_process(START_TYPE type)
 		simulate_weld();
 		/*weld interval*/
 		OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
-		OVER = 0;
+		RLY_OVER = 0;
 	}
 }

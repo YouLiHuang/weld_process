@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-13 09:59:58
+ * @LastEditTime: 2025-06-13 12:23:28
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -1678,10 +1678,10 @@ void error_task(void *p_arg)
 			TIM3->CNT = 0;
 			TIM5->CNT = 0;
 
-			ERROR1 = 1; // error signal
-			RLY10 = 0;	// Valve1 off
-			RLY11 = 0;	// Valve2 off
-			RLY12 = 0;	// Valve3 off
+			RLY_ERR = 1; // error signal
+			RLY_AIR0 = 0;	// Valve1 off
+			RLY_AIR1 = 0;	// Valve2 off
+			RLY_AIR2 = 0;	// Valve3 off
 
 			/*wait hanlde*/
 			err_wait = true;
@@ -1694,7 +1694,7 @@ void error_task(void *p_arg)
 			OSSemPend(&ALARM_RESET_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 			if (err == OS_ERR_NONE)
 			{
-				ERROR1 = 0; // error signal reset
+				RLY_ERR = 0; // error signal reset
 				for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
 				{
 					if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->reset_callback != NULL)
