@@ -1,3 +1,12 @@
+/*
+ * @Author: huangyouli.scut@gmail.com
+ * @Date: 2025-06-13 09:22:31
+ * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
+ * @LastEditTime: 2025-06-13 09:35:49
+ * @Description:
+ *
+ * Copyright (c) 2025 by huangyouli, All Rights Reserved.
+ */
 #include "user_config.h"
 #include "welding_process.h"
 #include "includes.h"
@@ -19,9 +28,9 @@ extern pid_feedforword_ctrl *pid_ctrl;
 #endif
 
 /*---------------------------------------------------Real-time control---------------------------------------------------------*/
-volatile WELD_MODE welding_flag = IDEAL_MODE;  // Welding different stage markers
-extern weld_ctrl *weld_controller;			   // Welding controllers
-Correction_factor corrct_factor = {0.1, 1.25}; // Steady-state fitting curve correction coefficient
+static volatile WELD_MODE welding_flag = IDEAL_MODE; // Welding different stage markers
+extern weld_ctrl *weld_controller;					 // Welding controllers
+Correction_factor corrct_factor = {0.1, 1.25};		 // Steady-state fitting curve correction coefficient
 /*------------------------------------------------------------------------------------------------------------------------------*/
 
 /*-----------------------------------------------Compatible touchscreen data interface------------------------------------------*/
@@ -36,11 +45,6 @@ extern Error_ctrl *err_ctrl;
 /*-------------------------------------------------------------------------------------------------------------------------------*/
 
 /*--------------------------------------------------Control algorithms-----------------------------------------------------------*/
-#if COMPENSATION
-#include "tempcomp.h"
-extern last_temp_sotre lasttemp;
-dynamical_comp dynam_comp;
-#endif
 
 #if KALMAN_FILTER
 #include "Kalman.h"
@@ -49,13 +53,16 @@ Kalman kfp;
 #endif
 
 /*-----------------------------------------------------temp plot-----------------------------------------------------------------*/
+// user
 extern Temp_draw_ctrl *temp_draw_ctrl;				 // Drawing controllers
 extern Page_Param *page_param;						 // Real-time page parameters
 extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN]; // Temperature preservation buffer
+// os
 extern OS_MUTEX PLOT_Mux;
+extern OS_SEM PLOT_SEM;
 /*--------------------------------------------------------------------------------------------------------------------------------*/
-
-extern Thermocouple *current_Thermocouple; // The current thermocouple object
+// The current thermocouple object
+extern Thermocouple *current_Thermocouple;
 
 /*-------------------------------------------------------------- USB---------------------------------------------------------------*/
 extern OS_SEM DATA_SAVE_SEM;
@@ -114,6 +121,8 @@ weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl)
 		}
 		ctrl->temp_gain1 = DEFAULT_GAIN1;
 		ctrl->temp_gain2 = DEFAULT_GAIN2;
+
+		ctrl->temp_comp = STABLE_ERR;
 
 		ctrl->ss_coefficient.slope = DEFAULT_SLOPE;
 		ctrl->ss_coefficient.intercept = DEFAULT_INTERCEPT;
@@ -1129,8 +1138,12 @@ void welding_process(START_TYPE type)
 
 			/*plot temp line(down)*/
 			if (page_param->id == WAVE_PAGE)
-			{
 				down_temp_line();
+			else /*not in wave page, notify plot task to plot temp line*/
+			{
+				/*avoid send one more time, which will plot one more line*/
+				OSSemSet(&PLOT_SEM, 0, &err);
+				OSSemPost(&PLOT_SEM, OS_OPT_POST_ALL, &err);
 			}
 
 			/*save data to disk*/
@@ -1146,6 +1159,8 @@ void welding_process(START_TYPE type)
 				key = key_scan();
 				if (key != KEY_PC1_PRES && key != KEY_PC0_PRES)
 					break;
+
+				// main task pend
 				OSTimeDly(10, OS_OPT_TIME_DLY, &err);
 			}
 		}

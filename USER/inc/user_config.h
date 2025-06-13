@@ -13,7 +13,6 @@
 #define POWER_ON_CHECK 1  // Boot detection enable
 
 /* Algorithm enable ------------------------------------------------------------------------------*/
-#define COMPENSATION 0  // Compensation e nable
 #define KALMAN_FILTER 0 // filter enable
 
 /* Functional enable -----------------------------------------------------------------------------*/

@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-15 19:17:48
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-11 08:04:55
+ * @LastEditTime: 2025-06-13 09:34:17
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -17,31 +17,30 @@
 #include "PID.h"
 #include "usart.h"
 #include "protect.h"
-#include "Kalman.h"
 
 #include "touchscreen.h"
 #include "dynamic_correct.h"
-
-extern int err_comp;
-
-/*实时控制*/
-extern weld_ctrl *weld_controller;
-/*温度补偿部分*/
+#if KALMAN_FILTER
+#include "Kalman.h"
 extern Kalman kfp;
 uint16_t kalman_comp_temp = 0;
+#endif
 
-/*错误处理*/
-extern Error_ctrl *err_ctrl;	// 错误注册表
-extern OS_SEM ERROR_HANDLE_SEM; // 错误信号
+/*real-time control*/
+extern weld_ctrl *weld_controller;
 
-/*绘图专用数据*/
+/*error handle*/
+extern Error_ctrl *err_ctrl;
+extern OS_SEM ERROR_HANDLE_SEM;
+
+/*plot*/
 extern Temp_draw_ctrl *temp_draw_ctrl;
-uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN] = {0}; // Temperature preservation buffer
+uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN] = {0};
 
-/*热电偶*/
+/*sensor*/
 extern Thermocouple *current_Thermocouple;
 
-/*占空比数据记录——用于后续动态控制*/
+/*dynamic algorithm*/
 extern uint16_t PWM_Record[500];
 extern uint16_t record_index;
 extern uint16_t Stable_Threshold_cnt;
@@ -210,7 +209,7 @@ void TIM5_IRQHandler(void)
 			break;
 			/*--------------------------------------------------------------------first step----------------------------------------------------------------------*/
 		case FIRST_STATE:
-			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + err_comp,
+			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + weld_controller->temp_comp,
 														 weld_controller->realtime_temp,
 														 weld_controller->Duty_Cycle,
 														 weld_controller->pid_ctrl);
@@ -233,7 +232,7 @@ void TIM5_IRQHandler(void)
 				}
 				else
 				{
-					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
+					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + weld_controller->temp_comp,
 																 weld_controller->realtime_temp,
 																 weld_controller->Duty_Cycle,
 																 weld_controller->pid_ctrl);
@@ -241,7 +240,7 @@ void TIM5_IRQHandler(void)
 			}
 			else
 			{
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + STABLE_ERR,
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + weld_controller->temp_comp,
 															 weld_controller->realtime_temp,
 															 weld_controller->Duty_Cycle,
 															 weld_controller->pid_ctrl);

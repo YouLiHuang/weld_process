@@ -21,7 +21,7 @@
 
 /* Includes ------------------------------------------------------------------ */
 #include <string.h>
-#include "usbh_msc_usr.h"
+#include "usbh_app.h"
 #include "usb_bsp.h"
 
 #include "user_config.h"

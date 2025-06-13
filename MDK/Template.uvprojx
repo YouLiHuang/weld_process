@@ -10,14 +10,14 @@
       <TargetName>Template</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pCCUsed>5060960::V5.06 update 7 (build 960)::.\ARMCC</pCCUsed>
+      <pCCUsed>5060750::V5.06 update 6 (build 750)::ARMCC</pCCUsed>
       <uAC6>0</uAC6>
       <TargetOption>
         <TargetCommonOption>
           <Device>STM32F407ZG</Device>
           <Vendor>STMicroelectronics</Vendor>
-          <PackID>Keil.STM32F4xx_DFP.3.0.0</PackID>
-          <PackURL>https://www.keil.com/pack/</PackURL>
+          <PackID>Keil.STM32F4xx_DFP.2.13.0</PackID>
+          <PackURL>http://www.keil.com/pack</PackURL>
           <Cpu>IROM(0x08000000,0x100000) IRAM(0x20000000,0x20000) IRAM2(0x10000000,0x10000) CPUTYPE("Cortex-M4") FPU2 CLOCK(12000000) ELITTLE</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
           <StartupFile></StartupFile>
@@ -184,6 +184,7 @@
             <hadXRAM>0</hadXRAM>
             <uocXRam>0</uocXRam>
             <RvdsVP>2</RvdsVP>
+            <RvdsMve>0</RvdsMve>
             <hadIRAM2>1</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
@@ -535,6 +536,11 @@
               <FileName>modebus_bsp.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\MODBUS\modebus_bsp.c</FilePath>
+            </File>
+            <File>
+              <FileName>usb_bsp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\USB\usb_bsp.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -952,11 +958,6 @@
               <FilePath>..\USER\src\PID.c</FilePath>
             </File>
             <File>
-              <FileName>Kalman.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\USER\src\Kalman.c</FilePath>
-            </File>
-            <File>
               <FileName>filter.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\USER\src\filter.c</FilePath>
@@ -977,19 +978,14 @@
               <FilePath>..\USER\src\stm32f4xx_it.c</FilePath>
             </File>
             <File>
-              <FileName>usb_bsp.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\USER\src\usb_bsp.c</FilePath>
-            </File>
-            <File>
-              <FileName>usbh_msc_usr.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\USER\src\usbh_msc_usr.c</FilePath>
-            </File>
-            <File>
               <FileName>modbus_app.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\USER\src\modbus_app.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbh_app.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\src\usbh_app.c</FilePath>
             </File>
           </Files>
         </Group>

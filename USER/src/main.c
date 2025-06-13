@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-12 20:11:14
+ * @LastEditTime: 2025-06-13 09:59:58
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -35,7 +35,7 @@
 #include "port_bsp.h"
 
 /*USB includes*/
-#include "usbh_msc_usr.h"
+#include "usbh_app.h"
 #include "log.h"
 
 /* Private macro -------------------------------------------------------------*/
@@ -180,6 +180,8 @@ OS_SEM SENSOR_UPDATE_SEM;
 OS_SEM ERROR_HANDLE_SEM;
 // data save sem
 OS_SEM DATA_SAVE_SEM;
+// plot sem
+OS_SEM PLOT_SEM;
 
 /*A list of new interface components*/
 // Record the ID of the current screen and the status of the three buttons
@@ -428,16 +430,18 @@ and the time slice length is 1 system clock beat, 1 ms
 	OSSemCreate(&COMP_STR_GET_SEM, "comp str get", 0, &err);
 	// Thermocouple calibration signal
 	OSSemCreate(&SENSOR_UPDATE_SEM, "SENSOR_UPDATE_SEM", 0, &err);
+	// plot sem
+	OSSemCreate(&PLOT_SEM, "plot sem", 0, &err);
 
 	/*--------------------------------------------other SEM--------------------------------------------------*/
-	//  创建报警复位信号量
+	//  err reset sem
 	OSSemCreate(&ALARM_RESET_SEM, "alarm reset", 0, &err);
-	// 创建报错信号
+	// err sem
 	OSSemCreate(&ERROR_HANDLE_SEM, "err sem", 0, &err);
 	// data save sem
 	OSSemCreate(&DATA_SAVE_SEM, "data save", 0, &err);
 
-	// 错误处理任务——最高优先级
+	// err task
 	// 50ms调度——50ms时间片
 	OSTaskCreate((OS_TCB *)&ErrorTaskTCB,
 				 (CPU_CHAR *)"error task",
@@ -453,7 +457,7 @@ and the time slice length is 1 system clock beat, 1 ms
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
 
-	// 创建主任务
+	// main task
 	// 30ms调度
 	OSTaskCreate((OS_TCB *)&Main_TaskTCB,
 				 (CPU_CHAR *)"Main task",
@@ -469,7 +473,7 @@ and the time slice length is 1 system clock beat, 1 ms
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
 
-	// 创建触摸屏通讯任务
+	// UI task
 	// 20ms调度
 	OSTaskCreate((OS_TCB *)&READ_TaskTCB,
 				 (CPU_CHAR *)"Read task",
@@ -485,7 +489,7 @@ and the time slice length is 1 system clock beat, 1 ms
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
 
-	// USB任务
+	// USB task
 	OSTaskCreate((OS_TCB *)&USB_TaskTCB,
 				 (CPU_CHAR *)"usb task",
 				 (OS_TASK_PTR)usb_task,
@@ -500,7 +504,7 @@ and the time slice length is 1 system clock beat, 1 ms
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
 
-	// 创建上位机通讯任务
+	// modbus task
 	OSTaskCreate((OS_TCB *)&COMPUTER_TaskTCB,
 				 (CPU_CHAR *)"computer read task",
 				 (OS_TASK_PTR)computer_read_task,
@@ -515,8 +519,10 @@ and the time slice length is 1 system clock beat, 1 ms
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
 
-	OS_CRITICAL_EXIT();			  // 退出临界区
-	OSTaskDel((OS_TCB *)0, &err); // 删除start_task任务自身
+	OS_CRITICAL_EXIT();
+
+	// delete start task
+	OSTaskDel((OS_TCB *)0, &err);
 }
 
 /*--------------------------------------------------------------------------------------*/
@@ -1506,10 +1512,7 @@ static void page_process(Page_ID id)
 		uint16_t total_tick_len = 0; // 横坐标总长度
 		uint16_t win_width = 0;		 // 绘图区域占据的实际窗口大小
 
-		/*实时温度显示*/
-		command_set_comp_val("step3", "val", weld_controller->realtime_temp);
-
-		/*更新坐标*/
+		/*updata axis*/
 		for (uint8_t i = 0; i < 5; i++)
 			total_time += weld_controller->weld_time[i];
 		/*坐标划分ms*/
@@ -1530,20 +1533,20 @@ static void page_process(Page_ID id)
 		else
 			delta_tick = 5000;
 
-		/*绘图间隔*/
-		total_tick_len = 5 * delta_tick;					 // 横坐标总长度
-		win_width = WIN_WIDTH * total_time / total_tick_len; // 焊接周期绘图区域占全屏比例
+		/*plot interval*/
+		total_tick_len = 5 * delta_tick;					 // total length of Horizontal axis
+		win_width = WIN_WIDTH * total_time / total_tick_len; // Welding cycle drawing area occupies full screen ratio
 
 		if (total_time == win_width)
 			temp_draw_ctrl->delta_tick = 1;
 		else
 			temp_draw_ctrl->delta_tick = (total_time / win_width) + 1;
 
-		/*坐标发送到触摸屏*/
+		/*Horizontal axis*/
 		for (uint8_t i = 0; i < sizeof(tick_name) / sizeof(char *); i++)
 			command_set_comp_val(tick_name[i], "val", (1 + i) * delta_tick);
 
-		/*显示三段温度*/
+		/*display three step average temp*/
 		command_set_comp_val("step1", "val", temp_draw_ctrl->display_temp[0]);
 		command_set_comp_val("step2", "val", temp_draw_ctrl->display_temp[1]);
 
@@ -1551,17 +1554,34 @@ static void page_process(Page_ID id)
 		OSMutexPend(&PLOT_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		Temp_updata_realtime();
 		OSMutexPost(&PLOT_Mux, OS_OPT_POST_NONE, &err);
+
+		/*weld over, enter wave page, then plot temp line*/
+		OSSemPend(&PLOT_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+		if (err == OS_ERR_NONE)
+		{
+			uint16_t delta = 0;
+			/*后续改为透传模式！！！*/
+			if (temp_draw_ctrl->third_step_index_start % win_width == 0)
+				delta = temp_draw_ctrl->third_step_index_start / win_width;
+			else
+				delta = temp_draw_ctrl->third_step_index_start / win_width + 1;
+
+			for (uint16_t i = 0; i < temp_draw_ctrl->third_step_index_end; i += delta)
+			{
+				draw_point(temp_draw_ctrl->temp_buf[i]);
+			}
+		}
 	}
 	break;
 
 	case ALARM_PAGE:
 	{
 		/*响应错误*/
-		if (true == err_occur(err_ctrl))
-		{
-			OS_ERR err;
-			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-		}
+		// if (true == err_occur(err_ctrl))
+		// {
+		// 	OS_ERR err;
+		// 	OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		// }
 	}
 	break;
 

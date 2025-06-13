@@ -95,6 +95,9 @@ typedef struct weld_realtime_controller
     double temp_gain1;
     double temp_gain2;
 
+    /*Temperature compensation */
+    int temp_comp;
+
     Steady_state_coefficient ss_coefficient;
 
     /*pid ctrl*/
