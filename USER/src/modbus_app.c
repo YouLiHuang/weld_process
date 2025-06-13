@@ -322,42 +322,36 @@ void Modbus_reg_sync(void)
             if (usRegHoldingBuf[hold_reg_index] != weld_controller->alarm_temp[0] && usRegHoldingBuf[hold_reg_index] <= USER_SET_MAX_TEMP)
             {
                 weld_controller->alarm_temp[0] = usRegHoldingBuf[hold_reg_index];
-                // get_comp(temp_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
         case HOLD_ADDR_1:
             if (usRegHoldingBuf[hold_reg_index] != weld_controller->alarm_temp[1] && usRegHoldingBuf[hold_reg_index] <= USER_SET_MAX_TEMP)
             {
                 weld_controller->alarm_temp[1] = usRegHoldingBuf[hold_reg_index];
-                // get_comp(temp_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
         case HOLD_ADDR_2:
             if (usRegHoldingBuf[hold_reg_index] != weld_controller->alarm_temp[2] && usRegHoldingBuf[hold_reg_index] <= USER_SET_MAX_TEMP)
             {
                 weld_controller->alarm_temp[2] = usRegHoldingBuf[hold_reg_index];
-                // get_comp(temp_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
         case HOLD_ADDR_3:
             if (usRegHoldingBuf[hold_reg_index] != weld_controller->alarm_temp[3] && usRegHoldingBuf[hold_reg_index] <= USER_SET_MAX_TEMP)
             {
                 weld_controller->alarm_temp[3] = usRegHoldingBuf[hold_reg_index];
-                // get_comp(temp_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
         case HOLD_ADDR_4:
             if (usRegHoldingBuf[hold_reg_index] != weld_controller->alarm_temp[4] && usRegHoldingBuf[hold_reg_index] <= USER_SET_MAX_TEMP)
             {
                 weld_controller->alarm_temp[4] = usRegHoldingBuf[hold_reg_index];
-                // get_comp(temp_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
         case HOLD_ADDR_5:
             if (usRegHoldingBuf[hold_reg_index] != weld_controller->alarm_temp[5] && usRegHoldingBuf[hold_reg_index] <= USER_SET_MAX_TEMP)
             {
                 weld_controller->alarm_temp[5] = usRegHoldingBuf[hold_reg_index];
-                // get_comp(temp_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
             /*two gain*/
@@ -366,7 +360,6 @@ void Modbus_reg_sync(void)
             if (gain1 != weld_controller->temp_gain1 && gain1 <= 1)
             {
                 weld_controller->temp_gain1 = gain1;
-                // get_comp(temp_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
         case HOLD_ADDR_7:
@@ -374,7 +367,6 @@ void Modbus_reg_sync(void)
             if (gain2 != weld_controller->temp_gain2 && gain2 <= 1)
             {
                 weld_controller->temp_gain1 = gain2;
-                // get_comp(temp_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
 
@@ -383,21 +375,18 @@ void Modbus_reg_sync(void)
             if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_temp[0] && usRegHoldingBuf[hold_reg_index] <= USER_FIRST_SET_MAX)
             {
                 weld_controller->weld_temp[0] = usRegHoldingBuf[hold_reg_index];
-                // get_comp(param_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
         case HOLD_ADDR_9:
             if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_temp[1] && usRegHoldingBuf[hold_reg_index] <= USER_SET_MAX_TEMP)
             {
                 weld_controller->weld_temp[1] = usRegHoldingBuf[hold_reg_index];
-                // get_comp(param_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
         case HOLD_ADDR_10:
             if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_temp[2] && usRegHoldingBuf[hold_reg_index] <= USER_SET_MAX_TEMP)
             {
                 weld_controller->weld_temp[2] = usRegHoldingBuf[hold_reg_index];
-                // get_comp(param_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
             /*five time*/
@@ -405,28 +394,24 @@ void Modbus_reg_sync(void)
             if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_time[0] && usRegHoldingBuf[hold_reg_index] <= 999)
             {
                 weld_controller->weld_time[0] = usRegHoldingBuf[hold_reg_index];
-                // get_comp(param_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
         case HOLD_ADDR_12:
             if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_time[1] && usRegHoldingBuf[hold_reg_index] <= 999)
             {
                 weld_controller->weld_time[1] = usRegHoldingBuf[hold_reg_index];
-                // get_comp(param_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
         case HOLD_ADDR_13:
             if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_time[2] && usRegHoldingBuf[hold_reg_index] <= USER_MAX_WELD_TIME)
             {
                 weld_controller->weld_time[2] = usRegHoldingBuf[hold_reg_index];
-                // get_comp(param_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
         case HOLD_ADDR_14:
             if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_time[3] && usRegHoldingBuf[hold_reg_index] <= 999)
             {
                 weld_controller->weld_time[3] = usRegHoldingBuf[hold_reg_index];
-                // get_comp(param_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
         case HOLD_ADDR_15:
