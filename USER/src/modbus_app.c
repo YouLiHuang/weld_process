@@ -237,7 +237,8 @@ void Modbus_reg_sync()
     OS_ERR err;
     eMBEventType eEvent;
     uint8_t index = 0;
-    uint8_t discrete_value = 0x00;
+    uint16_t discrete_value = 0x00;
+    uint8_t reg;
     if (xMBPortEventGet(&eEvent) != TRUE)
     {
         OSMutexPend(&ModBus_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
@@ -320,66 +321,71 @@ void Modbus_reg_sync()
         }
 
         /*coils reg*/
-        uint8_t reg;
         for (index = 0; index < REG_COILS_SIZE; index++)
         {
+            reg = ucRegCoilsBuf[0] & (0x01 << index);
             switch (index)
             {
             case COIL_ADDR_0:
                 /*write*/
-                reg = ucRegCoilsBuf[0] & (0x01 << index);
-                if (key_scan() != KEY_PC0_PRES && reg == 0)
+                if (RLY_AIR0_READ != reg)
                 {
-                    /*notify main task to start weld*/
-                    start_type = KEY0;
-                    OSSemPost(&WELD_START_SEM, OS_OPT_POST_ALL, &err);
+                    RLY_AIR0 = reg;
                 }
-                /*key sacn result update to mudbus...*/
                 break;
             case COIL_ADDR_1:
                 /*write*/
-                 reg = ucRegCoilsBuf[0] & (0x01 << index);
-                if (key_scan() != KEY_PC1_PRES && reg == 0)
+                if (RLY_AIR1_READ != reg)
                 {
-                    /*notify main task to start weld*/
-                    start_type = KEY0;
-                    OSSemPost(&WELD_START_SEM, OS_OPT_POST_ALL, &err);
+                    RLY_AIR1 = reg;
                 }
-                /*key sacn result update to mudbus...*/
                 break;
             case COIL_ADDR_2:
                 /*write*/
-                 reg = ucRegCoilsBuf[0] & (0x01 << index);
-                if (key_scan() != KEY_PC2_PRES && reg == 0)
+                if (RLY_AIR2_READ)
                 {
-                    /*notify main task to start weld*/
-                    start_type = KEY0;
-                    OSSemPost(&WELD_START_SEM, OS_OPT_POST_ALL, &err);
+                    RLY_AIR2 = reg;
                 }
-                /*key sacn result update to mudbus...*/
+
                 break;
             case COIL_ADDR_3:
                 /*write*/
-                 reg = ucRegCoilsBuf[0] & (0x01 << index);
-                if (key_scan() != KEY_PC3_PRES && reg == 0)
+                if (RLY_OVER_READ != reg)
                 {
-                    /*notify main task to start weld*/
-                    start_type = KEY0;
-                    OSSemPost(&WELD_START_SEM, OS_OPT_POST_ALL, &err);
+                    RLY_OVER = reg;
                 }
-                /*key sacn result update to mudbus...*/
+
                 break;
             case COIL_ADDR_4:
-                 reg = ucRegCoilsBuf[0] & (0x01 << index);
+                /*write*/
+                if (RLY_ERR_READ != reg)
+                {
+                    RLY_ERR = reg;
+                }
+
                 break;
             case COIL_ADDR_5:
-                 reg = ucRegCoilsBuf[0] & (0x01 << index);
+                /*write*/
+                if (RLY_CNT_READ != reg)
+                {
+                    RLY_CNT = reg;
+                }
+
                 break;
             case COIL_ADDR_6:
-                 reg = ucRegCoilsBuf[0] & (0x01 << index);
+                /*write*/
+                if (RLY_CONTACTOR_READ != reg)
+                {
+                    RLY_CONTACTOR = reg;
+                }
+
                 break;
             case COIL_ADDR_7:
-                 reg = ucRegCoilsBuf[0] & (0x01 << index);
+                /*write*/
+                if (RLY_TRAN_READ != reg)
+                {
+                    RLY_TRAN = reg;
+                }
                 break;
 
             default:
@@ -424,12 +430,26 @@ void Modbus_reg_sync()
                 if (err_get_type(err_ctrl, SENSOR_ERROR)->state == true)
                     discrete_value |= 0x01 << index;
                 break;
-
-            default:
+            case DISCRETE_ADDR_8:
+                if (RLY_INPUT_SCAN() == RLY_START0_ACTIVE)
+                    discrete_value |= 0x01 << index;
+                break;
+            case DISCRETE_ADDR_9:
+                if (RLY_INPUT_SCAN() == RLY_START1_ACTIVE)
+                    discrete_value |= 0x01 << index;
+                break;
+            case DISCRETE_ADDR_10:
+                if (RLY_INPUT_SCAN() == RLY_START2_ACTIVE)
+                    discrete_value |= 0x01 << index;
+                break;
+            case DISCRETE_ADDR_11:
+                if (RLY_INPUT_SCAN() == RLY_START3_ACTIVE)
+                    discrete_value |= 0x01 << index;
                 break;
             }
         }
-        ucRegDiscreteBuf[0] = discrete_value;
+        ucRegDiscreteBuf[0] = (uint8_t)discrete_value & 0x0f;
+        ucRegDiscreteBuf[1] = (uint8_t)discrete_value >> 8;
 
         OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
     }

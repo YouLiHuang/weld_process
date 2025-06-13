@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-18 19:08:13
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-11 19:23:46
+ * @LastEditTime: 2025-06-13 15:35:49
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -177,28 +177,28 @@ void OUT_Init(void)
  * @description:
  * @return {*}
  */
-uint8_t key_scan()
+uint8_t RLY_INPUT_SCAN()
 {
 	OS_ERR err;
-	if (KEY_PC0 == 0 || KEY_PC1 == 0 || KEY_PC2 == 0 || KEY_PC3 == 0 || KEY_In4 == 0)
+	if (RLY_START0 == 0 || RLY_START1 == 0 || RLY_START2 == 0 || RLY_START3 == 0)
 	{
 		OSTimeDly(20, OS_OPT_TIME_DLY, &err);
-		if (KEY_PC0 == 0)
-			return KEY_PC0_PRES;
-		else if (KEY_PC1 == 0)
-			return KEY_PC1_PRES;
-		else if (KEY_PC2 == 0)
-			return KEY_PC2_PRES;
-		else if (KEY_PC3 == 0)
-			return KEY_PC2_PRES;
-		else if (KEY_In3 == 0)
-			return KEY_In3_PRES;
-		else if (KEY_In4 == 0)
-			return KEY_In4_PRES;
-		else if (KEY_Res)
-			return KEY_Res_PRES;
-		else
-			return 0;
+		if (RLY_START0 == 0)
+			return RLY_START0_ACTIVE;
+		else if (RLY_START1 == 0)
+			return RLY_START1_ACTIVE;
+		else if (RLY_START2 == 0)
+			return RLY_START2_ACTIVE;
+		else if (RLY_START3 == 0)
+			return RLY_START3_ACTIVE;
+		else if (RLY_RESET == 0)
+			return RLY_RESET_ACTIVE;
+		else if (RLY_TEMP == 0)
+			return RLY_TEMP_ACTIVE;
+		else if (RLY_RADIATOR == 0)
+			return RLY_RADIATOR_ACTIVE;
+		else if (RLY_WATER == 0)
+			return RLY_WATER_ACTIVE;
 	}
 	return 0;
 }

@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-13 09:22:31
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-13 12:22:56
+ * @LastEditTime: 2025-06-13 16:57:00
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -20,6 +20,7 @@
 #include "usart.h"
 #include "touchscreen.h"
 #include "dynamic_correct.h"
+#include "modbus_app.h"
 
 int err_comp;
 #if PID_DEBUG
@@ -67,6 +68,13 @@ extern Thermocouple *current_Thermocouple;
 /*-------------------------------------------------------------- USB---------------------------------------------------------------*/
 extern OS_SEM DATA_SAVE_SEM;
 /*--------------------------------------------------------------------------------------------------------------------------------*/
+
+/*---------------------------------------------------------- MODBUS ---------------------------------------------------------------*/
+extern OS_MUTEX ModBus_Mux;
+extern uint8_t ucRegCoilsBuf[REG_COILS_SIZE / 8];
+extern uint8_t ucRegDiscreteBuf[REG_DISCRETE_SIZE / 8];
+
+/*---------------------------------------------------------------------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 /*													 Data Object API                                                  */
@@ -367,8 +375,8 @@ static void down_temp_line()
 		/*stop draw start another weld*/
 		if (page_param->key3 == SGW)
 		{
-			key = key_scan();
-			if (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
+			key = RLY_INPUT_SCAN();
+			if (key == RLY_START1_ACTIVE || key == RLY_START0_ACTIVE)
 				break;
 		}
 
@@ -460,6 +468,7 @@ static void Load_Data(START_TYPE type)
 static void Weld_Preparation()
 {
 
+	OS_ERR err;
 	/*表示进入焊接过程*/
 	welding_flag = BUSY_MODE;
 	/*----------------------------------------时间刻度复位----------------------------------------*/
@@ -520,17 +529,26 @@ static void Weld_Preparation()
 	kalman_comp_temp = 0; // 卡尔曼估计值初始化
 #endif
 
-	/*------------------------------------------绘图部分------------------------------------------*/
+	/*------------------------------------------plot --------------------------------------------*/
 	reset_temp_draw_ctrl(temp_draw_ctrl, weld_controller->weld_time);
-	/*------------------------------------------IO控制-------------------------------------------*/
-	RLY_OVER = 0;  // 1为焊接结束信号
-	RLY_AIR0 = 1; // 气阀1启动
-	RLY_AIR1 = 1; // 气阀2启动
-	RLY_AIR2 = 1; // 气阀3启动
-	RLY_CNT = 0;  // 1为计数，0清除计数信号
+	/*------------------------------------------IO ctrl------------------------------------------*/
 
-	/*------------------------------------------pwm部分-------------------------------------------*/
-	uint16_t tmp_ccmr1 = 0; // 重新设定pwm模式
+	/*MODBUS updata*/
+	OSMutexPend(&ModBus_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+	RLY_AIR0 = 1; // 气阀1启动
+	ucRegCoilsBuf[0] |= 0x01 << COIL_ADDR_0;
+	RLY_AIR1 = 1; // 气阀2启动
+	ucRegCoilsBuf[0] |= 0x01 << COIL_ADDR_1;
+	RLY_AIR2 = 1; // 气阀3启动
+	ucRegCoilsBuf[0] |= 0x01 << COIL_ADDR_2;
+	RLY_OVER = 0; // 1为焊接结束信号
+	ucRegCoilsBuf[0] &= ~(0x01 << COIL_ADDR_3);
+	RLY_CNT = 0; // 1为计数，0清除计数信号
+	ucRegCoilsBuf[0] &= ~(0x01 << COIL_ADDR_5);
+	OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
+
+	/*------------------------------------------pwm deinit-------------------------------------------*/
+	uint16_t tmp_ccmr1 = 0;
 	tmp_ccmr1 = TIM1->CCMR1;
 	tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
 	tmp_ccmr1 |= ((uint16_t)0x0060);
@@ -895,6 +913,7 @@ static void Third_Step()
  */
 static void End_of_Weld()
 {
+	OS_ERR err;
 
 	TIM_Cmd(TIM3, DISABLE); // 关闭焊接周期计数
 	TIM_Cmd(TIM5, DISABLE); // 关闭实时控制器
@@ -916,15 +935,23 @@ static void End_of_Weld()
 	if (weld_controller->Count_Dir == DOWN && weld_controller->weld_count > 0)
 		weld_controller->weld_count--;
 
-	/*计数值更新*/
+	/*conut updata*/
 	command_set_comp_val("param_page.count", "val", weld_controller->weld_count);
 	command_set_comp_val("temp_page.count", "val", weld_controller->weld_count);
 
+	/*MODBUS updata*/
+	OSMutexPend(&ModBus_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 	RLY_AIR0 = 0; // 气阀1关闭
+	ucRegCoilsBuf[0] &= ~(0x01 << COIL_ADDR_0);
 	RLY_AIR1 = 0; // 气阀2关闭
+	ucRegCoilsBuf[0] &= (0x01 << COIL_ADDR_1);
 	RLY_AIR2 = 0; // 气阀3关闭
-	RLY_CNT = 1;  // 1为计数，0清除计数信号
-	RLY_OVER = 1;  // 1为焊接结束信号
+	ucRegCoilsBuf[0] &= ~(0x01 << COIL_ADDR_2);
+	RLY_OVER = 1; // 1为焊接结束信号
+	ucRegCoilsBuf[0] |= 0x01 << COIL_ADDR_3;
+	RLY_CNT = 1; // 1为计数，0清除计数信号
+	ucRegCoilsBuf[0] |= 0x01 << COIL_ADDR_5;
+	OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
 }
 
 /**
@@ -933,28 +960,46 @@ static void End_of_Weld()
  */
 static void simulate_weld()
 {
-	/*IO控制*/
-	RLY_AIR0 = 1; // 气阀1启动
-	RLY_AIR1 = 1; // 气阀2启动
-	RLY_AIR2 = 1; // 气阀3启动
-	RLY_CNT = 0;  // 1为计数，0清除计数信号
-	RLY_OVER = 0;  // 1为焊接结束信号
+	OS_ERR err;
 
-	weld_controller->step_time_tick = 0; // 实时控制器阶段性时间刻度复位
-	weld_controller->weld_time_tick = 0; // 焊接周期时间刻度复位
-	TIM_Cmd(TIM3, ENABLE);				 // 开启时间统计计数器，同时开启温度采集
+	/*MODBUS updata*/
+	OSMutexPend(&ModBus_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+	RLY_AIR0 = 1; // 气阀1启动
+	ucRegCoilsBuf[0] |= 0x01 << COIL_ADDR_0;
+	RLY_AIR1 = 1; // 气阀2启动
+	ucRegCoilsBuf[0] |= 0x01 << COIL_ADDR_1;
+	RLY_AIR2 = 1; // 气阀3启动
+	ucRegCoilsBuf[0] |= 0x01 << COIL_ADDR_2;
+	RLY_OVER = 0; // 1为焊接结束信号
+	ucRegCoilsBuf[0] &= ~(0x01 << COIL_ADDR_3);
+	RLY_CNT = 0; // 1为计数，0清除计数信号
+	ucRegCoilsBuf[0] &= ~(0x01 << COIL_ADDR_5);
+	OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
+
+	/*controller reset*/
+	weld_controller->step_time_tick = 0;
+	weld_controller->weld_time_tick = 0;
+	TIM_Cmd(TIM3, ENABLE);
 	while (weld_controller->weld_time_tick < weld_controller->weld_time[0] + weld_controller->weld_time[1] + weld_controller->weld_time[2] + weld_controller->weld_time[3])
 		;
-	TIM_Cmd(TIM3, DISABLE);				 // 关闭时间统计计数器
-	weld_controller->weld_time_tick = 0; // 焊接周期时间刻度复位
+	TIM_Cmd(TIM3, DISABLE);
+	weld_controller->weld_time_tick = 0;
 
+	/*MODBUS updata*/
+	OSMutexPend(&ModBus_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 	RLY_AIR0 = 0; // 气阀1关闭
+	ucRegCoilsBuf[0] &= ~(0x01 << COIL_ADDR_0);
 	RLY_AIR1 = 0; // 气阀2关闭
+	ucRegCoilsBuf[0] &= ~(0x01 << COIL_ADDR_1);
 	RLY_AIR2 = 0; // 气阀3关闭
-	RLY_CNT = 1;  // 1为计数，0清除计数信号
-	RLY_OVER = 1;  // 1为焊接结束信号
+	ucRegCoilsBuf[0] &= ~(0x01 << COIL_ADDR_2);
+	RLY_OVER = 1; // 1为焊接结束信号
+	ucRegCoilsBuf[0] |= 0x01 << COIL_ADDR_3;
+	RLY_CNT = 1; // 1为计数，0清除计数信号
+	ucRegCoilsBuf[0] |= 0x01 << COIL_ADDR_5;
+	OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
 
-	/*+++根据计数模式更新计数值+++*/
+	/*weld conut updata*/
 	if (weld_controller->Count_Dir == UP)
 		weld_controller->weld_count++;
 	else if (weld_controller->Count_Dir == DOWN && weld_controller->weld_count > 0)
@@ -1048,10 +1093,10 @@ void welding_process(START_TYPE type)
 		OS_ERR err;
 		uint8_t key = 0;
 
-		key = key_scan();
+		key = RLY_INPUT_SCAN();
 
 		/*weld until release key*/
-		while (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
+		while (key == RLY_START1_ACTIVE || key == RLY_START0_ACTIVE)
 		{
 
 			weld_controller->realtime_temp = temp_convert(current_Thermocouple);
@@ -1089,7 +1134,7 @@ void welding_process(START_TYPE type)
 			}
 
 			/*check if key release*/
-			key = key_scan();
+			key = RLY_INPUT_SCAN();
 		}
 	}
 	/*simulate weld*/
@@ -1097,15 +1142,15 @@ void welding_process(START_TYPE type)
 	{
 		OS_ERR err;
 		uint8_t key = 0;
-		key = key_scan();
-		while (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
+		key = RLY_INPUT_SCAN();
+		while (key == RLY_START1_ACTIVE || key == RLY_START0_ACTIVE)
 		{
 
 			simulate_weld();
 			/*weld interval*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
-			key = key_scan();
-			if (!(key == KEY_PC1_PRES || key == KEY_PC0_PRES))
+			key = RLY_INPUT_SCAN();
+			if (!(key == RLY_START1_ACTIVE || key == RLY_START0_ACTIVE))
 				break;
 		}
 	}
@@ -1116,8 +1161,8 @@ void welding_process(START_TYPE type)
 		OS_ERR err;
 		uint8_t key = 0;
 
-		key = key_scan();
-		if (key == KEY_PC1_PRES || key == KEY_PC0_PRES)
+		key = RLY_INPUT_SCAN();
+		if (key == RLY_START1_ACTIVE || key == RLY_START0_ACTIVE)
 		{
 			/*clear screen*/
 			if (page_param->id == WAVE_PAGE)
@@ -1156,8 +1201,8 @@ void welding_process(START_TYPE type)
 			/*wait until release key*/
 			while (1)
 			{
-				key = key_scan();
-				if (key != KEY_PC1_PRES && key != KEY_PC0_PRES)
+				key = RLY_INPUT_SCAN();
+				if (key != RLY_START1_ACTIVE && key != RLY_START0_ACTIVE)
 					break;
 
 				// main task pend

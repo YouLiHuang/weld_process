@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-13 12:23:28
+ * @LastEditTime: 2025-06-13 16:52:44
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -33,6 +33,7 @@
 #include "mbport.h"
 #include "mbrtu.h"
 #include "port_bsp.h"
+#include "modbus_app.h"
 
 /*USB includes*/
 #include "usbh_app.h"
@@ -267,6 +268,11 @@ extern USB_OTG_CORE_HANDLE USB_OTG_Core __ALIGN_END;
 extern START_TYPE start_type;
 // Temperature preservation buffer
 extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN];
+// MODBUS
+extern uint16_t usRegInputBuf[REG_INPUT_NREGS];
+extern uint16_t usRegHoldingBuf[REG_HOLDING_NREGS];
+extern uint8_t ucRegCoilsBuf[REG_COILS_SIZE / 8];
+extern uint8_t ucRegDiscreteBuf[REG_DISCRETE_SIZE / 8];
 
 int main(void)
 {
@@ -1678,10 +1684,17 @@ void error_task(void *p_arg)
 			TIM3->CNT = 0;
 			TIM5->CNT = 0;
 
-			RLY_ERR = 1; // error signal
-			RLY_AIR0 = 0;	// Valve1 off
-			RLY_AIR1 = 0;	// Valve2 off
-			RLY_AIR2 = 0;	// Valve3 off
+			/*MODBUS update*/
+			OSMutexPend(&ModBus_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+			RLY_AIR0 = 0;
+			ucRegCoilsBuf[0] &= ~(0x01 << COIL_ADDR_0);
+			RLY_AIR1 = 0;
+			ucRegCoilsBuf[0] &= ~(0x01 << COIL_ADDR_1);
+			RLY_AIR2 = 0;
+			ucRegCoilsBuf[0] &= ~(0x01 << COIL_ADDR_2);
+			RLY_ERR = 1;
+			ucRegCoilsBuf[0] |= 0x01 << COIL_ADDR_4;
+			OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
 
 			/*wait hanlde*/
 			err_wait = true;

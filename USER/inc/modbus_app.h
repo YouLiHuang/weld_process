@@ -23,12 +23,12 @@
 //线圈起始地址
 #define REG_COILS_START       0x0000
 //线圈数量
-#define REG_COILS_SIZE        8
+#define REG_COILS_SIZE        16
 
 //开关寄存器起始地址
 #define REG_DISCRETE_START    0x0000
 //开关寄存器数量
-#define REG_DISCRETE_SIZE     12
+#define REG_DISCRETE_SIZE     16
 
 
 
@@ -79,6 +79,10 @@
 #define DISCRETE_ADDR_5 5
 #define DISCRETE_ADDR_6 6
 #define DISCRETE_ADDR_7 7
+#define DISCRETE_ADDR_8 8
+#define DISCRETE_ADDR_9 9
+#define DISCRETE_ADDR_10 10
+#define DISCRETE_ADDR_11 11
 
 #endif
 
