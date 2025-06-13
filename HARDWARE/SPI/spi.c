@@ -14,6 +14,7 @@
 #include "touchscreen.h"
 #include "usart.h"
 #include "welding_process.h"
+#include "modbus_app.h"
 
 /*--------------------------------------------------------------Variables--------------------------------------------------------------*/
 extern Page_Param *page_param;
@@ -22,6 +23,15 @@ extern Component_Queue *temp_page_list;
 extern weld_ctrl *weld_controller;
 extern Steady_state_coefficient steady_coefficient;
 extern uint8_t ID_OF_DEVICE;
+
+// input reg
+extern uint16_t usRegInputBuf[REG_INPUT_NREGS];
+// hold reg
+extern uint16_t usRegHoldingBuf[REG_HOLDING_NREGS];
+// coil state
+extern uint8_t ucRegCoilsBuf[REG_COILS_SIZE / 8];
+// switch state
+extern uint8_t ucRegDiscreteBuf[REG_DISCRETE_SIZE / 8];
 /*--------------------------------------------------------------------------------------------------------------------------------------*/
 static int remember_array;
 static void WREN(void);
@@ -180,6 +190,30 @@ void Load_data_from_mem(void)
 	Load_param_alarm(weld_controller, remember_array);
 	Load_Coefficient(remember_array);
 
+	/*modbus data init*/
+	usRegHoldingBuf[0] = weld_controller->alarm_temp[0];
+	usRegHoldingBuf[1] = weld_controller->alarm_temp[1];
+	usRegHoldingBuf[2] = weld_controller->alarm_temp[2];
+	usRegHoldingBuf[3] = weld_controller->alarm_temp[3];
+	usRegHoldingBuf[4] = weld_controller->alarm_temp[4];
+	usRegHoldingBuf[5] = weld_controller->alarm_temp[5];
+
+	usRegHoldingBuf[6] = weld_controller->temp_gain1 * 100;
+	usRegHoldingBuf[7] = weld_controller->temp_gain2 * 100;
+
+	usRegHoldingBuf[8] = weld_controller->weld_temp[0];
+	usRegHoldingBuf[9] = weld_controller->weld_temp[1];
+	usRegHoldingBuf[10] = weld_controller->weld_temp[2];
+
+	usRegHoldingBuf[11] = weld_controller->weld_time[0];
+	usRegHoldingBuf[12] = weld_controller->weld_time[1];
+	usRegHoldingBuf[13] = weld_controller->weld_time[2];
+	usRegHoldingBuf[14] = weld_controller->weld_time[3];
+	usRegHoldingBuf[15] = weld_controller->weld_time[4];
+
+	usRegHoldingBuf[16] = weld_controller->weld_count;
+	usRegHoldingBuf[17] = 0;
+
 	/*首次加载参数后需要发送到触摸屏*/
 	char *param_time_list[] = {
 		"time1",
@@ -300,6 +334,19 @@ void save_param_alarm(void *controller,
 }
 void Load_param(void *controller, int array_of_data)
 {
+	char *param_time_name_list[] = {
+		"time1",
+		"time2",
+		"time3",
+		"time4",
+		"time5",
+	};
+	char *param_temp_name_list[] = {
+		"temp1",
+		"temp2",
+		"temp3",
+	};
+
 	weld_ctrl *ctrl = (weld_ctrl *)controller;
 	SPI_Save_Word(array_of_data, 0);
 	/*参数加载*/
@@ -315,81 +362,24 @@ void Load_param(void *controller, int array_of_data)
 		welding_Temp_load[i] = SPI_Load_Word(TEMP_BASE(array_of_data) + ADDR_OFFSET * i);
 	}
 
-	/*数据校验*/
-	/*...*/
-	/*参数更新*/
+	/*param check & sync*/
+	// time1-time5
 	for (uint8_t i = 0; i < sizeof(welding_time_load) / sizeof(uint16_t); i++)
 	{
 		ctrl->weld_time[i] = welding_time_load[i];
+		get_comp(param_page_list, param_time_name_list[i])->val = welding_time_load[i];
 	}
-
+	// temp1-temp3
 	for (uint8_t i = 0; i < sizeof(welding_Temp_load) / sizeof(uint16_t); i++)
 	{
 		ctrl->weld_temp[i] = welding_Temp_load[i];
-	}
-
-	/*数据同步*/
-	char *param_time_name_list[] = {
-		"time1",
-		"time2",
-		"time3",
-		"time4",
-		"time5",
-	};
-	char *param_temp_name_list[] = {
-		"temp1",
-		"temp2",
-		"temp3",
-	};
-	// time1-time5
-	for (uint8_t i = 0; i < sizeof(param_time_name_list) / sizeof(char *); i++)
-	{
-		get_comp(param_page_list, param_time_name_list[i])->val = welding_time_load[i];
-	}
-
-	// temp1-temp3
-	for (uint8_t i = 0; i < sizeof(param_temp_name_list) / sizeof(char *); i++)
-	{
 		get_comp(param_page_list, param_temp_name_list[i])->val = welding_Temp_load[i];
 	}
 }
 void Load_param_alarm(void *controller, int array_of_data)
 {
-	weld_ctrl *ctrl = (weld_ctrl *)controller;
-	/*参数加载*/
-	uint16_t alarm_temperature_load[6] = {0};
-	for (uint8_t i = 0; i < sizeof(alarm_temperature_load) / sizeof(uint16_t); i++)
-	{
-		alarm_temperature_load[i] = SPI_Load_Word(ALARM_BASE(array_of_data) + ADDR_OFFSET * i);
-	}
-
 	double gain_raw[2] = {0};
-	for (uint8_t i = 0; i < sizeof(gain_raw) / sizeof(double); i++)
-	{
-		gain_raw[i] = SPI_Load_Word(GAIN_BASE(array_of_data) + ADDR_OFFSET * i);
-	}
-
-	/*参数校验/更新*/
-	for (uint8_t i = 0; i < sizeof(alarm_temperature_load) / sizeof(uint16_t); i++)
-	{
-		if (alarm_temperature_load[i] > ALARM_MAX_TEMP)
-			alarm_temperature_load[i] = ALARM_MAX_TEMP;
-
-		ctrl->alarm_temp[i] = alarm_temperature_load[i];
-	}
-
-	if (gain_raw[0] / 100.0 != 0 && gain_raw[1] / 100.0 != 0)
-	{
-		ctrl->temp_gain1 = (double)gain_raw[0] / 100.0;
-		ctrl->temp_gain2 = (double)gain_raw[1] / 100.0;
-	}
-	else
-	{
-		/*参数同步*/
-		get_comp(temp_page_list, "GAIN1")->val = DEFAULT_GAIN1;
-		get_comp(temp_page_list, "GAIN2")->val = DEFAULT_GAIN2;
-	}
-
+	uint16_t alarm_temperature_load[6] = {0};
 	char *temp_name_list[] = {
 		"alarm1",
 		"alarm2",
@@ -398,9 +388,42 @@ void Load_param_alarm(void *controller, int array_of_data)
 		"alarm5",
 		"alarm6",
 	};
-	for (uint8_t i = 0; i < sizeof(temp_name_list) / sizeof(char *); i++)
+	weld_ctrl *ctrl = (weld_ctrl *)controller;
+	/*param load*/
+	for (uint8_t i = 0; i < sizeof(alarm_temperature_load) / sizeof(uint16_t); i++)
 	{
+		alarm_temperature_load[i] = SPI_Load_Word(ALARM_BASE(array_of_data) + ADDR_OFFSET * i);
+	}
+
+	for (uint8_t i = 0; i < sizeof(gain_raw) / sizeof(double); i++)
+	{
+		gain_raw[i] = SPI_Load_Word(GAIN_BASE(array_of_data) + ADDR_OFFSET * i);
+	}
+
+	/*param check & sync*/
+	for (uint8_t i = 0; i < sizeof(alarm_temperature_load) / sizeof(uint16_t); i++)
+	{
+		if (alarm_temperature_load[i] > ALARM_MAX_TEMP)
+			alarm_temperature_load[i] = ALARM_MAX_TEMP;
+
+		ctrl->alarm_temp[i] = alarm_temperature_load[i];
 		get_comp(temp_page_list, temp_name_list[i])->val = alarm_temperature_load[i];
+	}
+
+	/*data sync to screen list*/
+	if (gain_raw[0] / 100.0 != 0 && gain_raw[1] / 100.0 != 0)
+	{
+		ctrl->temp_gain1 = (double)gain_raw[0] / 100.0;
+		ctrl->temp_gain2 = (double)gain_raw[1] / 100.0;
+		get_comp(temp_page_list, "GAIN1")->val = ctrl->temp_gain1 * 100;
+		get_comp(temp_page_list, "GAIN2")->val = ctrl->temp_gain2 * 100;
+	}
+	else
+	{
+		ctrl->temp_gain1 = DEFAULT_GAIN1;
+		ctrl->temp_gain2 = DEFAULT_GAIN2;
+		get_comp(temp_page_list, "GAIN1")->val = DEFAULT_GAIN1 * 100;
+		get_comp(temp_page_list, "GAIN2")->val = DEFAULT_GAIN2 * 100;
 	}
 }
 

@@ -1,3 +1,4 @@
+#include "user_config.h"
 #include "mb.h"
 #include "mbutils.h"
 #include "modbus_app.h"
@@ -15,7 +16,19 @@ extern Thermocouple *current_Thermocouple;
 extern Date current_date;
 extern Page_Param *page_param;
 extern weld_ctrl *weld_controller;
+
+/*A list of new interface components*/
+// Record the ID of the current screen and the status of the three buttons
+extern Page_Param *page_param;
+// A list of components on the parameter setting screen
+extern Component_Queue *param_page_list;
+// A list of components for the temperature limit interface
 extern Component_Queue *temp_page_list;
+// A list of communication interface components
+extern Component_Queue *setting_page_list;
+// A list of components on the Waveform page
+extern Component_Queue *wave_page_list;
+
 extern Error_ctrl *err_ctrl;
 extern START_TYPE start_type;
 extern OS_SEM WELD_START_SEM;
@@ -232,222 +245,365 @@ eMBErrorCode eMBRegDiscreteCB(UCHAR *pucRegBuffer, USHORT usAddress, USHORT usND
  * @description: reg sync
  * @return {*}
  */
-void Modbus_reg_sync()
+void Modbus_reg_sync(void)
 {
     OS_ERR err;
     eMBEventType eEvent;
-    uint8_t index = 0;
-    uint16_t discrete_value = 0x00;
+
+    static uint8_t discrete_index = 0;
+    static uint8_t hold_reg_index = 0;
+    static uint8_t input_reg_index = 0;
+    static uint8_t coil_index = 0;
+
+    static uint16_t discrete_value = 0x00;
     uint8_t reg;
+    Component *comp;
+    float gain1;
+    float gain2;
+
+    static char *page_name_list[] = {
+        "alarm1",
+        "alarm2",
+        "alarm3",
+        "alarm4",
+        "alarm5",
+        "alarm6",
+        "GAIN1",
+        "GAIN2",
+        "temp1",
+        "temp2",
+        "temp3",
+        "count"};
+
     if (xMBPortEventGet(&eEvent) != TRUE)
     {
         OSMutexPend(&ModBus_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 
         /*input reg - read only*/
-        for (index = 0; index < REG_INPUT_NREGS; index++)
+        if (input_reg_index > INPUT_ADDR_5)
+            input_reg_index = INPUT_ADDR_0;
+
+        switch (input_reg_index)
         {
-            switch (index)
-            {
-            case INPUT_ADDR_0:
-                usRegInputBuf[index] = current_Thermocouple->type;
-                break;
-            case INPUT_ADDR_1:
-                usRegInputBuf[index] = current_date.Year;
-                break;
-            case INPUT_ADDR_2:
-                usRegInputBuf[index] = current_date.Month;
-                break;
-            case INPUT_ADDR_3:
-                usRegInputBuf[index] = current_date.Day;
-                break;
-            case INPUT_ADDR_4:
-                usRegInputBuf[index] = current_date.Hour;
-                break;
-            case INPUT_ADDR_5:
-                usRegInputBuf[index] = current_date.Minute;
-                break;
-            case INPUT_ADDR_6:
-                break;
-            case INPUT_ADDR_7:
-                break;
+        case INPUT_ADDR_0:
+            usRegInputBuf[input_reg_index] = current_Thermocouple->type;
+            break;
+        case INPUT_ADDR_1:
+            usRegInputBuf[input_reg_index] = current_date.Year;
+            break;
+        case INPUT_ADDR_2:
+            usRegInputBuf[input_reg_index] = current_date.Month;
+            break;
+        case INPUT_ADDR_3:
+            usRegInputBuf[input_reg_index] = current_date.Day;
+            break;
+        case INPUT_ADDR_4:
+            usRegInputBuf[input_reg_index] = current_date.Hour;
+            break;
+        case INPUT_ADDR_5:
+            usRegInputBuf[input_reg_index] = current_date.Minute;
+            break;
 
-            default:
-                break;
-            }
+        default:
+            break;
         }
-
+				input_reg_index++;
+#if 0
         /*holding reg*/
-        for (index = 0; index < REG_HOLDING_NREGS; index++)
+        switch (hold_reg_index)
         {
-            switch (index)
+            /*six alarm temp(temp_page_list)*/
+        case HOLD_ADDR_0:
+            if (usRegHoldingBuf[hold_reg_index++] != weld_controller->alarm_temp[0] && usRegHoldingBuf[hold_reg_index++] <= USER_SET_MAX_TEMP)
             {
-            case HOLD_ADDR_0:
-                break;
-            case HOLD_ADDR_1:
-                break;
-            case HOLD_ADDR_2:
-                break;
-            case HOLD_ADDR_3:
-                break;
-            case HOLD_ADDR_4:
-                break;
-            case HOLD_ADDR_5:
-                break;
-            case HOLD_ADDR_6:
-                break;
-            case HOLD_ADDR_7:
-                break;
-            case HOLD_ADDR_8:
-                break;
-            case HOLD_ADDR_9:
-                break;
-            case HOLD_ADDR_10:
-                break;
-            case HOLD_ADDR_11:
-                break;
-            case HOLD_ADDR_12:
-                break;
-            case HOLD_ADDR_13:
-                break;
-            case HOLD_ADDR_14:
-                break;
-            case HOLD_ADDR_15:
-                break;
-            case HOLD_ADDR_16:
-                break;
-            case HOLD_ADDR_17:
-                break;
+                weld_controller->alarm_temp[0] = usRegHoldingBuf[hold_reg_index++];
+                // get_comp(temp_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
             }
-        }
+            break;
+        case HOLD_ADDR_1:
+            if (usRegHoldingBuf[hold_reg_index++] != weld_controller->alarm_temp[1] && usRegHoldingBuf[hold_reg_index++] <= USER_SET_MAX_TEMP)
+            {
+                weld_controller->alarm_temp[1] = usRegHoldingBuf[hold_reg_index++];
+                // get_comp(temp_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            break;
+        case HOLD_ADDR_2:
+            if (usRegHoldingBuf[hold_reg_index++] != weld_controller->alarm_temp[2] && usRegHoldingBuf[hold_reg_index++] <= USER_SET_MAX_TEMP)
+            {
+                weld_controller->alarm_temp[2] = usRegHoldingBuf[hold_reg_index++];
+                // get_comp(temp_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            break;
+        case HOLD_ADDR_3:
+            if (usRegHoldingBuf[hold_reg_index++] != weld_controller->alarm_temp[3] && usRegHoldingBuf[hold_reg_index++] <= USER_SET_MAX_TEMP)
+            {
+                weld_controller->alarm_temp[3] = usRegHoldingBuf[hold_reg_index++];
+                // get_comp(temp_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            break;
+        case HOLD_ADDR_4:
+            if (usRegHoldingBuf[hold_reg_index++] != weld_controller->alarm_temp[4] && usRegHoldingBuf[hold_reg_index++] <= USER_SET_MAX_TEMP)
+            {
+                weld_controller->alarm_temp[4] = usRegHoldingBuf[hold_reg_index++];
+                // get_comp(temp_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            break;
+        case HOLD_ADDR_5:
+            if (usRegHoldingBuf[hold_reg_index++] != weld_controller->alarm_temp[5] && usRegHoldingBuf[hold_reg_index++] <= USER_SET_MAX_TEMP)
+            {
+                weld_controller->alarm_temp[5] = usRegHoldingBuf[hold_reg_index++];
+                // get_comp(temp_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            break;
+            /*two gain*/
+        case HOLD_ADDR_6:
+            gain1 = usRegHoldingBuf[hold_reg_index++] / 100.0;
+            if (gain1 != weld_controller->temp_gain1 && gain1 <= 1)
+            {
+                weld_controller->temp_gain1 = gain1;
+                // get_comp(temp_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            break;
+        case HOLD_ADDR_7:
+            gain2 = usRegHoldingBuf[hold_reg_index++] / 100.0;
+            if (gain2 != weld_controller->temp_gain2 && gain2 <= 1)
+            {
+                weld_controller->temp_gain1 = gain2;
+                // get_comp(temp_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            break;
 
+            /*three step set(param_page_list)*/
+        case HOLD_ADDR_8:
+            if (usRegHoldingBuf[hold_reg_index++] != weld_controller->weld_temp[0] && usRegHoldingBuf[hold_reg_index++] <= USER_FIRST_SET_MAX)
+            {
+                weld_controller->weld_temp[0] = usRegHoldingBuf[hold_reg_index++];
+                // get_comp(param_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            break;
+        case HOLD_ADDR_9:
+            if (usRegHoldingBuf[hold_reg_index++] != weld_controller->weld_temp[1] && usRegHoldingBuf[hold_reg_index++] <= USER_SET_MAX_TEMP)
+            {
+                weld_controller->weld_temp[1] = usRegHoldingBuf[hold_reg_index++];
+                // get_comp(param_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            break;
+        case HOLD_ADDR_10:
+            if (usRegHoldingBuf[hold_reg_index++] != weld_controller->weld_temp[2] && usRegHoldingBuf[hold_reg_index++] <= USER_SET_MAX_TEMP)
+            {
+                weld_controller->weld_temp[2] = usRegHoldingBuf[hold_reg_index++];
+                // get_comp(param_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            break;
+            /*five time*/
+        case HOLD_ADDR_11:
+            if (usRegHoldingBuf[hold_reg_index++] != weld_controller->weld_time[0] && usRegHoldingBuf[hold_reg_index++] <= 999)
+            {
+                weld_controller->weld_time[0] = usRegHoldingBuf[hold_reg_index++];
+                // get_comp(param_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            break;
+        case HOLD_ADDR_12:
+            if (usRegHoldingBuf[hold_reg_index++] != weld_controller->weld_time[1] && usRegHoldingBuf[hold_reg_index++] <= 999)
+            {
+                weld_controller->weld_time[1] = usRegHoldingBuf[hold_reg_index++];
+                // get_comp(param_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            break;
+        case HOLD_ADDR_13:
+            if (usRegHoldingBuf[hold_reg_index++] != weld_controller->weld_time[2] && usRegHoldingBuf[hold_reg_index++] <= USER_MAX_WELD_TIME)
+            {
+                weld_controller->weld_time[2] = usRegHoldingBuf[hold_reg_index++];
+                // get_comp(param_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            break;
+        case HOLD_ADDR_14:
+            if (usRegHoldingBuf[hold_reg_index++] != weld_controller->weld_time[3] && usRegHoldingBuf[hold_reg_index++] <= 999)
+            {
+                weld_controller->weld_time[3] = usRegHoldingBuf[hold_reg_index++];
+                // get_comp(param_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            break;
+        case HOLD_ADDR_15:
+            if (usRegHoldingBuf[hold_reg_index++] != weld_controller->weld_time[4] && usRegHoldingBuf[hold_reg_index++] <= 999)
+            {
+                weld_controller->weld_time[4] = usRegHoldingBuf[hold_reg_index++];
+                get_comp(param_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            break;
+            /*count(param_page_list)*/
+        case HOLD_ADDR_16:
+            if (usRegHoldingBuf[hold_reg_index++] != weld_controller->weld_count && usRegHoldingBuf[hold_reg_index++] <= USER_MAX_COUNT)
+            {
+                weld_controller->weld_count = usRegHoldingBuf[hold_reg_index++];
+                get_comp(param_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+                get_comp(temp_page_list, page_name_list[hold_reg_index++])->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            break;
+
+            /*GP*/
+        case HOLD_ADDR_17:
+
+            if (usRegHoldingBuf[hold_reg_index++] != comp->val && usRegHoldingBuf[hold_reg_index++] <= MAX_GP)
+            {
+                get_comp(param_page_list, "GP")->val = usRegHoldingBuf[hold_reg_index++];
+            }
+            hold_reg_index = HOLD_ADDR_0;
+            break;
+
+        default:
+            break;
+        }
+#endif
         /*coils reg*/
-        for (index = 0; index < REG_COILS_SIZE; index++)
+        if (coil_index > COIL_ADDR_7)
         {
-            reg = ucRegCoilsBuf[0] & (0x01 << index);
-            switch (index)
-            {
-            case COIL_ADDR_0:
-                /*write*/
-                if (RLY_AIR0_READ != reg)
-                {
-                    RLY_AIR0 = reg;
-                }
-                break;
-            case COIL_ADDR_1:
-                /*write*/
-                if (RLY_AIR1_READ != reg)
-                {
-                    RLY_AIR1 = reg;
-                }
-                break;
-            case COIL_ADDR_2:
-                /*write*/
-                if (RLY_AIR2_READ)
-                {
-                    RLY_AIR2 = reg;
-                }
-
-                break;
-            case COIL_ADDR_3:
-                /*write*/
-                if (RLY_OVER_READ != reg)
-                {
-                    RLY_OVER = reg;
-                }
-
-                break;
-            case COIL_ADDR_4:
-                /*write*/
-                if (RLY_ERR_READ != reg)
-                {
-                    RLY_ERR = reg;
-                }
-
-                break;
-            case COIL_ADDR_5:
-                /*write*/
-                if (RLY_CNT_READ != reg)
-                {
-                    RLY_CNT = reg;
-                }
-
-                break;
-            case COIL_ADDR_6:
-                /*write*/
-                if (RLY_CONTACTOR_READ != reg)
-                {
-                    RLY_CONTACTOR = reg;
-                }
-
-                break;
-            case COIL_ADDR_7:
-                /*write*/
-                if (RLY_TRAN_READ != reg)
-                {
-                    RLY_TRAN = reg;
-                }
-                break;
-
-            default:
-                break;
-            }
+            coil_index = COIL_ADDR_0;
         }
 
-        /*discrete reg - read only*/
-        for (index = 0; index < REG_DISCRETE_SIZE; index++)
+        reg = ucRegCoilsBuf[0] & (0x01 << coil_index);
+        switch (coil_index)
         {
-            switch (index)
-            {
-            case DISCRETE_ADDR_0:
-                if (page_param->key1 == RDY)
-                    discrete_value |= 0x01 << index;
-                break;
-            case DISCRETE_ADDR_1:
-                if (page_param->key2 == ION)
-                    discrete_value |= 0x01 << index;
-                break;
-            case DISCRETE_ADDR_2:
-                if (page_param->key3 == CTW)
-                    discrete_value |= 0x01 << index;
-                break;
-            case DISCRETE_ADDR_3:
-                if (weld_controller->Count_Dir == DOWN)
-                    discrete_value |= 0x01 << index;
-                break;
-            case DISCRETE_ADDR_4:
-                if (get_comp(temp_page_list, "switch")->val == 1)
-                    discrete_value |= 0x01 << index;
-                break;
-            case DISCRETE_ADDR_5:
-                if (err_get_type(err_ctrl, TRANSFORMER_OVER_HEAT)->state == true)
-                    discrete_value |= 0x01 << index;
-                break;
-            case DISCRETE_ADDR_6:
-                if (err_get_type(err_ctrl, RADIATOR)->state == true)
-                    discrete_value |= 0x01 << index;
-                break;
-            case DISCRETE_ADDR_7:
-                if (err_get_type(err_ctrl, SENSOR_ERROR)->state == true)
-                    discrete_value |= 0x01 << index;
-                break;
-            case DISCRETE_ADDR_8:
-                if (RLY_INPUT_SCAN() == RLY_START0_ACTIVE)
-                    discrete_value |= 0x01 << index;
-                break;
-            case DISCRETE_ADDR_9:
-                if (RLY_INPUT_SCAN() == RLY_START1_ACTIVE)
-                    discrete_value |= 0x01 << index;
-                break;
-            case DISCRETE_ADDR_10:
-                if (RLY_INPUT_SCAN() == RLY_START2_ACTIVE)
-                    discrete_value |= 0x01 << index;
-                break;
-            case DISCRETE_ADDR_11:
-                if (RLY_INPUT_SCAN() == RLY_START3_ACTIVE)
-                    discrete_value |= 0x01 << index;
-                break;
-            }
+        case COIL_ADDR_0:
+            /*write*/
+            if (RLY_AIR0_READ != reg)
+                RLY_AIR0 = reg;
+            break;
+        case COIL_ADDR_1:
+            /*write*/
+            if (RLY_AIR1_READ != reg)
+                RLY_AIR0 = reg;
+            break;
+        case COIL_ADDR_2:
+            /*write*/
+            if (RLY_AIR2_READ)
+                RLY_AIR0 = reg;
+
+            break;
+        case COIL_ADDR_3:
+            /*write*/
+            if (RLY_OVER_READ != reg)
+                RLY_AIR0 = reg;
+
+            break;
+        case COIL_ADDR_4:
+            /*write*/
+            if (RLY_ERR_READ != reg)
+                RLY_AIR0 = reg;
+
+            break;
+        case COIL_ADDR_5:
+            /*write*/
+            if (RLY_CNT_READ != reg)
+                RLY_AIR0 = reg;
+
+            break;
+        case COIL_ADDR_6:
+            /*write*/
+            if (RLY_CONTACTOR_READ != reg)
+                RLY_AIR0 = reg;
+
+            break;
+        case COIL_ADDR_7:
+            /*write*/
+            if (RLY_TRAN_READ != reg)
+                RLY_AIR0 = reg;
+            break;
+
+        default:
+            break;
         }
+
+        
+				coil_index++;
+				
+				/*discrete reg - read only*/
+        if (discrete_index > DISCRETE_ADDR_11)
+        {
+            discrete_index = DISCRETE_ADDR_0;
+        }
+
+        switch (discrete_index)
+        {
+        case DISCRETE_ADDR_0:
+            if (page_param->key1 == RDY)
+                discrete_value |= 0x01 << discrete_index;
+            else
+                discrete_value &= ~(0x01 << discrete_index);
+
+            break;
+        case DISCRETE_ADDR_1:
+            if (page_param->key2 == ION)
+                discrete_value |= 0x01 << discrete_index;
+            else
+                discrete_value &= ~(0x01 << discrete_index);
+            break;
+        case DISCRETE_ADDR_2:
+            if (page_param->key3 == CTW)
+                discrete_value |= 0x01 << discrete_index;
+            else
+                discrete_value &= ~(0x01 << discrete_index);
+            break;
+        case DISCRETE_ADDR_3:
+            if (weld_controller->Count_Dir == DOWN)
+                discrete_value |= 0x01 << discrete_index;
+            else
+                discrete_value &= ~(0x01 << discrete_index);
+            break;
+        case DISCRETE_ADDR_4:
+            if (get_comp(temp_page_list, "switch")->val == 1)
+                discrete_value |= 0x01 << discrete_index;
+            else
+                discrete_value &= ~(0x01 << discrete_index);
+            break;
+        case DISCRETE_ADDR_5:
+            if (err_get_type(err_ctrl, TRANSFORMER_OVER_HEAT)->state == true)
+                discrete_value |= 0x01 << discrete_index;
+            else
+                discrete_value &= ~(0x01 << discrete_index);
+            break;
+        case DISCRETE_ADDR_6:
+            if (err_get_type(err_ctrl, RADIATOR)->state == true)
+                discrete_value |= 0x01 << discrete_index;
+            else
+                discrete_value &= ~(0x01 << discrete_index);
+            break;
+        case DISCRETE_ADDR_7:
+            if (err_get_type(err_ctrl, SENSOR_ERROR)->state == true)
+                discrete_value |= 0x01 << discrete_index;
+            else
+                discrete_value &= ~(0x01 << discrete_index);
+            break;
+        case DISCRETE_ADDR_8:
+            if (RLY_INPUT_SCAN() == RLY_START0_ACTIVE)
+                discrete_value |= 0x01 << discrete_index;
+            else
+                discrete_value &= ~(0x01 << discrete_index);
+            break;
+        case DISCRETE_ADDR_9:
+            if (RLY_INPUT_SCAN() == RLY_START1_ACTIVE)
+                discrete_value |= 0x01 << discrete_index;
+            else
+                discrete_value &= ~(0x01 << discrete_index);
+            break;
+        case DISCRETE_ADDR_10:
+            if (RLY_INPUT_SCAN() == RLY_START2_ACTIVE)
+                discrete_value |= 0x01 << discrete_index;
+            else
+                discrete_value &= ~(0x01 << discrete_index);
+            break;
+        case DISCRETE_ADDR_11:
+            if (RLY_INPUT_SCAN() == RLY_START3_ACTIVE)
+                discrete_value |= 0x01 << discrete_index;
+            else
+                discrete_value &= ~(0x01 << discrete_index);
+            break;
+
+        default:
+            break;
+        }
+				discrete_index++;
+
         ucRegDiscreteBuf[0] = (uint8_t)discrete_value & 0x0f;
         ucRegDiscreteBuf[1] = (uint8_t)discrete_value >> 8;
 

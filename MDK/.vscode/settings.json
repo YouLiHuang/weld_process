@@ -71,7 +71,9 @@
         "io_ctrl.h": "c",
         "pwm.h": "c",
         "modbus_app.h": "c",
-        "mbutils.h": "c"
+        "mbutils.h": "c",
+        "thermocouple.h": "c",
+        "mb.h": "c"
     },
     // 头部注释
     "fileheader.customMade": {

@@ -94,7 +94,8 @@ typedef enum
     ALARM_PAGE = 2,
     WAVE_PAGE = 3,
     TEMP_PAGE = 4,
-    UART_PAGE = 5
+    UART_PAGE = 5,
+    KEY_INPUT_PAGE = 7,
     /*...用户可扩展页面...*/
 
 } Page_ID;
@@ -140,7 +141,7 @@ typedef struct page_param
     ION_OFF_STATE key2; /*ion ioff*/
     SGW_CTW_STATE key3; /*sgw ctw*/
     uint8_t GP;
-    
+
     int *user_buf_val;
     char *user_buf_str;
 } Page_Param;

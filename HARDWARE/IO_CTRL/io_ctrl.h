@@ -15,6 +15,7 @@
 #define RLY_WATER PCin(11)    // 冷却水IO
 
 /*启动信号宏*/
+#define RLY_NOINPUT 0xff
 #define RLY_START0_ACTIVE 0
 #define RLY_START1_ACTIVE 1
 #define RLY_START2_ACTIVE 2

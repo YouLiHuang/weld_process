@@ -637,7 +637,6 @@ void command_set_comp_str_raw(const char *name, const char *compatible, const ch
 
 bool Page_id_get(void)
 {
-  uart_init(115200);
   /*清缓存*/
   for (uint16_t i = 0; i < USART_REC_LEN; i++)
     USART_RX_BUF[i] = 0;

@@ -200,5 +200,5 @@ uint8_t RLY_INPUT_SCAN()
 		else if (RLY_WATER == 0)
 			return RLY_WATER_ACTIVE;
 	}
-	return 0;
+	return RLY_NOINPUT;
 }

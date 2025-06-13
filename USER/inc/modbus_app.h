@@ -84,5 +84,10 @@
 #define DISCRETE_ADDR_10 10
 #define DISCRETE_ADDR_11 11
 
+
+void Modbus_reg_sync(void);
+
+
+
 #endif
 

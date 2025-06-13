@@ -26,12 +26,9 @@
 #define HOST_WELD_CTRL 1        // Upper computer control welding enable
 
 /* Temperature control ---------------------------------------------------------------------------*/
-#define STABLE_ERR 8 // Steady-state error compensation
-#define USER_FIRST_SET_MAX 300
-#define USER_SET_MAX_TEMP 650.0 // User-set maximum temperature
-#define USER_SET_MIN_TEMP 200.0 // User-set minimum temperature
-#define MAX_WELD_TIME 9999      // Maximum welding time
+
 /*Temperature control parameters*/
+#define STABLE_ERR 8                 // Steady-state error compensation
 #define FAST_RISE_TIME 150           // Cold-start temperature compensation time
 #define COMPENSATION_THRESHOLD 0.98f // Heat compensation temperature detection threshold
 #define TRANSITION_TIME 100          // Thermal compensation time
@@ -88,5 +85,12 @@
 #define CHECK_GPIO_K GPIOE
 #define CHECKOUT_PIN_K GPIO_Pin_13
 #define CHECKIN_PIN_K GPIO_Pin_14
+/*UI PARAM ----------------------------------------------------------------------------------------*/
+#define USER_FIRST_SET_MAX 300
+#define USER_SET_MAX_TEMP 650.0 // User-set maximum temperature
+#define USER_SET_MIN_TEMP 200.0 // User-set minimum temperature
+#define USER_MAX_WELD_TIME 9999      // Maximum welding time
+#define USER_MAX_COUNT 50000
+#define MAX_GP 19
 
 #endif

@@ -59,20 +59,20 @@ CPU_STK MAIN_TASK_STK[MAIN_STK_SIZE];
 void main_task(void *p_arg);
 
 #define READ_TASK_PRIO 6
-#define READ_STK_SIZE 3072
+#define READ_STK_SIZE 4096
 OS_TCB READ_TaskTCB;
 CPU_STK READ_TASK_STK[READ_STK_SIZE];
 
 void read_task(void *p_arg);
 
-#define COMPUTER_TASK_PRIO 6
-#define COMPUTER_STK_SIZE 2048
+#define COMPUTER_TASK_PRIO 7
+#define COMPUTER_STK_SIZE 1024
 OS_TCB COMPUTER_TaskTCB;
 CPU_STK COMPUTER_TASK_STK[COMPUTER_STK_SIZE];
 void computer_read_task(void *p_arg);
 
 #define USB_TASK_PRIO 7
-#define USB_STK_SIZE 2048
+#define USB_STK_SIZE 1024
 OS_TCB USB_TaskTCB;
 CPU_STK USB_TASK_STK[USB_STK_SIZE];
 void usb_task(void *p_arg);
@@ -458,7 +458,7 @@ and the time slice length is 1 system clock beat, 1 ms
 				 (CPU_STK_SIZE)ERROR_STK_SIZE / 10,
 				 (CPU_STK_SIZE)ERROR_STK_SIZE,
 				 (OS_MSG_QTY)0,
-				 (OS_TICK)10, // 最大连续运行时长（时间片）
+				 (OS_TICK)10,
 				 (void *)0,
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
@@ -490,7 +490,7 @@ and the time slice length is 1 system clock beat, 1 ms
 				 (CPU_STK_SIZE)READ_STK_SIZE / 10,
 				 (CPU_STK_SIZE)READ_STK_SIZE,
 				 (OS_MSG_QTY)0,
-				 (OS_TICK)20,
+				 (OS_TICK)50,
 				 (void *)0,
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
@@ -1094,266 +1094,165 @@ static void Thermocouple_err_eliminate()
 }
 #endif
 
-static void key_action_callback_param(Component_Queue *page_list)
+static void Modbus_Sync_FromUi(void)
 {
+	uint8_t index = 0;
+	OS_ERR err;
 
-	// 读取RDY_SCH按键值
-	Component *comp = get_comp(page_list, "RDY_SCH");
-	// 处于就绪态度————完成了参数修改 或者 静态无动作加载参数
-	// 1、SCH——>RDY：退出修改模式，保存用户修改的参数
-	// 2、RDY——>RDY：用户无动作，根据GP值加载参数
-	if (RDY == comp->val)
+	OSMutexPend(&ModBus_Mux, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+	switch (page_param->id)
 	{
-		// 1、SCH——>RDY：退出修改模式，保存用户修改的参数
-		if (comp->val != page_param->key1)
+
+	case TEMP_PAGE:
+		for (index = HOLD_ADDR_0; index < HOLD_ADDR_7; index++)
 		{
-			/*Ⅰ、读取界面上的参数*/
-			for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
+			switch (index)
 			{
-				/*参数读取*/
-				command_get_comp_val(page_list, weld_temp_name_list[i], "val");
-			}
-			for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
-			{
-				/*参数读取*/
-				command_get_comp_val(page_list, weld_time_name_list[i], "val");
-			}
-
-			command_get_comp_val(page_list, "count", "val");
-
-			/*Ⅱ、从列表当中获取用户设定的数据*/
-			uint16_t temp[3] = {0}, time[5] = {0};
-			uint16_t current_conut;
-			for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
-			{
-				/*获取更新的组件属性值*/
-				if (get_comp(page_list, weld_time_name_list[i]) != NULL)
-					time[i] = get_comp(page_list, weld_time_name_list[i])->val;
-			}
-			for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
-			{
-				/*获取更新的组件属性值*/
-				if (get_comp(page_list, weld_temp_name_list[i]) != NULL)
-					temp[i] = get_comp(page_list, weld_temp_name_list[i])->val;
-			}
-
-			current_conut = get_comp(page_list, "count")->val;
-
-			/*Ⅲ、保存到eeprom*/
-			if (get_comp(page_list, "GP"))
-			{
-				save_param(weld_controller,
-						   get_comp(page_list, "GP")->val,
-						   temp,
-						   sizeof(temp) / sizeof(uint16_t),
-						   time,
-						   sizeof(time) / sizeof(uint16_t));
-			}
-			/*Ⅳ、数据同步*/
-			for (uint8_t i = 0; i < sizeof(temp) / sizeof(temp[0]); i++)
-			{
-				weld_controller->weld_temp[i] = temp[i];
-			}
-			for (uint8_t i = 0; i < sizeof(time) / sizeof(time[0]); i++)
-			{
-				weld_controller->weld_time[i] = time[i];
-			}
-
-			if (current_conut != weld_controller->weld_count)
-			{
-				weld_controller->weld_count = current_conut;
-			}
-
-			weld_controller->Count_Dir = get_comp(page_list, "UP_DOWN")->val == UP_CNT ? UP : DOWN;
-		}
-		// 2、RDY——>RDY：无动作，根据GP值加载参数
-		else if (get_comp(page_list, "GP")->val <= GP_MAX)
-		{
-			/*Ⅰ、从内存加载参数*/
-			uint8_t GP = get_comp(page_list, "GP")->val; // 当前设定的GP值
-			if (GP != page_param->GP && GP <= GP_MAX)	 // GP值和上次不一致（用户修改）降低内存读写次数
-				Load_param(weld_controller, GP);
-			/*发送到触摸屏*/
-			for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
-			{
-				Component *comp = get_comp(page_list, weld_time_name_list[i]);
-				if (comp != NULL)
-					command_set_comp_val(weld_time_name_list[i], "val", comp->val);
-			}
-			for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
-			{
-				Component *comp = get_comp(page_list, weld_temp_name_list[i]);
-				if (comp != NULL)
-					command_set_comp_val(weld_temp_name_list[i], "val", comp->val);
+				/*six alarm temp*/
+			case HOLD_ADDR_0:
+				usRegHoldingBuf[index] = weld_controller->alarm_temp[0];
+				break;
+			case HOLD_ADDR_1:
+				usRegHoldingBuf[index] = weld_controller->alarm_temp[1];
+				break;
+			case HOLD_ADDR_2:
+				usRegHoldingBuf[index] = weld_controller->alarm_temp[2];
+				break;
+			case HOLD_ADDR_3:
+				usRegHoldingBuf[index] = weld_controller->alarm_temp[3];
+				break;
+			case HOLD_ADDR_4:
+				usRegHoldingBuf[index] = weld_controller->alarm_temp[4];
+				break;
+			case HOLD_ADDR_5:
+				usRegHoldingBuf[index] = weld_controller->alarm_temp[5];
+				break;
+				/*six alarm temp*/
+			case HOLD_ADDR_6:
+				usRegHoldingBuf[index] = weld_controller->temp_gain1 * 100;
+				break;
+			case HOLD_ADDR_7:
+				usRegHoldingBuf[index] = weld_controller->temp_gain2 * 100;
+				break;
 			}
 		}
+		break;
+
+	case PARAM_PAGE:
+
+		/*...modbus sync...*/
+
+		for (index = HOLD_ADDR_8; index < HOLD_ADDR_17; index++)
+		{
+			switch (index)
+			{
+			case HOLD_ADDR_8:
+				usRegHoldingBuf[index] = weld_controller->weld_temp[0];
+				break;
+			case HOLD_ADDR_9:
+				usRegHoldingBuf[index] = weld_controller->weld_temp[1];
+				break;
+			case HOLD_ADDR_10:
+				usRegHoldingBuf[index] = weld_controller->weld_temp[2];
+				break;
+				/*five timr*/
+			case HOLD_ADDR_11:
+				usRegHoldingBuf[index] = weld_controller->weld_time[0];
+				break;
+			case HOLD_ADDR_12:
+				usRegHoldingBuf[index] = weld_controller->weld_time[1];
+				break;
+			case HOLD_ADDR_13:
+				usRegHoldingBuf[index] = weld_controller->weld_time[2];
+				break;
+			case HOLD_ADDR_14:
+				usRegHoldingBuf[index] = weld_controller->weld_time[3];
+				break;
+			case HOLD_ADDR_15:
+				usRegHoldingBuf[index] = weld_controller->weld_time[4];
+				break;
+			case HOLD_ADDR_16:
+				usRegHoldingBuf[index] = weld_controller->weld_count;
+				break;
+				/*six alarm temp*/
+			case HOLD_ADDR_17:
+				usRegHoldingBuf[index] = get_comp(param_page_list, "GP")->val;
+				break;
+			}
+		}
+
+		break;
 	}
-	// 处于修改模式————进入修改模式
-	// 3、RDY——>SCH：进入修改模式
-	// 4、SCH——>SCH：正在修改参数
-	else if (SCH == comp->val)
+
+	OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
+}
+
+static void Sync_Date_from_Screen(Component_Queue *page_list)
+{
+	uint16_t temp_HL[6] = {0}, gain[2] = {0};
+	uint16_t temp[3] = {0}, time[5] = {0};
+	uint16_t current_conut;
+	/*Ⅰ Screen --->  User Data*/
+	switch (page_param->id)
 	{
-		uint16_t count;
-		uint8_t GP;
-
-		/*Ⅰ、从内存加载参数*/
-		GP = get_comp(page_list, "GP")->val;	  // 当前设定的GP值
-		if (GP != page_param->GP && GP <= GP_MAX) // GP值和上次不一致（用户修改）
-		{
-			/*降低内存读写次数*/
-			Load_param(weld_controller, GP);
-			/*发送参数到触摸屏————三个温度，5个时间点*/
-
-			/*发送到触摸屏*/
-			for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
-			{
-				Component *comp = get_comp(page_list, weld_time_name_list[i]);
-				if (comp != NULL)
-					command_set_comp_val(weld_time_name_list[i], "val", comp->val);
-			}
-			for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
-			{
-				Component *comp = get_comp(page_list, weld_temp_name_list[i]);
-				if (comp != NULL)
-					command_set_comp_val(weld_temp_name_list[i], "val", comp->val);
-			}
-		}
-		/*Ⅱ、读取界面上的参数*/
+	case PARAM_PAGE:
+		/*read dat from screen*/
 		for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
 		{
-			/*参数读取*/
 			command_get_comp_val(page_list, weld_temp_name_list[i], "val");
 		}
 		for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
 		{
-			/*参数读取*/
 			command_get_comp_val(page_list, weld_time_name_list[i], "val");
 		}
-		/*get count , which would be changed by user*/
-		command_get_comp_val(param_page_list, "count", "val");
-		count = get_comp(param_page_list, "count")->val;
-		if (weld_controller->weld_count != count)
-			weld_controller->weld_count = count;
-	}
-	// 状态同步
-	page_param->GP = get_comp(page_list, "GP")->val;
-	page_param->key1 = (RDY_SCH_STATE)get_comp(page_list, "RDY_SCH")->val;
-	page_param->key2 = (ION_OFF_STATE)get_comp(page_list, "ION_OFF")->val;
-	page_param->key3 = (SGW_CTW_STATE)get_comp(page_list, "SGW_CTW")->val;
-}
-static void key_action_callback_temp(Component_Queue *page_list)
-{
 
-	// 读取RDY_SCH按键值
-	Component *comp = get_comp(page_list, "RDY_SCH");
-	// 处于就绪态度————完成了参数修改 或者 静态无动作加载参数
-	// 1、SCH——>RDY：退出修改模式，保存用户修改的参数
-	// 2、RDY——>RDY：用户无动作，根据GP值加载参数
-	if (RDY == comp->val)
-	{
-		// 1、SCH——>RDY：退出修改模式，保存用户修改的参数
-		if (comp->val != page_param->key1)
+		command_get_comp_val(page_list, "count", "val");
+
+		/*get data from list*/
+		for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
 		{
-			/*Ⅰ、读取界面上的参数*/
-			for (uint8_t i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
-			{
-				/*参数读取*/
-				command_get_comp_val(page_list, gain_name_list[i], "val");
-			}
-			for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
-			{
-				/*参数读取*/
-				command_get_comp_val(page_list, alarm_temp_name_list[i], "val");
-			}
-
-			/*Ⅱ、保存用户设定的参数*/
-			uint16_t temp_HL[6] = {0}, gain[2] = {0};
-			uint16_t current_conut;
-
-			for (uint8_t i = 0; i < sizeof(temp_HL) / sizeof(uint16_t); i++)
-			{
-				/*获取更新的组件属性值*/
-				if (get_comp(page_list, alarm_temp_name_list[i]) != NULL)
-					temp_HL[i] = get_comp(page_list, alarm_temp_name_list[i])->val;
-			}
-			for (uint8_t i = 0; i < sizeof(gain) / sizeof(uint16_t); i++)
-			{
-				/*获取更新的组件属性值*/
-				if (get_comp(page_list, gain_name_list[i]) != NULL)
-					gain[i] = get_comp(page_list, gain_name_list[i])->val;
-			}
-
-			/*Ⅲ、存储到eeprom*/
-			if (get_comp(page_list, "GP") != NULL)
-			{
-				save_param_alarm(weld_controller,
-								 get_comp(page_list, "GP")->val,
-								 temp_HL,
-								 sizeof(temp_HL) / sizeof(uint16_t),
-								 gain);
-			}
-
-			/*Ⅳ、数据同步*/
-			for (uint8_t i = 0; i < sizeof(temp_HL) / sizeof(temp_HL[0]); i++)
-			{
-				weld_controller->alarm_temp[i] = temp_HL[i];
-			}
-			weld_controller->temp_gain1 = gain[0] / 100.0;
-			weld_controller->temp_gain2 = gain[1] / 100.0;
-
-			if (current_conut != weld_controller->weld_count)
-			{
-				weld_controller->weld_count = current_conut;
-			}
-
-			weld_controller->Count_Dir = get_comp(page_list, "UP_DOWN")->val == UP_CNT ? UP : DOWN;
+			time[i] = get_comp(page_list, weld_time_name_list[i])->val;
 		}
-		// 2、RDY——>RDY：用户无动作，根据GP值加载参数
-		else if (comp->val == page_param->key1 && get_comp(page_list, "GP")->val <= GP_MAX)
+		for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
 		{
-			/*Ⅰ、从内存加载参数————两个温度系数，6个温度*/
-			uint8_t GP = get_comp(page_list, "GP")->val; // 当前设定的GP值
-			if (GP != page_param->GP && GP <= GP_MAX)	 // GP值和上次不一致（用户修改）
-				Load_param_alarm(weld_controller, GP);	 // 加载温度限制/温度增益参数
-
-			/*发送到触摸屏*/
-			for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
-			{
-				command_set_comp_val(alarm_temp_name_list[i], "val", weld_controller->alarm_temp[i]);
-			}
-
-			command_set_comp_val(gain_name_list[0], "val", weld_controller->temp_gain1 * 100);
-			command_set_comp_val(gain_name_list[1], "val", weld_controller->temp_gain2 * 100);
+			temp[i] = get_comp(page_list, weld_temp_name_list[i])->val;
 		}
-	}
-	// 处于修改模式————进入修改模式
-	// 3、RDY——>SCH：进入修改模式
-	// 4、SCH——>SCH：正在修改参数
-	else if (SCH == comp->val)
-	{
-		uint16_t count;
-		uint16_t GP;
-		/*Ⅰ、根据GP加载参数*/
-		GP = get_comp(page_list, "GP")->val; // 当前设定的GP值GP值和上次不一致 降低内存读写次数
-		if (GP != page_param->GP && GP <= GP_MAX)
+
+		current_conut = get_comp(page_list, "count")->val;
+
+		/*data sync*/
+		for (uint8_t i = 0; i < sizeof(temp) / sizeof(temp[0]); i++)
 		{
-			/*加载参数*/
-			Load_param_alarm(weld_controller, GP);
-			/*发送到触摸屏*/
-			for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
-			{
-				Component *comp = get_comp(page_list, alarm_temp_name_list[i]);
-				if (comp != NULL)
-					command_set_comp_val(alarm_temp_name_list[i], "val", comp->val);
-			}
-			for (uint8_t i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
-			{
-				Component *comp = get_comp(page_list, gain_name_list[i]);
-				if (comp != NULL)
-					command_set_comp_val(gain_name_list[i], "val", comp->val);
-			}
+			weld_controller->weld_temp[i] = temp[i];
 		}
-		/*Ⅱ、读取界面上的参数*/
+		for (uint8_t i = 0; i < sizeof(time) / sizeof(time[0]); i++)
+		{
+			weld_controller->weld_time[i] = time[i];
+		}
+
+		if (current_conut != weld_controller->weld_count)
+		{
+			weld_controller->weld_count = current_conut;
+		}
+
+		weld_controller->Count_Dir = get_comp(page_list, "UP_DOWN")->val == UP_CNT ? UP : DOWN;
+
+		/*save data*/
+		if (get_comp(page_list, "GP"))
+		{
+			save_param(weld_controller,
+					   get_comp(page_list, "GP")->val,
+					   temp,
+					   sizeof(temp) / sizeof(uint16_t),
+					   time,
+					   sizeof(time) / sizeof(uint16_t));
+		}
+
+		break;
+
+	case TEMP_PAGE:
+
+		/*Ⅰ、读取界面上的参数*/
 		for (uint8_t i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
 		{
 			/*参数读取*/
@@ -1364,6 +1263,209 @@ static void key_action_callback_temp(Component_Queue *page_list)
 			/*参数读取*/
 			command_get_comp_val(page_list, alarm_temp_name_list[i], "val");
 		}
+
+		/*get data from list*/
+		for (uint8_t i = 0; i < sizeof(temp_HL) / sizeof(uint16_t); i++)
+		{
+			temp_HL[i] = get_comp(page_list, alarm_temp_name_list[i])->val;
+		}
+		for (uint8_t i = 0; i < sizeof(gain) / sizeof(uint16_t); i++)
+		{
+			gain[i] = get_comp(page_list, gain_name_list[i])->val;
+		}
+
+		/*data sync*/
+		for (uint8_t i = 0; i < sizeof(temp_HL) / sizeof(temp_HL[0]); i++)
+		{
+			weld_controller->alarm_temp[i] = temp_HL[i];
+		}
+		weld_controller->temp_gain1 = gain[0] / 100.0;
+		weld_controller->temp_gain2 = gain[1] / 100.0;
+
+		if (current_conut != weld_controller->weld_count)
+		{
+			weld_controller->weld_count = current_conut;
+		}
+
+		weld_controller->Count_Dir = get_comp(page_list, "UP_DOWN")->val == UP_CNT ? UP : DOWN;
+
+		/*save data to eeprom*/
+		if (get_comp(page_list, "GP") != NULL)
+		{
+			save_param_alarm(weld_controller,
+							 get_comp(page_list, "GP")->val,
+							 temp_HL,
+							 sizeof(temp_HL) / sizeof(uint16_t),
+							 gain);
+		}
+
+		break;
+	}
+
+	/*Ⅱ User Data --->  Modbus*/
+	/*sync data to Modbus buffer*/
+	Modbus_Sync_FromUi();
+}
+
+static void key_action_callback_param(Component_Queue *page_list)
+{
+
+	uint16_t count;
+	uint8_t GP;
+
+	// get key
+	Component *comp = get_comp(page_list, "RDY_SCH");
+
+	// 1、SCH——>RDY：exit change mode
+	// 2、RDY——>RDY：no action
+	if (RDY == comp->val)
+	{
+		// 1、SCH——>RDY：退出修改模式，保存用户修改的参数
+		if (comp->val != page_param->key1)
+		{
+			Sync_Date_from_Screen(page_list);
+		}
+		// 2、RDY——>RDY：无动作/根据GP值加载参数
+		else
+		{
+			GP = get_comp(page_list, "GP")->val;
+			if (GP != page_param->GP && GP <= GP_MAX)
+				Load_param(weld_controller, GP);
+
+			for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
+			{
+				command_set_comp_val(weld_time_name_list[i], "val",
+									 weld_controller->weld_time[i]);
+			}
+			for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
+			{
+				command_set_comp_val(weld_temp_name_list[i], "val",
+									 weld_controller->weld_temp[i]);
+			}
+		}
+	}
+	// 处于修改模式————进入修改模式
+	// 3、RDY——>SCH：进入修改模式
+	// 4、SCH——>SCH：正在修改参数
+	else if (SCH == comp->val)
+	{
+		/*GP change by user */
+		GP = get_comp(page_list, "GP")->val;
+		if (GP != page_param->GP && GP <= GP_MAX)
+		{
+
+			Load_param(weld_controller, GP);
+
+			for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
+			{
+				command_set_comp_val(weld_time_name_list[i], "val",
+									 weld_controller->weld_time[i]);
+			}
+			for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
+			{
+				command_set_comp_val(weld_temp_name_list[i], "val",
+									 weld_controller->weld_temp[i]);
+			}
+		}
+
+		/*default - read data from screen*/
+		for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
+		{
+			command_get_comp_val(page_list, weld_temp_name_list[i], "val");
+		}
+		for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
+		{
+			command_get_comp_val(page_list, weld_time_name_list[i], "val");
+		}
+
+		/*get count , which would be changed by user*/
+		command_get_comp_val(page_list, "count", "val");
+		count = get_comp(page_list, "count")->val;
+		if (weld_controller->weld_count != count)
+			weld_controller->weld_count = count;
+	}
+	// status sync
+	page_param->GP = get_comp(page_list, "GP")->val;
+	page_param->key1 = (RDY_SCH_STATE)get_comp(page_list, "RDY_SCH")->val;
+	page_param->key2 = (ION_OFF_STATE)get_comp(page_list, "ION_OFF")->val;
+	page_param->key3 = (SGW_CTW_STATE)get_comp(page_list, "SGW_CTW")->val;
+}
+static void key_action_callback_temp(Component_Queue *page_list)
+{
+	uint16_t count;
+	uint16_t GP;
+
+	// get key
+	Component *comp = get_comp(page_list, "RDY_SCH");
+
+	// 1、SCH——>RDY：exit change mode
+	// 2、RDY——>RDY：no action
+	if (RDY == comp->val)
+	{
+		// 1、SCH——>RDY：exit change mode
+		if (comp->val != page_param->key1)
+		{
+			Sync_Date_from_Screen(page_list);
+		}
+		// 2、RDY——>RDY：no action
+		else if (comp->val == page_param->key1 && get_comp(page_list, "GP")->val <= GP_MAX)
+		{
+			/*GP change by user*/
+			GP = get_comp(page_list, "GP")->val;
+			if (GP != page_param->GP && GP <= GP_MAX)
+				Load_param_alarm(weld_controller, GP);
+
+			/*send data to screen*/
+			for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(alarm_temp_name_list[0]); i++)
+			{
+				command_set_comp_val(alarm_temp_name_list[i], "val",
+									 weld_controller->alarm_temp[i]);
+			}
+
+			command_set_comp_val(gain_name_list[0], "val",
+								 weld_controller->temp_gain1 * 100);
+
+			command_set_comp_val(gain_name_list[1], "val",
+								 weld_controller->temp_gain2 * 100);
+		}
+	}
+
+	// 3、RDY——>SCH：enter change mode
+	// 4、SCH——>SCH：change param...
+	else if (SCH == comp->val)
+	{
+
+		/*Ⅰ、根据GP加载参数*/
+		GP = get_comp(page_list, "GP")->val; // 当前设定的GP值GP值和上次不一致 降低内存读写次数
+		if (GP != page_param->GP && GP <= GP_MAX)
+		{
+			Load_param_alarm(weld_controller, GP);
+
+			/*send data to screen*/
+			/*send data to screen*/
+			for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(alarm_temp_name_list[0]); i++)
+			{
+				command_set_comp_val(alarm_temp_name_list[i], "val",
+									 weld_controller->alarm_temp[i]);
+			}
+
+			command_set_comp_val(gain_name_list[0], "val",
+								 weld_controller->temp_gain1 * 100);
+
+			command_set_comp_val(gain_name_list[1], "val",
+								 weld_controller->temp_gain2 * 100);
+		}
+
+		/*default read data from screen*/
+		for (uint8_t i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
+		{
+			command_get_comp_val(page_list, gain_name_list[i], "val");
+		}
+		for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
+		{
+			command_get_comp_val(page_list, alarm_temp_name_list[i], "val");
+		}
+
 		/*get count , which would be changed by user*/
 		command_get_comp_val(param_page_list, "count", "val");
 		count = get_comp(param_page_list, "count")->val;
@@ -1574,7 +1676,7 @@ static void page_process(Page_ID id)
 
 			for (uint16_t i = 0; i < temp_draw_ctrl->third_step_index_end; i += delta)
 			{
-				draw_point(temp_draw_ctrl->temp_buf[i]);
+				draw_point(realtime_temp_buf[i]);
 			}
 		}
 	}
@@ -1646,6 +1748,9 @@ static void page_process(Page_ID id)
 		Temp_updata_realtime();
 	}
 	break;
+
+	case KEY_INPUT_PAGE:
+		break;
 
 	default:
 		/*...用户可自行添加需要的页面...*/
@@ -1786,6 +1891,7 @@ void main_task(void *p_arg)
 				break;
 			}
 		}
+		Modbus_reg_sync();
 
 		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
@@ -1839,7 +1945,7 @@ void computer_read_task(void *p_arg)
 		printf("> MODBUS NOT SUPPORT!\n");
 #endif
 
-		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);
+		OSTimeDlyHMSM(0, 0, 0, 20, OS_OPT_TIME_PERIODIC, &err);
 	}
 }
 
