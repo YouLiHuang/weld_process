@@ -178,11 +178,11 @@ extern uint16_t usRegHoldingBuf[REG_HOLDING_NREGS];
 extern uint8_t ucRegCoilsBuf[REG_COILS_SIZE / 8];
 extern uint8_t ucRegDiscreteBuf[REG_DISCRETE_SIZE / 8];
 
-uint8_t cur_GP;
-RDY_SCH_STATE cur_key1;
-ION_OFF_STATE cur_key2;
-SGW_CTW_STATE cur_key3;
-SWITCH_STATE switch_mode;
+uint8_t cur_GP = 0;
+RDY_SCH_STATE cur_key1 = RDY;
+ION_OFF_STATE cur_key2 = ION;
+SGW_CTW_STATE cur_key3 = SGW;
+SWITCH_STATE switch_mode = USER_MODE;
 
 int main(void)
 {
@@ -364,52 +364,6 @@ and the time slice length is 1 system clock beat, 1 ms
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
 
-	// UI task
-	// 20ms调度
-	OSTaskCreate((OS_TCB *)&READ_TaskTCB,
-				 (CPU_CHAR *)"Read task",
-				 (OS_TASK_PTR)read_task,
-				 (void *)0,
-				 (OS_PRIO)READ_TASK_PRIO,
-				 (CPU_STK *)&READ_TASK_STK[0],
-				 (CPU_STK_SIZE)READ_STK_SIZE / 10,
-				 (CPU_STK_SIZE)READ_STK_SIZE,
-				 (OS_MSG_QTY)0,
-				 (OS_TICK)50,
-				 (void *)0,
-				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
-				 (OS_ERR *)&err);
-
-	// USB task
-	OSTaskCreate((OS_TCB *)&USB_TaskTCB,
-				 (CPU_CHAR *)"usb task",
-				 (OS_TASK_PTR)usb_task,
-				 (void *)0,
-				 (OS_PRIO)USB_TASK_PRIO,
-				 (CPU_STK *)&USB_TASK_STK[0],
-				 (CPU_STK_SIZE)USB_STK_SIZE / 10,
-				 (CPU_STK_SIZE)USB_STK_SIZE,
-				 (OS_MSG_QTY)0,
-				 (OS_TICK)20,
-				 (void *)0,
-				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
-				 (OS_ERR *)&err);
-
-	// modbus task
-	OSTaskCreate((OS_TCB *)&COMPUTER_TaskTCB,
-				 (CPU_CHAR *)"computer read task",
-				 (OS_TASK_PTR)computer_read_task,
-				 (void *)0,
-				 (OS_PRIO)COMPUTER_TASK_PRIO,
-				 (CPU_STK *)&COMPUTER_TASK_STK[0],
-				 (CPU_STK_SIZE)COMPUTER_STK_SIZE / 10,
-				 (CPU_STK_SIZE)COMPUTER_STK_SIZE,
-				 (OS_MSG_QTY)0,
-				 (OS_TICK)40,
-				 (void *)0,
-				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
-				 (OS_ERR *)&err);
-
 	OS_CRITICAL_EXIT();
 
 	// delete start task
@@ -582,7 +536,7 @@ static void Power_on_check(void)
 	GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
 	GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
 
-	OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err);
+	OSTimeDlyHMSM(0, 0, 0, 5, OS_OPT_TIME_PERIODIC, &err);
 
 	if (GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E) != 0)
 	{
@@ -1022,6 +976,53 @@ void main_task(void *p_arg)
 
 	OS_ERR err;
 	Power_on_check();
+
+	// UI task
+	// 20ms调度
+	OSTaskCreate((OS_TCB *)&READ_TaskTCB,
+				 (CPU_CHAR *)"Read task",
+				 (OS_TASK_PTR)read_task,
+				 (void *)0,
+				 (OS_PRIO)READ_TASK_PRIO,
+				 (CPU_STK *)&READ_TASK_STK[0],
+				 (CPU_STK_SIZE)READ_STK_SIZE / 10,
+				 (CPU_STK_SIZE)READ_STK_SIZE,
+				 (OS_MSG_QTY)0,
+				 (OS_TICK)50,
+				 (void *)0,
+				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
+				 (OS_ERR *)&err);
+
+	// USB task
+	OSTaskCreate((OS_TCB *)&USB_TaskTCB,
+				 (CPU_CHAR *)"usb task",
+				 (OS_TASK_PTR)usb_task,
+				 (void *)0,
+				 (OS_PRIO)USB_TASK_PRIO,
+				 (CPU_STK *)&USB_TASK_STK[0],
+				 (CPU_STK_SIZE)USB_STK_SIZE / 10,
+				 (CPU_STK_SIZE)USB_STK_SIZE,
+				 (OS_MSG_QTY)0,
+				 (OS_TICK)20,
+				 (void *)0,
+				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
+				 (OS_ERR *)&err);
+
+	// modbus task
+	OSTaskCreate((OS_TCB *)&COMPUTER_TaskTCB,
+				 (CPU_CHAR *)"computer read task",
+				 (OS_TASK_PTR)computer_read_task,
+				 (void *)0,
+				 (OS_PRIO)COMPUTER_TASK_PRIO,
+				 (CPU_STK *)&COMPUTER_TASK_STK[0],
+				 (CPU_STK_SIZE)COMPUTER_STK_SIZE / 10,
+				 (CPU_STK_SIZE)COMPUTER_STK_SIZE,
+				 (OS_MSG_QTY)0,
+				 (OS_TICK)40,
+				 (void *)0,
+				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
+				 (OS_ERR *)&err);
+
 	while (1)
 	{
 
@@ -1078,13 +1079,12 @@ void read_task(void *p_arg)
 {
 
 	OS_ERR err;
-	Page_Manager *manager = request_PGManger();
 	while (1)
 	{
 		/*query page id*/
 		if (Page_id_get() == true)
 		{
-			TSpage_process(manager->id);
+			TSpage_process(request_PGManger()->id);
 		}
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);

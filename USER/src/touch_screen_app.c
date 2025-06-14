@@ -269,7 +269,6 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
 {
     uint16_t temp_HL[6] = {0}, gain[2] = {0};
     uint16_t temp[3] = {0}, time[5] = {0};
-    uint16_t current_conut;
     Page_ID id = request_PGManger()->id;
 
     char *weld_temp_name_list[] = {"temp1", "temp2", "temp3"};
@@ -303,8 +302,6 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
             temp[i] = get_comp(page_list, weld_temp_name_list[i])->val;
         }
 
-        current_conut = get_comp(page_list, "count")->val;
-
         /*data sync*/
         for (uint8_t i = 0; i < sizeof(temp) / sizeof(temp[0]); i++)
         {
@@ -315,10 +312,6 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
             weld_controller->weld_time[i] = time[i];
         }
 
-        if (current_conut != weld_controller->weld_count)
-        {
-            weld_controller->weld_count = current_conut;
-        }
 
         /*save data*/
         save_param(weld_controller,
@@ -362,18 +355,12 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
         weld_controller->temp_gain1 = gain[0] / 100.0;
         weld_controller->temp_gain2 = gain[1] / 100.0;
 
-        if (current_conut != weld_controller->weld_count)
-        {
-            weld_controller->weld_count = current_conut;
-        }
-
         /*save data to eeprom*/
-        save_param(weld_controller,
-                   cur_GP,
-                   temp,
-                   sizeof(temp) / sizeof(uint16_t),
-                   time,
-                   sizeof(time) / sizeof(uint16_t));
+        save_param_alarm(weld_controller,
+                         cur_GP,
+                         temp_HL,
+                         sizeof(temp_HL) / sizeof(uint16_t),
+                         gain);
 
         break;
     }
@@ -417,8 +404,8 @@ static void TSparam_pg_cb(Page_ID id)
     OS_ERR err;
     uint8_t index;
     Component_Queue *list;
-    RDY_SCH_STATE last_key1;
-    uint8_t last_gp;
+    static RDY_SCH_STATE last_key1 = RDY;
+    static uint8_t last_gp = 0;
     uint16_t screen_count = 0;
 
     const char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "UP_DOWN"};
@@ -564,8 +551,8 @@ static void TStemp_pg_cb(Page_ID id)
     OS_ERR err;
     uint8_t index;
     Component_Queue *list;
-    RDY_SCH_STATE last_key1;
-    uint8_t last_gp;
+    static RDY_SCH_STATE last_key1 = RDY;
+    static uint8_t last_gp = 0;
     uint32_t screen_count;
 
     const char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "UP_DOWN"};
