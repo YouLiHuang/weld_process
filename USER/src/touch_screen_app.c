@@ -1,3 +1,4 @@
+
 #include "touch_screen_app.h"
 #include "user_config.h"
 
@@ -8,45 +9,69 @@
 #include "protect.h"
 #include "spi.h"
 
-/*A list of new interface components*/
-// Record the ID of the current screen and the status of the three buttons
-Page_Param *page_param = NULL;
-// A list of components on the parameter setting screen
-Component_Queue *param_page_list = NULL;
-// A list of components for the temperature limit interface
-Component_Queue *temp_page_list = NULL;
-// A list of communication interface components
-Component_Queue *setting_page_list = NULL;
-// A list of components on the Waveform page
-Component_Queue *wave_page_list = NULL;
-/*Users can add the required component list as needed*/
-/*......*/
-
-static char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "UP_DOWN"};
-
-static char *weld_time_name_list[] = {
-    "time1",
-    "time2",
-    "time3",
-    "time4",
-    "time5",
-};
-static char *weld_temp_name_list[] = {
-    "temp1",
-    "temp2",
-    "temp3",
-};
-
-static char *alarm_temp_name_list[] = {
+/*list init name*/
+static char *temp_page_name_list[] = {
     "alarm1",
     "alarm2",
     "alarm3",
     "alarm4",
     "alarm5",
-    "alarm6"};
-static char *gain_name_list[] = {
+    "alarm6",
     "GAIN1",
-    "GAIN2"};
+    "GAIN2",
+    "RDY_SCH",
+    "ION_OFF",
+    "SGW_CTW",
+    "UP_DOWN",
+    "count",
+    "GP"};
+
+static char *param_page_name_list[] = {
+    "temp1",
+    "temp2",
+    "temp3",
+    "time1",
+    "time2",
+    "time3",
+    "time4",
+    "time5",
+    "RDY_SCH",
+    "ION_OFF",
+    "SGW_CTW",
+    "UP_DOWN",
+    "switch",
+    "count",
+    "GP",
+    "rtc0",
+    "rtc1",
+    "rtc2",
+    "rtc3",
+    "rtc4",
+};
+
+static char *setting_page_name_list[] = {
+    "adress",
+    "baudrate",
+    "sensortype"};
+
+static char *wave_page_name_list[] = {
+    "kp",
+    "ki",
+    "kd"};
+
+Page_Manager page_manger;
+// Page_Param *page_param = NULL; // Record the ID of the current screen and the status of the three buttons
+
+// A list of components on the parameter setting screen
+Component_Queue param_page_list;
+// A list of components for the temperature limit interface
+Component_Queue temp_page_list;
+// A list of communication interface components
+Component_Queue list;
+// A list of components on the Waveform page
+Component_Queue wave_page_list;
+
+/*...Users can add the required component list as needed...*/
 
 /*SEM -------------------------------------------------------------*/
 extern OS_SEM SENSOR_UPDATE_SEM;
@@ -69,6 +94,9 @@ extern uint8_t ucRegDiscreteBuf[REG_DISCRETE_SIZE / 8];
 extern Temp_draw_ctrl *temp_draw_ctrl;
 /*Welding real-time controller-------------------------------------*/
 extern weld_ctrl *weld_controller;
+#if PID_DEBUG
+extern pid_feedforword_ctrl *pid_ctrl_debug;
+#endif
 /*Date ------------------------------------------------------------*/
 extern Date current_date;
 /*Error controller ------------------------------------------------*/
@@ -80,18 +108,37 @@ extern Thermocouple *current_Thermocouple;
 
 extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN];
 
+extern uint8_t cur_GP;
+extern RDY_SCH_STATE cur_key1;
+extern ION_OFF_STATE cur_key2;
+extern SGW_CTW_STATE cur_key3;
+extern SWITCH_STATE switch_mode;
+
 /*Functions prototype----------------------------------------------*/
-static void TSkey_action_callback_param(Component_Queue *page_list);
-static void TSkey_action_callback_temp(Component_Queue *page_list);
-static void TSparse_key_action(Page_ID id);
-static void TSModbus_Sync_FromUi(void);
+
+static void TSModbus_Sync_FromUi(Page_ID id);
 static void TSSync_Date_from_Screen(Component_Queue *page_list);
+static void TSTemp_updata_realtime(Page_ID id);
+
+/*Page Callback  Functions------------------------------------------*/
+static void TSparam_pg_cb(Page_ID id);
+static void TStemp_pg_cb(Page_ID id);
+static void TSwave_pg_cb(Page_ID id);
+static void TSsetting_pg_cb(Page_ID id);
+
+/*match list--------------------------------------------------------*/
+page_map PAGE_CB_MAP[] = {
+    {PARAM_PAGE, NULL, TSparam_pg_cb, param_page_name_list, sizeof(param_page_name_list) / sizeof(char *)},
+    {TEMP_PAGE, NULL, TStemp_pg_cb, temp_page_name_list, sizeof(temp_page_name_list) / sizeof(char *)},
+    {UART_PAGE, NULL, TSsetting_pg_cb, setting_page_name_list, sizeof(setting_page_name_list) / sizeof(char *)},
+    {WAVE_PAGE, NULL, TSwave_pg_cb, wave_page_name_list, sizeof(wave_page_name_list) / sizeof(char *)},
+};
 
 /**
  * @description: real-time temp display
  * @return {*}
  */
-static void TSTemp_updata_realtime()
+static void TSTemp_updata_realtime(Page_ID id)
 {
     OS_ERR err;
 
@@ -99,7 +146,7 @@ static void TSTemp_updata_realtime()
     switch (current_Thermocouple->type)
     {
     case E_TYPE:
-        if (page_param->id == WAVE_PAGE)
+        if (id == WAVE_PAGE)
         {
             command_set_comp_val("step3", "val", weld_controller->realtime_temp);
         }
@@ -111,7 +158,7 @@ static void TSTemp_updata_realtime()
         break;
     case K_TYPE:
 
-        if (page_param->id == WAVE_PAGE)
+        if (id == WAVE_PAGE)
         {
             command_set_comp_val("step3", "val", weld_controller->realtime_temp);
         }
@@ -121,7 +168,7 @@ static void TSTemp_updata_realtime()
         }
         break;
     case J_TYPE:
-        if (page_param->id == WAVE_PAGE)
+        if (id == WAVE_PAGE)
         {
             command_set_comp_val("step33", "val", weld_controller->realtime_temp);
         }
@@ -142,111 +189,96 @@ static void TSTemp_updata_realtime()
  * @description: refresh modbus buffer according to data received from touch screen
  * @return {*}
  */
-static void TSModbus_Sync_FromUi(void)
+static void TSModbus_Sync_FromUi(Page_ID id)
 {
     uint8_t index = 0;
     OS_ERR err;
 
     OSMutexPend(&ModBus_Mux, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
-    switch (page_param->id)
+    for (index = HOLD_ADDR_0; index < HOLD_ADDR_17; index++)
     {
-
-    case TEMP_PAGE:
-        for (index = HOLD_ADDR_0; index < HOLD_ADDR_7; index++)
+        switch (index)
         {
-            switch (index)
-            {
-                /*six alarm temp*/
-            case HOLD_ADDR_0:
-                usRegHoldingBuf[index] = weld_controller->alarm_temp[0];
-                break;
-            case HOLD_ADDR_1:
-                usRegHoldingBuf[index] = weld_controller->alarm_temp[1];
-                break;
-            case HOLD_ADDR_2:
-                usRegHoldingBuf[index] = weld_controller->alarm_temp[2];
-                break;
-            case HOLD_ADDR_3:
-                usRegHoldingBuf[index] = weld_controller->alarm_temp[3];
-                break;
-            case HOLD_ADDR_4:
-                usRegHoldingBuf[index] = weld_controller->alarm_temp[4];
-                break;
-            case HOLD_ADDR_5:
-                usRegHoldingBuf[index] = weld_controller->alarm_temp[5];
-                break;
-                /*six alarm temp*/
-            case HOLD_ADDR_6:
-                usRegHoldingBuf[index] = weld_controller->temp_gain1 * 100;
-                break;
-            case HOLD_ADDR_7:
-                usRegHoldingBuf[index] = weld_controller->temp_gain2 * 100;
-                break;
-            }
+            /*six alarm temp*/
+        case HOLD_ADDR_0:
+            usRegHoldingBuf[index] = weld_controller->alarm_temp[0];
+            break;
+        case HOLD_ADDR_1:
+            usRegHoldingBuf[index] = weld_controller->alarm_temp[1];
+            break;
+        case HOLD_ADDR_2:
+            usRegHoldingBuf[index] = weld_controller->alarm_temp[2];
+            break;
+        case HOLD_ADDR_3:
+            usRegHoldingBuf[index] = weld_controller->alarm_temp[3];
+            break;
+        case HOLD_ADDR_4:
+            usRegHoldingBuf[index] = weld_controller->alarm_temp[4];
+            break;
+        case HOLD_ADDR_5:
+            usRegHoldingBuf[index] = weld_controller->alarm_temp[5];
+            break;
+            /*two gain*/
+        case HOLD_ADDR_6:
+            usRegHoldingBuf[index] = weld_controller->temp_gain1 * 100;
+            break;
+        case HOLD_ADDR_7:
+            usRegHoldingBuf[index] = weld_controller->temp_gain2 * 100;
+            break;
+        case HOLD_ADDR_8:
+            usRegHoldingBuf[index] = weld_controller->weld_temp[0];
+            break;
+        case HOLD_ADDR_9:
+            usRegHoldingBuf[index] = weld_controller->weld_temp[1];
+            break;
+        case HOLD_ADDR_10:
+            usRegHoldingBuf[index] = weld_controller->weld_temp[2];
+            break;
+            /*five time*/
+        case HOLD_ADDR_11:
+            usRegHoldingBuf[index] = weld_controller->weld_time[0];
+            break;
+        case HOLD_ADDR_12:
+            usRegHoldingBuf[index] = weld_controller->weld_time[1];
+            break;
+        case HOLD_ADDR_13:
+            usRegHoldingBuf[index] = weld_controller->weld_time[2];
+            break;
+        case HOLD_ADDR_14:
+            usRegHoldingBuf[index] = weld_controller->weld_time[3];
+            break;
+        case HOLD_ADDR_15:
+            usRegHoldingBuf[index] = weld_controller->weld_time[4];
+            break;
+        case HOLD_ADDR_16:
+            usRegHoldingBuf[index] = weld_controller->weld_count;
+            break;
+        case HOLD_ADDR_17:
+            usRegHoldingBuf[index] = cur_GP;
+            break;
+
+        default:
+            break;
         }
-        break;
-
-    case PARAM_PAGE:
-
-        /*...modbus sync...*/
-
-        for (index = HOLD_ADDR_8; index < HOLD_ADDR_17; index++)
-        {
-            switch (index)
-            {
-            case HOLD_ADDR_8:
-                usRegHoldingBuf[index] = weld_controller->weld_temp[0];
-                break;
-            case HOLD_ADDR_9:
-                usRegHoldingBuf[index] = weld_controller->weld_temp[1];
-                break;
-            case HOLD_ADDR_10:
-                usRegHoldingBuf[index] = weld_controller->weld_temp[2];
-                break;
-                /*five timr*/
-            case HOLD_ADDR_11:
-                usRegHoldingBuf[index] = weld_controller->weld_time[0];
-                break;
-            case HOLD_ADDR_12:
-                usRegHoldingBuf[index] = weld_controller->weld_time[1];
-                break;
-            case HOLD_ADDR_13:
-                usRegHoldingBuf[index] = weld_controller->weld_time[2];
-                break;
-            case HOLD_ADDR_14:
-                usRegHoldingBuf[index] = weld_controller->weld_time[3];
-                break;
-            case HOLD_ADDR_15:
-                usRegHoldingBuf[index] = weld_controller->weld_time[4];
-                break;
-            case HOLD_ADDR_16:
-                usRegHoldingBuf[index] = weld_controller->weld_count;
-                break;
-                /*six alarm temp*/
-            case HOLD_ADDR_17:
-                usRegHoldingBuf[index] = get_comp(param_page_list, "GP")->val;
-                break;
-            }
-        }
-
-        break;
     }
 
     OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
 }
 
-/**
- * @description: refresh user data according to data received from touch screen
- * @param {Component_Queue} *page_list
- * @return {*}
- */
 static void TSSync_Date_from_Screen(Component_Queue *page_list)
 {
     uint16_t temp_HL[6] = {0}, gain[2] = {0};
     uint16_t temp[3] = {0}, time[5] = {0};
     uint16_t current_conut;
+    Page_ID id = request_PGManger()->id;
+
+    char *weld_temp_name_list[] = {"temp1", "temp2", "temp3"};
+    char *weld_time_name_list[] = {"time1", "time2", "time3", "time4", "time5"};
+    char *gain_name_list[] = {"GAIN1", "GAIN2"};
+    char *alarm_temp_name_list[] = {"alarm1", "alarm2", "alarm3", "alarm4", "alarm5", "alarm6"};
+
     /*Ⅰ Screen --->  User Data*/
-    switch (page_param->id)
+    switch (id)
     {
     case PARAM_PAGE:
         /*read dat from screen*/
@@ -288,18 +320,13 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
             weld_controller->weld_count = current_conut;
         }
 
-        weld_controller->Count_Dir = get_comp(page_list, "UP_DOWN")->val == UP_CNT ? UP : DOWN;
-
         /*save data*/
-        if (get_comp(page_list, "GP"))
-        {
-            save_param(weld_controller,
-                       get_comp(page_list, "GP")->val,
-                       temp,
-                       sizeof(temp) / sizeof(uint16_t),
-                       time,
-                       sizeof(time) / sizeof(uint16_t));
-        }
+        save_param(weld_controller,
+                   cur_GP,
+                   temp,
+                   sizeof(temp) / sizeof(uint16_t),
+                   time,
+                   sizeof(time) / sizeof(uint16_t));
 
         break;
 
@@ -340,56 +367,138 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
             weld_controller->weld_count = current_conut;
         }
 
-        weld_controller->Count_Dir = get_comp(page_list, "UP_DOWN")->val == UP_CNT ? UP : DOWN;
-
         /*save data to eeprom*/
-        if (get_comp(page_list, "GP") != NULL)
-        {
-            save_param_alarm(weld_controller,
-                             get_comp(page_list, "GP")->val,
-                             temp_HL,
-                             sizeof(temp_HL) / sizeof(uint16_t),
-                             gain);
-        }
+        save_param(weld_controller,
+                   cur_GP,
+                   temp,
+                   sizeof(temp) / sizeof(uint16_t),
+                   time,
+                   sizeof(time) / sizeof(uint16_t));
 
         break;
     }
 
     /*Ⅱ User Data --->  Modbus*/
     /*sync data to Modbus buffer*/
-    TSModbus_Sync_FromUi();
+    TSModbus_Sync_FromUi(id);
 }
 
-/**
- * @description: key callback
- * @param {Component_Queue} *page_list
- * @return {*}
- */
-static void TSkey_action_callback_param(Component_Queue *page_list)
+#if PID_DEBUG == 1
+static bool pid_param_get(uint16_t *pid_raw_param)
 {
 
-    uint16_t count;
-    uint8_t GP;
+    bool ret = true;
+    uint16_t kp;
+    uint16_t ki;
+    uint16_t kd;
 
-    // get key
-    Component *comp = get_comp(page_list, "RDY_SCH");
+    ret = command_get_variable_val(&kp, "kp");
+    ret = command_get_variable_val(&ki, "ki");
+    ret = command_get_variable_val(&kd, "kd");
+    if (ret == true)
+    {
+        pid_raw_param[0] = kp;
+        pid_raw_param[1] = ki;
+        pid_raw_param[2] = kd;
+    }
 
+    return ret;
+}
+#endif
+
+/**
+ * @description: param page callback
+ * @param {Page_ID} id
+ * @return {*}
+ */
+static void TSparam_pg_cb(Page_ID id)
+{
+
+    OS_ERR err;
+    uint8_t index;
+    Component_Queue *list;
+    RDY_SCH_STATE last_key1;
+    uint8_t last_gp;
+    uint16_t screen_count = 0;
+
+    const char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "UP_DOWN"};
+    const char *val_name_list[] = {"GP", "count"};
+    const char *weld_time_name_list[] = {
+        "time1",
+        "time2",
+        "time3",
+        "time4",
+        "time5",
+    };
+    const char *weld_temp_name_list[] = {
+        "temp1",
+        "temp2",
+        "temp3",
+    };
+
+    /*match the page list*/
+    for (index = 0; index < sizeof(PAGE_CB_MAP) / sizeof(PAGE_CB_MAP[0]); index++)
+    {
+        list = PAGE_CB_MAP[index].que;
+        if (list->id == id)
+            break;
+    }
+
+    /*record last keys status*/
+    last_key1 = cur_key1;
+    last_gp = cur_GP;
+
+    /*sync weld count to screen*/
+    command_set_comp_val("count", "val", weld_controller->weld_count);
+
+    /*----------------------------------------- update components compatible -----------------------------------------*/
+    for (uint8_t i = 0; i < sizeof(key_name_list) / sizeof(key_name_list[0]); i++)
+    {
+        command_get_comp_val(list, key_name_list[i], "pic");
+    }
+    for (uint8_t i = 0; i < sizeof(val_name_list) / sizeof(val_name_list[0]); i++)
+    {
+        command_get_comp_val(list, val_name_list[i], "val");
+    }
+
+    /*data convert*/
+    cur_key1 = (RDY_SCH_STATE)get_comp(list, "RDY_SCH")->val;
+    cur_key2 = (ION_OFF_STATE)get_comp(list, "ION_OFF")->val;
+    cur_key3 = (SGW_CTW_STATE)get_comp(list, "SGW_CTW")->val;
+    weld_controller->Count_Dir = (get_comp(list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
+    cur_GP = get_comp(list, "GP")->val;
+    screen_count = get_comp(list, "count")->val;
+    if (weld_controller->weld_count != screen_count)
+    {
+        weld_controller->weld_count = screen_count;
+        command_set_comp_val("count", "val", weld_controller->weld_count);
+    }
+
+    /*get current data*/
+    command_get_variable_val(&current_date.Year, "rtc0");
+    command_get_variable_val(&current_date.Month, "rtc1");
+    command_get_variable_val(&current_date.Day, "rtc2");
+    command_get_variable_val(&current_date.Hour, "rtc3");
+    command_get_variable_val(&current_date.Minute, "rtc4");
+
+    /*------------------------------------------- handle key action start ----------------------------------------------*/
     // 1、SCH——>RDY：exit change mode
     // 2、RDY——>RDY：no action
-    if (RDY == comp->val)
+    if (RDY == cur_key1) // current status is RDY
     {
-        // 1、SCH——>RDY：退出修改模式，保存用户修改的参数
-        if (comp->val != page_param->key1)
+        // 1、SCH——>RDY：exit SCH mode
+        if (cur_key1 != last_key1)
         {
-            TSSync_Date_from_Screen(page_list);
+            TSSync_Date_from_Screen(list);
         }
-        // 2、RDY——>RDY：无动作/根据GP值加载参数
+        // 2、RDY——>RDY：no action
         else
         {
-            GP = get_comp(page_list, "GP")->val;
-            if (GP != page_param->GP && GP <= GP_MAX)
-                Load_param(weld_controller, GP);
+            /*gp change by user*/
+            if (cur_GP != last_gp && cur_GP <= GP_MAX)
+                Load_param(weld_controller, cur_GP);
 
+            /*send data to screen*/
             for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
             {
                 command_set_comp_val(weld_time_name_list[i], "val",
@@ -402,18 +511,15 @@ static void TSkey_action_callback_param(Component_Queue *page_list)
             }
         }
     }
-    // 处于修改模式————进入修改模式
-    // 3、RDY——>SCH：进入修改模式
-    // 4、SCH——>SCH：正在修改参数
-    else if (SCH == comp->val)
+
+    // 3、RDY——>SCH：enter SCH MODE
+    // 4、SCH——>SCH：in SCH mode
+    else if (SCH == cur_key1)
     {
         /*GP change by user */
-        GP = get_comp(page_list, "GP")->val;
-        if (GP != page_param->GP && GP <= GP_MAX)
+        if (cur_GP != last_gp && cur_GP <= GP_MAX)
         {
-
-            Load_param(weld_controller, GP);
-
+            Load_param(weld_controller, cur_GP);
             for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
             {
                 command_set_comp_val(weld_time_name_list[i], "val",
@@ -429,55 +535,107 @@ static void TSkey_action_callback_param(Component_Queue *page_list)
         /*default - read data from screen*/
         for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
         {
-            command_get_comp_val(page_list, weld_temp_name_list[i], "val");
+            command_get_comp_val(list, weld_temp_name_list[i], "val");
         }
         for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
         {
-            command_get_comp_val(page_list, weld_time_name_list[i], "val");
+            command_get_comp_val(list, weld_time_name_list[i], "val");
         }
-
-        /*get count , which would be changed by user*/
-        command_get_comp_val(page_list, "count", "val");
-        count = get_comp(page_list, "count")->val;
-        if (weld_controller->weld_count != count)
-            weld_controller->weld_count = count;
     }
-    // status sync
-    page_param->GP = get_comp(page_list, "GP")->val;
-    page_param->key1 = (RDY_SCH_STATE)get_comp(page_list, "RDY_SCH")->val;
-    page_param->key2 = (ION_OFF_STATE)get_comp(page_list, "ION_OFF")->val;
-    page_param->key3 = (SGW_CTW_STATE)get_comp(page_list, "SGW_CTW")->val;
+
+    /*---------------------------------------------handle key action end-------------------------------------------------*/
+    /*display average temperature*/
+    command_set_comp_val("temp11", "val", temp_draw_ctrl->display_temp[0]);
+    command_set_comp_val("temp22", "val", temp_draw_ctrl->display_temp[1]);
+
+    /*display Real-time temperature*/
+    OSMutexPend(&PLOT_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+    TSTemp_updata_realtime(id);
+    OSMutexPost(&PLOT_Mux, OS_OPT_POST_NONE, &err);
 }
 
 /**
- * @description: key callback
- * @param {Component_Queue} *page_list
+ * @description: temp page callback
+ * @param {Page_ID} id
  * @return {*}
  */
-static void TSkey_action_callback_temp(Component_Queue *page_list)
+static void TStemp_pg_cb(Page_ID id)
 {
-    uint16_t count;
-    uint16_t GP;
+    OS_ERR err;
+    uint8_t index;
+    Component_Queue *list;
+    RDY_SCH_STATE last_key1;
+    uint8_t last_gp;
+    uint32_t screen_count;
 
-    // get key
-    Component *comp = get_comp(page_list, "RDY_SCH");
+    const char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "UP_DOWN"};
+    const char *val_name_list[] = {"GP", "count", "switch"};
+    const char *alarm_temp_name_list[] = {
+        "alarm1",
+        "alarm2",
+        "alarm3",
+        "alarm4",
+        "alarm5",
+        "alarm6"};
+    const char *gain_name_list[] = {
+        "GAIN1",
+        "GAIN2"};
+
+    /*match the page list*/
+    for (index = 0; index < sizeof(PAGE_CB_MAP) / sizeof(PAGE_CB_MAP[0]); index++)
+    {
+        list = PAGE_CB_MAP[index].que;
+        if (list->id == id)
+            break;
+    }
+
+    /*record last keys status*/
+    last_key1 = cur_key1;
+    last_gp = cur_GP;
+
+    /*sync weld count to screen*/
+    command_set_comp_val("count", "val", weld_controller->weld_count);
+
+    /*----------------------------------------- update components compatible -----------------------------------------*/
+    for (uint8_t i = 0; i < sizeof(key_name_list) / sizeof(key_name_list[0]); i++)
+    {
+        command_get_comp_val(list, key_name_list[i], "pic");
+    }
+    for (uint8_t i = 0; i < sizeof(val_name_list) / sizeof(val_name_list[0]); i++)
+    {
+        command_get_comp_val(list, val_name_list[i], "val");
+    }
+
+    /*data convert*/
+    cur_key1 = (RDY_SCH_STATE)get_comp(list, "RDY_SCH")->val;
+    cur_key2 = (ION_OFF_STATE)get_comp(list, "ION_OFF")->val;
+    cur_key3 = (SGW_CTW_STATE)get_comp(list, "SGW_CTW")->val;
+    weld_controller->Count_Dir = (get_comp(list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
+    cur_GP = get_comp(list, "GP")->val;
+    screen_count = get_comp(list, "count")->val;
+    if (weld_controller->weld_count != screen_count)
+    {
+        weld_controller->weld_count = screen_count;
+        command_set_comp_val("count", "val", weld_controller->weld_count);
+    }
+
+    /*------------------------------------------- handle key action start ---------------------------------------------*/
 
     // 1、SCH——>RDY：exit change mode
     // 2、RDY——>RDY：no action
-    if (RDY == comp->val)
+    if (RDY == cur_key1)
     {
         // 1、SCH——>RDY：exit change mode
-        if (comp->val != page_param->key1)
+        if (cur_key1 != last_key1)
         {
-            TSSync_Date_from_Screen(page_list);
+            TSSync_Date_from_Screen(list);
         }
         // 2、RDY——>RDY：no action
-        else if (comp->val == page_param->key1 && get_comp(page_list, "GP")->val <= GP_MAX)
+        else if (cur_key1 == last_key1 && cur_GP <= GP_MAX)
         {
             /*GP change by user*/
-            GP = get_comp(page_list, "GP")->val;
-            if (GP != page_param->GP && GP <= GP_MAX)
-                Load_param_alarm(weld_controller, GP);
+            if (cur_GP != last_gp && cur_GP <= GP_MAX)
+                Load_param_alarm(weld_controller, cur_GP);
 
             /*send data to screen*/
             for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(alarm_temp_name_list[0]); i++)
@@ -496,16 +654,12 @@ static void TSkey_action_callback_temp(Component_Queue *page_list)
 
     // 3、RDY——>SCH：enter change mode
     // 4、SCH——>SCH：change param...
-    else if (SCH == comp->val)
+    else if (SCH == cur_key1)
     {
 
-        /*Ⅰ、根据GP加载参数*/
-        GP = get_comp(page_list, "GP")->val; // 当前设定的GP值GP值和上次不一致 降低内存读写次数
-        if (GP != page_param->GP && GP <= GP_MAX)
+        if (cur_GP != last_gp && cur_GP <= GP_MAX)
         {
-            Load_param_alarm(weld_controller, GP);
-
-            /*send data to screen*/
+            Load_param_alarm(weld_controller, cur_GP);
             /*send data to screen*/
             for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(alarm_temp_name_list[0]); i++)
             {
@@ -523,80 +677,188 @@ static void TSkey_action_callback_temp(Component_Queue *page_list)
         /*default read data from screen*/
         for (uint8_t i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
         {
-            command_get_comp_val(page_list, gain_name_list[i], "val");
+            command_get_comp_val(list, gain_name_list[i], "val");
         }
         for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
         {
-            command_get_comp_val(page_list, alarm_temp_name_list[i], "val");
+            command_get_comp_val(list, alarm_temp_name_list[i], "val");
         }
-
-        /*get count , which would be changed by user*/
-        command_get_comp_val(param_page_list, "count", "val");
-        count = get_comp(param_page_list, "count")->val;
-        if (weld_controller->weld_count != count)
-            weld_controller->weld_count = count;
     }
 
-    // 状态同步
-    page_param->GP = get_comp(page_list, "GP")->val;
-    page_param->key1 = (RDY_SCH_STATE)get_comp(page_list, "RDY_SCH")->val;
-    page_param->key2 = (ION_OFF_STATE)get_comp(page_list, "ION_OFF")->val;
-    page_param->key3 = (SGW_CTW_STATE)get_comp(page_list, "SGW_CTW")->val;
+    /*------------------------------------------- handle key action end -------------------------------------------------*/
+
+    /*display average temperature*/
+    command_set_comp_val("temp11", "val", temp_draw_ctrl->display_temp[0]);
+    command_set_comp_val("temp22", "val", temp_draw_ctrl->display_temp[1]);
+
+    /*display Real-time temperature*/
+    OSMutexPend(&PLOT_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+    TSTemp_updata_realtime(id);
+    OSMutexPost(&PLOT_Mux, OS_OPT_POST_NONE, &err);
 }
 
 /**
- * @description: key callback
+ * @description: wave page callback
  * @param {Page_ID} id
  * @return {*}
  */
-static void TSparse_key_action(Page_ID id)
+static void TSwave_pg_cb(Page_ID id)
 {
-    switch (id)
-    {
-    case PARAM_PAGE:
-        TSkey_action_callback_param(param_page_list);
-        break;
-    case TEMP_PAGE:
-        TSkey_action_callback_temp(temp_page_list);
-        break;
-    case WAVE_PAGE:
-        /*...*/
-        break;
-    case ALARM_PAGE:
-        /*...*/
-        break;
-    case UART_PAGE:
-        /*...*/
-        break;
-    default:
-        break;
-    }
-}
 #if PID_DEBUG == 1
-static bool pid_param_get(uint16_t *pid_raw_param)
-{
-    const char *pid_param_name_list[] = {
-        "kp",
-        "ki",
-        "kd"};
-    uint8_t cnt = 0;
+    command_set_comp_val("wave_page.kp", "aph", 127);
+    command_set_comp_val("wave_page.ki", "aph", 127);
+    command_set_comp_val("wave_page.kd", "aph", 127);
+    uint16_t pid_param[3] = {0};
+    if (pid_param_get(pid_param) == true)
+    {
+        pid_ctrl_debug->kp = pid_param[0] / 100.0;
+        pid_ctrl_debug->ki = pid_param[1] / 1000.0;
+        pid_ctrl_debug->kd = pid_param[2] / 100.0;
+    }
 
-    for (uint8_t i = 0; i < sizeof(pid_param_name_list) / sizeof(char *); i++)
-    {
-        if (command_get_comp_val(wave_page_list, pid_param_name_list[i], "val") == true)
-            cnt++;
-    }
-    if (cnt == sizeof(pid_param_name_list) / sizeof(char *))
-    {
-        pid_raw_param[0] = get_comp(wave_page_list, "kp")->val;
-        pid_raw_param[1] = get_comp(wave_page_list, "ki")->val;
-        pid_raw_param[2] = get_comp(wave_page_list, "kd")->val;
-        return true;
-    }
-    else
-        return false;
-}
 #endif
+    OS_ERR err;
+    uint16_t total_time = 0;     // 总焊接时长
+    uint16_t delta_tick = 0;     // 坐标间隔
+    uint16_t total_tick_len = 0; // 横坐标总长度
+    uint16_t win_width = 0;      // 绘图区域占据的实际窗口大小
+    char *tick_name[] = {"tick1", "tick2", "tick3", "tick4", "tick5"};
+
+    /*updata axis*/
+    for (uint8_t i = 0; i < 5; i++)
+        total_time += weld_controller->weld_time[i];
+    /*坐标划分ms*/
+    if (total_time <= 500)
+        delta_tick = 100;
+    else if (total_time > 500 && total_time <= 1000)
+        delta_tick = 200;
+    else if (total_time > 1000 && total_time <= 2500)
+        delta_tick = 500;
+    else if (total_time > 2500 && total_time <= 5000)
+        delta_tick = 1000;
+    else if (total_time > 5000 && total_time <= 10000)
+        delta_tick = 2000;
+    else if (total_time > 10000 && total_time <= 15000)
+        delta_tick = 3000;
+    else if (total_time > 15000 && total_time <= 20000)
+        delta_tick = 4000;
+    else
+        delta_tick = 5000;
+
+    /*plot interval*/
+    total_tick_len = 5 * delta_tick;                     // total length of Horizontal axis
+    win_width = WIN_WIDTH * total_time / total_tick_len; // Welding cycle drawing area occupies full screen ratio
+
+    if (total_time == win_width)
+        temp_draw_ctrl->delta_tick = 1;
+    else
+        temp_draw_ctrl->delta_tick = (total_time / win_width) + 1;
+
+    /*Horizontal axis*/
+    for (uint8_t i = 0; i < sizeof(tick_name) / sizeof(char *); i++)
+        command_set_comp_val(tick_name[i], "val", (1 + i) * delta_tick);
+
+    /*display three step average temp*/
+    command_set_comp_val("step1", "val", temp_draw_ctrl->display_temp[0]);
+    command_set_comp_val("step2", "val", temp_draw_ctrl->display_temp[1]);
+
+    /*display Real-time temperature*/
+    OSMutexPend(&PLOT_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+    TSTemp_updata_realtime(id);
+    OSMutexPost(&PLOT_Mux, OS_OPT_POST_NONE, &err);
+
+    /*weld over, enter wave page, then plot temp line*/
+    OSSemPend(&PLOT_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+    if (err == OS_ERR_NONE)
+    {
+        uint16_t delta = 0;
+        /*后续改为透传模式！！！*/
+        if (temp_draw_ctrl->third_step_index_start % win_width == 0)
+            delta = temp_draw_ctrl->third_step_index_start / win_width;
+        else
+            delta = temp_draw_ctrl->third_step_index_start / win_width + 1;
+
+        for (uint16_t i = 0; i < temp_draw_ctrl->third_step_index_end; i += delta)
+        {
+            draw_point(realtime_temp_buf[i]);
+        }
+    }
+}
+
+/**
+ * @description: setting page callback
+ * @param {Page_ID} id
+ * @return {*}
+ */
+static void TSsetting_pg_cb(Page_ID id)
+{
+
+    uint8_t index;
+    Component_Queue *list;
+    OS_ERR err;
+    Component *comp = NULL;
+
+    /*match the page list*/
+    for (index = 0; index < sizeof(PAGE_CB_MAP) / sizeof(PAGE_CB_MAP[0]); index++)
+    {
+        list = PAGE_CB_MAP[index].que;
+        if (list->id == id)
+            break;
+    }
+
+    /*1、读取界面设定的地址*/
+    command_get_comp_val(list, "adress", "val");
+    /*2、读取页面设定的波特率*/
+    command_get_comp_val(list, "baudrate", "val");
+
+    /*3、设定热电偶类型*/
+    switch (current_Thermocouple->type)
+    {
+    case K_TYPE:
+        command_set_comp_val("KEJ", "val", 0);
+        break;
+
+    case E_TYPE:
+        command_set_comp_val("KEJ", "val", 1);
+        break;
+
+    case J_TYPE:
+        command_set_comp_val("KEJ", "val", 2);
+        break;
+    }
+
+    /*4、订阅热电偶校准信号*/
+    OSSemPend(&SENSOR_UPDATE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+    if (OS_ERR_NONE == err)
+    {
+#if TEMP_ADJUST
+        if (weld_controller->realtime_temp < 2 * ROOM_TEMP && weld_controller->realtime_temp > 0.5 * ROOM_TEMP)
+            Thermocouple_err_eliminate();
+        else // 焊头尚未冷却，警报
+            command_set_comp_val("warning", "aph", 127);
+        Thermocouple_err_eliminate();
+#endif
+    }
+    /*5、显示实时温度*/
+    command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
+
+    /*6、数据同步*/
+    comp = get_comp(list, "adress");
+    if (comp != NULL)
+        ID_OF_DEVICE = comp->val;
+
+    comp = get_comp(list, "baudrate");
+    if (comp != NULL)
+    {
+        uint8_t index = get_comp(list, "baudrate")->val;
+        /*set bounds*/
+    }
+
+    /*display Real-time temperature*/
+    OSMutexPend(&PLOT_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+    TSTemp_updata_realtime(id);
+    OSMutexPost(&PLOT_Mux, OS_OPT_POST_NONE, &err);
+}
 
 /**
  * @description: UI page processing
@@ -605,224 +867,63 @@ static bool pid_param_get(uint16_t *pid_raw_param)
  */
 void TSpage_process(Page_ID id)
 {
-    char *tick_name[] = {"tick1", "tick2", "tick3", "tick4", "tick5"};
-    char *temp_display_name[] = {"temp11", "temp22", "temp33"};
-    switch (page_param->id)
+
+    uint8_t index = 0;
+    Component_Queue *list;
+    /*match the page list*/
+    for (index = 0; index < sizeof(PAGE_CB_MAP) / sizeof(PAGE_CB_MAP[0]); index++)
     {
-    case PARAM_PAGE:
-    {
-        /*get keys status*/
-        for (uint8_t i = 0; i < sizeof(key_name_list) / sizeof(char *); i++)
-        {
-            command_get_comp_val(param_page_list, key_name_list[i], "pic");
-        }
-        weld_controller->Count_Dir = (get_comp(param_page_list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
-
-        /*get current array number*/
-        command_get_comp_val(param_page_list, "GP", "val");
-
-        TSparse_key_action(page_param->id);
-
-        command_set_comp_val("count", "val", weld_controller->weld_count);
-
-        /*display average temperature*/
-        command_set_comp_val(temp_display_name[0], "val", temp_draw_ctrl->display_temp[0]);
-        command_set_comp_val(temp_display_name[1], "val", temp_draw_ctrl->display_temp[1]);
-
-        /*get current data*/
-        command_get_variable_val(&current_date.Year, "rtc0");
-        command_get_variable_val(&current_date.Month, "rtc1");
-        command_get_variable_val(&current_date.Day, "rtc2");
-        command_get_variable_val(&current_date.Hour, "rtc3");
-        command_get_variable_val(&current_date.Minute, "rtc4");
-
-        /*display Real-time temperature*/
-        TSTemp_updata_realtime();
+        list = PAGE_CB_MAP[index].que;
+        if (list->id == id)
+            PAGE_CB_MAP[index].pg_cb(id);
     }
-    break;
+}
 
-    case TEMP_PAGE:
+/**
+ * @description: page manager init
+ * @param {page_map} *map
+ * @return {*}
+ */
+bool PGManager_init(void)
+{
+    /*page init*/
+    for (uint8_t i = 0; i < sizeof(PAGE_CB_MAP) / sizeof(PAGE_CB_MAP[0]); i++)
     {
-        /*get keys status*/
-        for (uint8_t i = 0; i < sizeof(key_name_list) / sizeof(char *); i++)
+
+        if (PAGE_CB_MAP[i].que == NULL)
         {
-            command_get_comp_val(temp_page_list, key_name_list[i], "pic");
+            PAGE_CB_MAP[i].que = newList(PAGE_CB_MAP[i].id);
         }
-        weld_controller->Count_Dir = (get_comp(temp_page_list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
-
-        /*get current array number*/
-        command_get_comp_val(temp_page_list, "GP", "val");
-        /*get count , which would be changed by user*/
-        command_get_comp_val(temp_page_list, "count", "val");
-        uint16_t count = get_comp(temp_page_list, "count")->val;
-        if (count != weld_controller->weld_count)
-            weld_controller->weld_count = count;
-
-        /*get switch status*/
-        command_get_comp_val(temp_page_list, "switch", "val");
-
-        TSparse_key_action(page_param->id);
-
-        /*display average temperature*/
-        command_set_comp_val(temp_display_name[0], "val", temp_draw_ctrl->display_temp[0]);
-        command_set_comp_val(temp_display_name[1], "val", temp_draw_ctrl->display_temp[1]);
-
-        command_set_comp_val("count", "val", weld_controller->weld_count);
-
-        /*display Real-time temperature*/
-        TSTemp_updata_realtime();
+        page_list_init(PAGE_CB_MAP[i].que,
+                       PAGE_CB_MAP[i].init_name_list,
+                       PAGE_CB_MAP[i].list_len);
     }
-    break;
 
-    case WAVE_PAGE:
+    return true;
+}
+
+/**
+ * @description: request manager
+ * @return {*}
+ */
+Page_Manager *request_PGManger(void)
+{
+    return &page_manger;
+}
+
+/**
+ * @description:get page list
+ * @return {*}
+ */
+Component_Queue *get_page_list(Page_ID id)
+{
+    uint8_t index;
+    /*match the page list*/
+    for (index = 0; index < sizeof(PAGE_CB_MAP) / sizeof(PAGE_CB_MAP[0]); index++)
     {
-#if PID_DEBUG == 1
-        command_set_comp_val("wave_page.kp", "aph", 127);
-        command_set_comp_val("wave_page.ki", "aph", 127);
-        command_set_comp_val("wave_page.kd", "aph", 127);
-        uint16_t pid_param[3] = {0};
-        if (pid_param_get(pid_param) == true)
-        {
-            pid_ctrl_debug->kp = pid_param[0] / 100.0;
-            pid_ctrl_debug->ki = pid_param[1] / 1000.0;
-            pid_ctrl_debug->kd = pid_param[2] / 100.0;
-        }
-
-#endif
-        OS_ERR err;
-        uint16_t total_time = 0;     // 总焊接时长
-        uint16_t delta_tick = 0;     // 坐标间隔
-        uint16_t total_tick_len = 0; // 横坐标总长度
-        uint16_t win_width = 0;      // 绘图区域占据的实际窗口大小
-
-        /*updata axis*/
-        for (uint8_t i = 0; i < 5; i++)
-            total_time += weld_controller->weld_time[i];
-        /*坐标划分ms*/
-        if (total_time <= 500)
-            delta_tick = 100;
-        else if (total_time > 500 && total_time <= 1000)
-            delta_tick = 200;
-        else if (total_time > 1000 && total_time <= 2500)
-            delta_tick = 500;
-        else if (total_time > 2500 && total_time <= 5000)
-            delta_tick = 1000;
-        else if (total_time > 5000 && total_time <= 10000)
-            delta_tick = 2000;
-        else if (total_time > 10000 && total_time <= 15000)
-            delta_tick = 3000;
-        else if (total_time > 15000 && total_time <= 20000)
-            delta_tick = 4000;
-        else
-            delta_tick = 5000;
-
-        /*plot interval*/
-        total_tick_len = 5 * delta_tick;                     // total length of Horizontal axis
-        win_width = WIN_WIDTH * total_time / total_tick_len; // Welding cycle drawing area occupies full screen ratio
-
-        if (total_time == win_width)
-            temp_draw_ctrl->delta_tick = 1;
-        else
-            temp_draw_ctrl->delta_tick = (total_time / win_width) + 1;
-
-        /*Horizontal axis*/
-        for (uint8_t i = 0; i < sizeof(tick_name) / sizeof(char *); i++)
-            command_set_comp_val(tick_name[i], "val", (1 + i) * delta_tick);
-
-        /*display three step average temp*/
-        command_set_comp_val("step1", "val", temp_draw_ctrl->display_temp[0]);
-        command_set_comp_val("step2", "val", temp_draw_ctrl->display_temp[1]);
-
-        /*display Real-time temperature*/
-        OSMutexPend(&PLOT_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
-        TSTemp_updata_realtime();
-        OSMutexPost(&PLOT_Mux, OS_OPT_POST_NONE, &err);
-
-        /*weld over, enter wave page, then plot temp line*/
-        OSSemPend(&PLOT_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
-        if (err == OS_ERR_NONE)
-        {
-            uint16_t delta = 0;
-            /*后续改为透传模式！！！*/
-            if (temp_draw_ctrl->third_step_index_start % win_width == 0)
-                delta = temp_draw_ctrl->third_step_index_start / win_width;
-            else
-                delta = temp_draw_ctrl->third_step_index_start / win_width + 1;
-
-            for (uint16_t i = 0; i < temp_draw_ctrl->third_step_index_end; i += delta)
-            {
-                draw_point(realtime_temp_buf[i]);
-            }
-        }
-    }
-    break;
-
-    case ALARM_PAGE:
-    {
-    }
-    break;
-
-    case UART_PAGE:
-    {
-        OS_ERR err;
-        Component *comp = NULL;
-        /*1、读取界面设定的地址*/
-        command_get_comp_val(setting_page_list, "adress", "val");
-        /*2、读取页面设定的波特率*/
-        command_get_comp_val(setting_page_list, "baudrate", "val");
-        /*3、设定热电偶类型*/
-        switch (current_Thermocouple->type)
-        {
-        case K_TYPE:
-            command_set_comp_val("KEJ", "val", 0);
+        if (PAGE_CB_MAP[index].que->id == id)
             break;
-
-        case E_TYPE:
-            command_set_comp_val("KEJ", "val", 1);
-            break;
-
-        case J_TYPE:
-            command_set_comp_val("KEJ", "val", 2);
-            break;
-        }
-
-        /*4、订阅热电偶校准信号*/
-        OSSemPend(&SENSOR_UPDATE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
-        if (OS_ERR_NONE == err)
-        {
-#if TEMP_ADJUST
-            if (weld_controller->realtime_temp < 2 * ROOM_TEMP && weld_controller->realtime_temp > 0.5 * ROOM_TEMP)
-                Thermocouple_err_eliminate();
-            else // 焊头尚未冷却，警报
-                command_set_comp_val("warning", "aph", 127);
-            Thermocouple_err_eliminate();
-#endif
-        }
-        /*5、显示实时温度*/
-        command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
-
-        /*6、数据同步*/
-        comp = get_comp(setting_page_list, "adress");
-        if (comp != NULL)
-            ID_OF_DEVICE = comp->val;
-
-        comp = get_comp(setting_page_list, "baudrate");
-        if (comp != NULL)
-        {
-            uint8_t index = get_comp(setting_page_list, "baudrate")->val;
-            /*set bounds*/
-        }
-
-        /*display Real-time temperature*/
-        TSTemp_updata_realtime();
     }
-    break;
 
-    case KEY_INPUT_PAGE:
-        break;
-
-    default:
-        /*...用户可自行添加需要的页面...*/
-        break;
-    }
+    return PAGE_CB_MAP[index].que;
 }

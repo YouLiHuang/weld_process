@@ -14,26 +14,20 @@
 extern OS_MUTEX ModBus_Mux;
 extern Thermocouple *current_Thermocouple;
 extern Date current_date;
-extern Page_Param *page_param;
 extern weld_ctrl *weld_controller;
-
-/*A list of new interface components*/
-// Record the ID of the current screen and the status of the three buttons
-extern Page_Param *page_param;
-// A list of components on the parameter setting screen
-extern Component_Queue *param_page_list;
-// A list of components for the temperature limit interface
-extern Component_Queue *temp_page_list;
-// A list of communication interface components
-extern Component_Queue *setting_page_list;
-// A list of components on the Waveform page
-extern Component_Queue *wave_page_list;
 
 extern Error_ctrl *err_ctrl;
 extern START_TYPE start_type;
 extern OS_SEM WELD_START_SEM;
-/* regs define ---------------------------------------------------------------*/
 
+/*key status*/
+extern uint8_t cur_GP;
+extern RDY_SCH_STATE cur_key1;
+extern ION_OFF_STATE cur_key2;
+extern SGW_CTW_STATE cur_key3;
+extern SWITCH_STATE switch_mode;
+
+/* regs define ---------------------------------------------------------------*/
 // input reg
 uint16_t usRegInputBuf[REG_INPUT_NREGS] = {0x1000, 0x1001, 0x1002, 0x1003, 0x1004, 0x1005, 0x1006, 0x1007};
 // input reg address start
@@ -249,31 +243,16 @@ void Modbus_reg_sync(void)
 {
     OS_ERR err;
     eMBEventType eEvent;
-
-    static uint8_t discrete_index = 0;
-    static uint8_t hold_reg_index = 0;
-    static uint8_t input_reg_index = 0;
-    static uint8_t coil_index = 0;
-
-    static uint16_t discrete_value = 0x00;
     uint8_t reg;
     Component *comp;
     float gain1;
     float gain2;
 
-    static char *page_name_list[] = {
-        "alarm1",
-        "alarm2",
-        "alarm3",
-        "alarm4",
-        "alarm5",
-        "alarm6",
-        "GAIN1",
-        "GAIN2",
-        "temp1",
-        "temp2",
-        "temp3",
-        "count"};
+    static uint8_t discrete_index = 0;
+    static uint8_t hold_reg_index = 0;
+    static uint8_t input_reg_index = 0;
+    static uint8_t coil_index = 0;
+    static uint16_t discrete_value = 0x00;
 
     if (xMBPortEventGet(&eEvent) != TRUE)
     {
@@ -418,7 +397,7 @@ void Modbus_reg_sync(void)
             if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_time[4] && usRegHoldingBuf[hold_reg_index] <= 999)
             {
                 weld_controller->weld_time[4] = usRegHoldingBuf[hold_reg_index];
-                get_comp(param_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
+                // get_comp(param_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
             /*count(param_page_list)*/
@@ -517,20 +496,20 @@ void Modbus_reg_sync(void)
         switch (discrete_index)
         {
         case DISCRETE_ADDR_0:
-            if (page_param->key1 == RDY)
+            if (cur_key1 == RDY)
                 discrete_value |= 0x01 << discrete_index;
             else
                 discrete_value &= ~(0x01 << discrete_index);
 
             break;
         case DISCRETE_ADDR_1:
-            if (page_param->key2 == ION)
+            if (cur_key2 == ION)
                 discrete_value |= 0x01 << discrete_index;
             else
                 discrete_value &= ~(0x01 << discrete_index);
             break;
         case DISCRETE_ADDR_2:
-            if (page_param->key3 == CTW)
+            if (cur_key3 == CTW)
                 discrete_value |= 0x01 << discrete_index;
             else
                 discrete_value &= ~(0x01 << discrete_index);
@@ -542,7 +521,7 @@ void Modbus_reg_sync(void)
                 discrete_value &= ~(0x01 << discrete_index);
             break;
         case DISCRETE_ADDR_4:
-            if (get_comp(temp_page_list, "switch")->val == 1)
+            if (switch_mode == AUTO_MODE)
                 discrete_value |= 0x01 << discrete_index;
             else
                 discrete_value &= ~(0x01 << discrete_index);

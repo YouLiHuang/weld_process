@@ -5,6 +5,8 @@
 #include "protect.h"
 #include "touchscreen.h"
 #include "welding_process.h"
+
+#include "touch_screen_app.h"
 //////////////////////////////////////////////////////////////////////////////////
 // 如果使用ucos,则包括下面的头文件即可.
 #if SYSTEM_SUPPORT_OS
@@ -27,16 +29,16 @@ float Host_gain1;				 // 上位机增益2参数暂存（浮点数）
 
 extern uint8_t ID_OF_MAS; // 焊机485通讯机号，默认是零
 
-extern OS_Q UART_Msg;		   // 消息队列
-extern Error_ctrl *err_ctrl;   // 错误控制器
-extern Page_Param *page_param; // 页面信息
+extern OS_Q UART_Msg;		 // 消息队列
+extern Error_ctrl *err_ctrl; // 错误控制器
+// extern Page_Param *page_param; // 页面信息
 
 /*信号量接口*/
 extern OS_SEM PAGE_UPDATE_SEM;
 extern OS_SEM COMP_VAL_GET_SEM;
 extern OS_SEM COMP_STR_GET_SEM;
 extern OS_SEM ALARM_RESET_SEM;
-extern OS_SEM SENSOR_UPDATE_SEM;  // 热电偶校准信号
+extern OS_SEM SENSOR_UPDATE_SEM; // 热电偶校准信号
 
 /*焊接控制器*/
 extern weld_ctrl *weld_controller;
@@ -146,7 +148,7 @@ void UART4_IRQHandler(void)
 				break;
 			case CMD_PAGEID_RETURN:
 				OSSemPost(&PAGE_UPDATE_SEM, OS_OPT_POST_ALL, &err);
-				page_param->id = (Page_ID)USART_RX_BUF[1];
+				request_PGManger()->id = (Page_ID)USART_RX_BUF[1];
 				break;
 
 			case CMD_ALARM_RESET:

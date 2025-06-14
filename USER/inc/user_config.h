@@ -89,7 +89,7 @@
 #define USER_FIRST_SET_MAX 300
 #define USER_SET_MAX_TEMP 650.0 // User-set maximum temperature
 #define USER_SET_MIN_TEMP 200.0 // User-set minimum temperature
-#define USER_MAX_WELD_TIME 9999      // Maximum welding time
+#define USER_MAX_WELD_TIME 9999 // Maximum welding time
 #define USER_MAX_COUNT 50000
 #define MAX_GP 19
 

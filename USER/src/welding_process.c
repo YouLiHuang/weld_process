@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-13 09:22:31
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-13 16:57:00
+ * @LastEditTime: 2025-06-14 19:11:33
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -21,6 +21,7 @@
 #include "touchscreen.h"
 #include "dynamic_correct.h"
 #include "modbus_app.h"
+#include "touch_screen_app.h"
 
 int err_comp;
 #if PID_DEBUG
@@ -35,9 +36,11 @@ Correction_factor corrct_factor = {0.1, 1.25};		 // Steady-state fitting curve c
 /*------------------------------------------------------------------------------------------------------------------------------*/
 
 /*-----------------------------------------------Compatible touchscreen data interface------------------------------------------*/
-extern Component_Queue *temp_page_list;	 // Queue in the UI of the Temperature Limit page
-extern Component_Queue *param_page_list; // A list of components on the parameter setting screen
-extern uint8_t ID_OF_MAS;
+extern uint8_t cur_GP;
+extern RDY_SCH_STATE cur_key1;
+extern ION_OFF_STATE cur_key2;
+extern SGW_CTW_STATE cur_key3;
+extern SWITCH_STATE switch_mode;
 /*------------------------------------------------------------------------------------------------------------------------------*/
 
 /*-----------------------------------------------------False alarms--------------------------------------------------------------*/
@@ -56,7 +59,6 @@ Kalman kfp;
 /*-----------------------------------------------------temp plot-----------------------------------------------------------------*/
 // user
 extern Temp_draw_ctrl *temp_draw_ctrl;				 // Drawing controllers
-extern Page_Param *page_param;						 // Real-time page parameters
 extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN]; // Temperature preservation buffer
 // os
 extern OS_MUTEX PLOT_Mux;
@@ -373,7 +375,7 @@ static void down_temp_line()
 			break;
 
 		/*stop draw start another weld*/
-		if (page_param->key3 == SGW)
+		if (cur_key3 == SGW)
 		{
 			key = RLY_INPUT_SCAN();
 			if (key == RLY_START1_ACTIVE || key == RLY_START0_ACTIVE)
@@ -434,27 +436,26 @@ static void PMW_TIMER_DEINIT(void)
  */
 static void Load_Data(START_TYPE type)
 {
-	int GP = get_comp(param_page_list, "GP")->val;
 
 	switch (type)
 	{
 	case KEY0:
-		if (GP >= 0 && (GP % 2 != 0))
+		if (cur_GP % 2 != 0)
 		{
-			GP--;
-			Load_param(weld_controller, GP);
-			Load_param_alarm(weld_controller, GP);
-			command_set_comp_val("GP", "val", GP);
+			cur_GP--;
+			Load_param(weld_controller, cur_GP);
+			Load_param_alarm(weld_controller, cur_GP);
+			command_set_comp_val("GP", "val", cur_GP);
 		}
 
 		break;
 	case KEY1:
-		if (GP < 19 && (GP % 2 == 0))
+		if (cur_GP < 19 && (cur_GP % 2 == 0))
 		{
-			GP++;
-			Load_param(weld_controller, GP);
-			Load_param_alarm(weld_controller, GP);
-			command_set_comp_val("GP", "val", GP);
+			cur_GP++;
+			Load_param(weld_controller, cur_GP);
+			Load_param_alarm(weld_controller, cur_GP);
+			command_set_comp_val("GP", "val", cur_GP);
 		}
 
 		break;
@@ -685,7 +686,8 @@ static void First_Step()
 #if REALTIME_TEMP_DISPLAY == 1
 		if (weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
 		{
-			switch (page_param->id)
+
+			switch (request_PGManger()->id)
 			{
 			case WAVE_PAGE:
 				draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
@@ -824,7 +826,7 @@ static void Second_Step()
 #if REALTIME_TEMP_DISPLAY == 1
 		if (weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
 		{
-			switch (page_param->id)
+			switch (request_PGManger()->id)
 			{
 			case WAVE_PAGE:
 				draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
@@ -880,7 +882,7 @@ static void Third_Step()
 #if REALTIME_TEMP_DISPLAY == 1
 		if (weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
 		{
-			switch (page_param->id)
+			switch (request_PGManger()->id)
 			{
 			case WAVE_PAGE:
 				draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
@@ -1056,8 +1058,8 @@ static void weld_real_time_ctrl()
 	End_of_Weld();
 
 	/*dynamic algorithm*/
-	dynamic_pwm_adjust();							  // final pwm dynamic
-	if (get_comp(temp_page_list, "switch")->val == 1) // gain dynamic
+	dynamic_pwm_adjust();		  // final pwm dynamic
+	if (switch_mode == AUTO_MODE) // gain dynamic
 		dynamic_param_adjust();
 
 STOP_LABEL:
@@ -1075,6 +1077,7 @@ STOP_LABEL:
  */
 void welding_process(START_TYPE type)
 {
+
 	/*The welding is stopped when the countdown timer reaches the end*/
 	if (weld_controller->weld_count == 0 && weld_controller->Count_Dir == DOWN)
 		return;
@@ -1088,7 +1091,7 @@ void welding_process(START_TYPE type)
 	/*----------------------------------------------- real-time control ---------------------------------------------------*/
 
 	/*-------------------------------------------------------CTW-------------------------------------------------------*/
-	if (page_param->key3 == CTW && page_param->key2 == ION && page_param->key1 == RDY)
+	if (cur_key3 == CTW && cur_key2 == ION && cur_key1 == RDY)
 	{
 		OS_ERR err;
 		uint8_t key = 0;
@@ -1107,7 +1110,7 @@ void welding_process(START_TYPE type)
 					break;
 
 				/*clear touch screen*/
-				if (page_param->id == WAVE_PAGE)
+				if (request_PGManger()->id == WAVE_PAGE)
 				{
 					command_send("cle wave_line.id,0");
 					OSTimeDly(5, OS_OPT_TIME_DLY, &err);
@@ -1120,7 +1123,7 @@ void welding_process(START_TYPE type)
 				display_temp_cal();
 
 				/*plot temp line(down)*/
-				if (page_param->id == WAVE_PAGE)
+				if (request_PGManger()->id == WAVE_PAGE)
 				{
 					down_temp_line();
 				}
@@ -1138,7 +1141,7 @@ void welding_process(START_TYPE type)
 		}
 	}
 	/*simulate weld*/
-	else if (page_param->key3 == CTW && page_param->key2 == IOFF && page_param->key1 == RDY)
+	else if (cur_key3 == CTW && cur_key2 == IOFF && cur_key1 == RDY)
 	{
 		OS_ERR err;
 		uint8_t key = 0;
@@ -1156,7 +1159,7 @@ void welding_process(START_TYPE type)
 	}
 
 	/*------------------------------------------------------SGW-------------------------------------------------------*/
-	if (page_param->key3 == SGW && page_param->key2 == ION && page_param->key1 == RDY)
+	if (cur_key3 == SGW && cur_key2 == ION && cur_key1 == RDY)
 	{
 		OS_ERR err;
 		uint8_t key = 0;
@@ -1165,7 +1168,7 @@ void welding_process(START_TYPE type)
 		if (key == RLY_START1_ACTIVE || key == RLY_START0_ACTIVE)
 		{
 			/*clear screen*/
-			if (page_param->id == WAVE_PAGE)
+			if (request_PGManger()->id == WAVE_PAGE)
 			{
 				command_send("cle wave_line.id,0");
 				OSTimeDly(5, OS_OPT_TIME_DLY, &err);
@@ -1182,7 +1185,7 @@ void welding_process(START_TYPE type)
 			display_temp_cal();
 
 			/*plot temp line(down)*/
-			if (page_param->id == WAVE_PAGE)
+			if (request_PGManger()->id == WAVE_PAGE)
 				down_temp_line();
 			else /*not in wave page, notify plot task to plot temp line*/
 			{
@@ -1211,7 +1214,7 @@ void welding_process(START_TYPE type)
 		}
 	}
 	/*weld simulate*/
-	else if (page_param->key3 == SGW && page_param->key2 == IOFF && page_param->key1 == RDY)
+	else if (cur_key3 == SGW && cur_key2 == IOFF && cur_key1 == RDY)
 	{
 		OS_ERR err;
 		simulate_weld();

@@ -9,7 +9,6 @@
  */
 #include "protect.h"
 
-extern Page_Param *page_param;
 extern Error_ctrl *err_ctrl;
 extern OS_SEM ERROR_HANDLE_SEM;
 /**

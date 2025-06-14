@@ -125,6 +125,14 @@ typedef enum UP_DOWN
     DOWN_CNT
 } UP_DOWN;
 
+typedef enum SWITCH_STATE
+{
+
+    AUTO_MODE = 0,
+    USER_MODE
+
+} SWITCH_STATE;
+
 typedef enum SENSOR_TYPE
 {
     E_TYPE = 0,
@@ -185,7 +193,7 @@ bool command_get_comp_val(Component_Queue *list, const char *name, const char *c
 bool command_get_variable_val(uint16_t *val, const char *name);
 /*常用接口*/
 void Touchscreen_init(void);
-bool Page_to(const Page_Param *page_param, const Page_ID id);
+bool Page_to(const Page_ID cur_id, const Page_ID target_id);
 void draw_point(uint16_t val);
 
 #if ERR_DRAW

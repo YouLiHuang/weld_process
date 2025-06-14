@@ -17,7 +17,6 @@
 #include "modbus_app.h"
 
 /*--------------------------------------------------------------Variables--------------------------------------------------------------*/
-extern Page_Param *page_param;
 extern Component_Queue *param_page_list;
 extern Component_Queue *temp_page_list;
 extern weld_ctrl *weld_controller;

@@ -500,32 +500,32 @@
         <Ww>
           <count>2</count>
           <WinNumber>2</WinNumber>
-          <ItemText>page_param,0x0A</ItemText>
+          <ItemText>realtime_temp_buf,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>3</count>
           <WinNumber>2</WinNumber>
-          <ItemText>realtime_temp_buf,0x0A</ItemText>
+          <ItemText>temp_draw_ctrl,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>4</count>
           <WinNumber>2</WinNumber>
-          <ItemText>temp_draw_ctrl,0x0A</ItemText>
+          <ItemText>weld_controller,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>5</count>
           <WinNumber>2</WinNumber>
-          <ItemText>weld_controller,0x0A</ItemText>
+          <ItemText>USART_RX_BUF,0x10</ItemText>
         </Ww>
         <Ww>
           <count>6</count>
           <WinNumber>2</WinNumber>
-          <ItemText>USART_RX_BUF,0x10</ItemText>
+          <ItemText>err_ctrl</ItemText>
         </Ww>
         <Ww>
           <count>7</count>
           <WinNumber>2</WinNumber>
-          <ItemText>err_ctrl</ItemText>
+          <ItemText>realtime_temp_buf,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>8</count>
@@ -535,77 +535,82 @@
         <Ww>
           <count>9</count>
           <WinNumber>2</WinNumber>
-          <ItemText>realtime_temp_buf,0x0A</ItemText>
+          <ItemText>m_ADCValue,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>10</count>
           <WinNumber>2</WinNumber>
-          <ItemText>m_ADCValue,0x0A</ItemText>
+          <ItemText>wave_page_list</ItemText>
         </Ww>
         <Ww>
           <count>11</count>
           <WinNumber>2</WinNumber>
-          <ItemText>wave_page_list</ItemText>
+          <ItemText>USBH_MSC_BOTXferParam</ItemText>
         </Ww>
         <Ww>
           <count>12</count>
           <WinNumber>2</WinNumber>
-          <ItemText>USBH_MSC_BOTXferParam</ItemText>
+          <ItemText>Thermocouple_Lists,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>13</count>
           <WinNumber>2</WinNumber>
-          <ItemText>Thermocouple_Lists,0x0A</ItemText>
+          <ItemText>current_Thermocouple</ItemText>
         </Ww>
         <Ww>
           <count>14</count>
           <WinNumber>2</WinNumber>
-          <ItemText>realtime_temp_buf,0x0A</ItemText>
+          <ItemText>PWM_Record,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>15</count>
           <WinNumber>2</WinNumber>
-          <ItemText>current_Thermocouple</ItemText>
+          <ItemText>usRegInputBuf,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>16</count>
           <WinNumber>2</WinNumber>
-          <ItemText>PWM_Record,0x0A</ItemText>
+          <ItemText>usRegHoldingBuf,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>17</count>
           <WinNumber>2</WinNumber>
-          <ItemText>current_date,0x0A</ItemText>
+          <ItemText>ucRegCoilsBuf</ItemText>
         </Ww>
         <Ww>
           <count>18</count>
           <WinNumber>2</WinNumber>
-          <ItemText>usRegInputBuf,0x0A</ItemText>
+          <ItemText>ucRegDiscreteBuf</ItemText>
         </Ww>
         <Ww>
           <count>19</count>
           <WinNumber>2</WinNumber>
-          <ItemText>usRegHoldingBuf,0x0A</ItemText>
+          <ItemText>PAGE_CB_MAP</ItemText>
         </Ww>
         <Ww>
           <count>20</count>
           <WinNumber>2</WinNumber>
-          <ItemText>ucRegCoilsBuf</ItemText>
+          <ItemText>page_manger</ItemText>
         </Ww>
         <Ww>
           <count>21</count>
           <WinNumber>2</WinNumber>
-          <ItemText>ucRegDiscreteBuf</ItemText>
+          <ItemText>current_date,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>22</count>
           <WinNumber>2</WinNumber>
-          <ItemText>READ_TaskTCB</ItemText>
+          <ItemText>cur_key1</ItemText>
         </Ww>
         <Ww>
           <count>23</count>
           <WinNumber>2</WinNumber>
-          <ItemText>discrete_value</ItemText>
+          <ItemText>cur_key2</ItemText>
+        </Ww>
+        <Ww>
+          <count>24</count>
+          <WinNumber>2</WinNumber>
+          <ItemText>cur_key3</ItemText>
         </Ww>
       </WatchWindow2>
       <MemoryWindow1>
@@ -622,7 +627,7 @@
       <DebugFlag>
         <trace>0</trace>
         <periodic>1</periodic>
-        <aLwin>1</aLwin>
+        <aLwin>0</aLwin>
         <aCover>0</aCover>
         <aSer1>0</aSer1>
         <aSer2>0</aSer2>
@@ -660,7 +665,6 @@
       <pMultCmdsp></pMultCmdsp>
       <DebugDescription>
         <Enable>1</Enable>
-        <EnableFlashSeq>0</EnableFlashSeq>
         <EnableLog>0</EnableLog>
         <Protocol>2</Protocol>
         <DbgClock>10000000</DbgClock>
@@ -910,7 +914,7 @@
 
   <Group>
     <GroupName>HARDWARE</GroupName>
-    <tvExp>1</tvExp>
+    <tvExp>0</tvExp>
     <tvExpOptDlg>0</tvExpOptDlg>
     <cbSel>0</cbSel>
     <RteFlg>0</RteFlg>

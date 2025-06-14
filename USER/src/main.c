@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-14 12:48:27
+ * @LastEditTime: 2025-06-14 19:46:16
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -100,19 +100,6 @@ static bool Thermocouple_check(void);
 static void voltage_check(void);
 static void Overload_check(void);
 
-
-/*Using hardware calibration mode,
-different thermocouples have different board-level amplification coefficients.
-Calibration is required separately, but the software layer is consistent*/
-// E：0.222*3300/4096=0.1788
-// J：0.2189*3300/4096=0.1763
-// K：0.218*3300/4096=0.1756
-static Thermocouple Thermocouple_Lists[] = {
-	{E_TYPE, 0.17, 0, 0},
-	{K_TYPE, 0.17, 0, 0},
-	{J_TYPE, 0.17, 0, 0},
-};
-
 const error_match_list match_list[] = {
 	{CURRENT_OUT_OT_CTRL, "f1", Current_out_of_ctrl_callback, Current_out_of_ctrl_reset_callback},
 	{TEMP_UP, "f2", Temp_up_err_callback, Temp_up_reset_callback},
@@ -126,16 +113,23 @@ const error_match_list match_list[] = {
 
 };
 
-
+/*Using hardware calibration mode,
+different thermocouples have different board-level amplification coefficients.
+Calibration is required separately, but the software layer is consistent*/
+// E：0.222*3300/4096=0.1788
+// J：0.2189*3300/4096=0.1763
+// K：0.218*3300/4096=0.1756
+static Thermocouple Thermocouple_Lists[] = {
+	{E_TYPE, 0.17, 0, 0},
+	{K_TYPE, 0.17, 0, 0},
+	{J_TYPE, 0.17, 0, 0},
+};
 
 /* Private variables ---------------------------------------------------------*/
-
 /*UART3 Resource Protection: Mutex (Temporarily Unused)*/
 OS_MUTEX ModBus_Mux;
-
 /*UART4 Resource Protection: Mutex (Temporarily Unused)*/
 OS_MUTEX PLOT_Mux;
-
 /*Thread Synchronization: Semaphore*/
 // START SEM
 OS_SEM WELD_START_SEM;
@@ -171,54 +165,6 @@ Thermocouple *current_Thermocouple = NULL;
 // current date
 Date current_date;
 
-/*list init name*/
-static char *temp_page_name_list[] = {
-	"alarm1",
-	"alarm2",
-	"alarm3",
-	"alarm4",
-	"alarm5",
-	"alarm6",
-	"GAIN1",
-	"GAIN2",
-	"GAIN3",
-	"RDY_SCH",
-	"ION_OFF",
-	"SGW_CTW",
-	"UP_DOWN",
-	"count"};
-
-static char *param_page_name_list[] = {
-	"temp1",
-	"temp2",
-	"temp3",
-	"time1",
-	"time2",
-	"time3",
-	"time4",
-	"time5",
-	"RDY_SCH",
-	"ION_OFF",
-	"SGW_CTW",
-	"UP_DOWN",
-	"count",
-	"rtc0",
-	"rtc1",
-	"rtc2",
-	"rtc3",
-	"rtc4",
-};
-
-static char *setting_page_name_list[] = {
-	"adress",
-	"baudrate",
-	"sensortype"};
-
-static char *wave_page_name_list[] = {
-	"kp",
-	"ki",
-	"kd"};
-
 uint8_t ID_OF_DEVICE = 0;
 
 extern USBH_HOST USB_Host __ALIGN_END;
@@ -232,17 +178,11 @@ extern uint16_t usRegHoldingBuf[REG_HOLDING_NREGS];
 extern uint8_t ucRegCoilsBuf[REG_COILS_SIZE / 8];
 extern uint8_t ucRegDiscreteBuf[REG_DISCRETE_SIZE / 8];
 
-/*Touch Screen list*/
-// Record the ID of the current screen and the status of the three buttons
-extern Page_Param *page_param;
-// A list of components on the parameter setting screen
-extern Component_Queue *param_page_list;
-// A list of components for the temperature limit interface
-extern Component_Queue *temp_page_list;
-// A list of communication interface components
-extern Component_Queue *setting_page_list;
-// A list of components on the Waveform page
-extern Component_Queue *wave_page_list;
+uint8_t cur_GP;
+RDY_SCH_STATE cur_key1;
+ION_OFF_STATE cur_key2;
+SGW_CTW_STATE cur_key3;
+SWITCH_STATE switch_mode;
 
 int main(void)
 {
@@ -255,34 +195,6 @@ int main(void)
 #endif
 	/*Welding controller*/
 	weld_controller = new_weld_ctrl(pid_ctrl);
-	/*New interface component list initialization*/
-	page_param = new_page_param();
-	/*param page*/
-	param_page_list = newList(PARAM_PAGE);
-	page_list_init(param_page_list,
-				   param_page_name_list,
-				   sizeof(param_page_name_list) / sizeof(char *));
-
-	/*Temperature Limit Page*/
-	temp_page_list = newList(TEMP_PAGE);
-	page_list_init(temp_page_list,
-				   temp_page_name_list,
-				   sizeof(temp_page_name_list) / sizeof(char *));
-	component_insert(temp_page_list, newComponet("switch", 0));
-
-	/*setting page*/
-	setting_page_list = newList(UART_PAGE);
-	page_list_init(setting_page_list,
-				   setting_page_name_list,
-				   sizeof(setting_page_name_list) / sizeof(char *));
-
-	/*wave list*/
-	wave_page_list = newList(WAVE_PAGE);
-	page_list_init(wave_page_list,
-				   wave_page_name_list,
-				   sizeof(wave_page_name_list) / sizeof(char *));
-
-	/*...Users can create their own page queues as needed...*/
 
 	/*Error Registry*/
 	err_ctrl = new_error_ctrl();
@@ -297,8 +209,11 @@ int main(void)
 	}
 	err_clear(err_ctrl);
 
-	/*绘图控制器初始化*/
+	/*plot controller init*/
 	temp_draw_ctrl = new_temp_draw_ctrl(realtime_temp_buf, 500, 2000, 500);
+
+	/*UI INIT*/
+	PGManager_init();
 
 	/*------------------------------------------------------Hardware layer data initialization-----------------------------------------------------------*/
 	/*Peripheral initialization*/
@@ -907,9 +822,6 @@ static void Overload_check(void)
 	}
 }
 
-
-
-
 #if TEMP_ADJUST
 /**
  * @description: Thermocouple adjust
@@ -1013,7 +925,6 @@ static void Thermocouple_err_eliminate()
 }
 #endif
 
-
 /*-------------------------------------------------------------------------------------------------------------------------*/
 /*------------------------------------------------------err Thread---------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------*/
@@ -1022,6 +933,7 @@ void error_task(void *p_arg)
 {
 	OS_ERR err;
 	bool err_wait = false;
+	Page_ID cur_id;
 
 	while (1)
 	{
@@ -1082,8 +994,8 @@ void error_task(void *p_arg)
 				break;
 			}
 
-			Page_to(page_param, ALARM_PAGE);
-			page_param->id = ALARM_PAGE;
+			cur_id = request_PGManger()->id;
+			Page_to(cur_id, ALARM_PAGE);
 			for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
 			{
 				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)
@@ -1166,12 +1078,13 @@ void read_task(void *p_arg)
 {
 
 	OS_ERR err;
+	Page_Manager *manager = request_PGManger();
 	while (1)
 	{
 		/*query page id*/
 		if (Page_id_get() == true)
 		{
-			TSpage_process(page_param->id);
+			TSpage_process(manager->id);
 		}
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);

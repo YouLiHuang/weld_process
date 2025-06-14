@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-05 09:43:02
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-10 19:17:10
+ * @LastEditTime: 2025-06-14 17:20:27
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -15,7 +15,6 @@
 
 const u32 baud_list[] = {2400, 4800, 9600, 19200, 31200, 38400, 57600, 115200, 230400, 250000, 256000, 512000, 921600};
 
-extern Page_Param *page_param;  // 记录当前所在界面id及RDY三个按钮的状态
 extern OS_SEM PAGE_UPDATE_SEM;  // 页面更新信号
 extern OS_SEM COMP_VAL_GET_SEM; // 组件属性值成功获取信号
 extern OS_SEM COMP_STR_GET_SEM; // 组件属性值(字符串型)成功获取信号
@@ -664,7 +663,7 @@ bool Page_id_get(void)
  * @param {Page_ID} id
  * @return {*}
  */
-bool Page_to(const Page_Param *page_param, const Page_ID id)
+bool Page_to(const Page_ID cur_id, const Page_ID target_id)
 {
   /*清缓存*/
   for (uint16_t i = 0; i < USART_REC_LEN; i++)
@@ -673,11 +672,11 @@ bool Page_to(const Page_Param *page_param, const Page_ID id)
     buffer[i] = 0;
 
   /*已经处于该界面，不重复发送*/
-  if (page_param->id == id)
+  if (cur_id == target_id)
     return true;
 
   /*发送数据*/
-  sprintf(buffer, "page %d%s", id, END_OF_CMD); // 指令预处理
+  sprintf(buffer, "page %d%s", target_id, END_OF_CMD); // 指令预处理
 #if FAST_MODE == 1
   RS485_send(buffer, strlen(buffer)); // 发送数据
 #else
