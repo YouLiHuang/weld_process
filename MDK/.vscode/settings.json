@@ -73,7 +73,8 @@
         "modbus_app.h": "c",
         "mbutils.h": "c",
         "thermocouple.h": "c",
-        "mb.h": "c"
+        "mb.h": "c",
+        "touch_screen_app.h": "c"
     },
     // 头部注释
     "fileheader.customMade": {
