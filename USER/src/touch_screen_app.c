@@ -1,43 +1,45 @@
+/*user include ---------------------------------------------------*/
 #include "touch_screen_app.h"
 #include "user_config.h"
-
 #include "modbus_app.h"
 #include "welding_process.h"
+
+/*bsp include ----------------------------------------------------*/
 #include "timer.h"
 #include "adc.h"
 #include "protect.h"
 #include "spi.h"
 
 /*--------------------user variables include-----------------------*/
-/*SEM -------------------------------------------------------------*/
+/*SEM */
 extern OS_SEM SENSOR_UPDATE_SEM;
 extern OS_SEM PLOT_SEM;
 extern OS_SEM ERROR_HANDLE_SEM;
-/*MUX -------------------------------------------------------------*/
+/*MUX */
 /*UART4 Resource Protection*/
 extern OS_MUTEX PLOT_Mux;
 extern OS_MUTEX ModBus_Mux;
-/*Modbus variables ----------------------------------------*/
+/*Modbus variables*/
 extern uint8_t ID_OF_DEVICE;
 extern uint16_t usRegInputBuf[REG_INPUT_NREGS];
 extern uint16_t usRegHoldingBuf[REG_HOLDING_NREGS];
 extern uint8_t ucRegCoilsBuf[REG_COILS_SIZE / 8];
 extern uint8_t ucRegDiscreteBuf[REG_DISCRETE_SIZE / 8];
-/* Drawing controllers --------------------------------------------*/
+/* Drawing controllers */
 extern Temp_draw_ctrl *temp_draw_ctrl;
-/*Welding real-time controller-------------------------------------*/
+/*Welding real-time controller*/
 extern weld_ctrl *weld_controller;
-/*Date ------------------------------------------------------------*/
+/*Date */
 extern Date current_date;
-/*Error controller ------------------------------------------------*/
+/*Error controller */
 extern Error_ctrl *err_ctrl;
-/*Sensor ----------------------------------------------------------*/
+/*Sensor */
 extern Thermocouple *current_Thermocouple;
-/*debug -----------------------------------------------------------*/
+/*debug */
 #if PID_DEBUG
 extern pid_feedforword_ctrl *pid_ctrl_debug;
 #endif
-/*key -------------------------------------------------------------*/
+/*key */
 extern uint8_t cur_GP;
 extern RDY_SCH_STATE cur_key1;
 extern ION_OFF_STATE cur_key2;
@@ -45,8 +47,9 @@ extern SGW_CTW_STATE cur_key3;
 extern SWITCH_STATE switch_mode;
 
 /*-------------------------APP variables---------------------------*/
+/*page manager*/
 static Page_Manager page_manger;
-/*list init name*/
+/*compnent list init name*/
 static char *temp_page_name_list[] = {
     "alarm1",
     "alarm2",
@@ -96,14 +99,14 @@ static char *wave_page_name_list[] = {
     "ki",
     "kd"};
 
-/*...Users can add the required component list as needed...*/
+/*...Users can add the component list as needed...*/
 
-/*Functions prototype----------------------------------------------*/
+/*internal Functions prototype--------------------------------------*/
 static void TSModbus_Sync_FromUi(Page_ID id);
 static void TSSync_Date_from_Screen(Component_Queue *page_list);
 static void TSTemp_updata_realtime(Page_ID id);
 
-/*Page Callback  Functions------------------------------------------*/
+/*User Page Callback Functions--------------------------------------*/
 static void TSparam_pg_cb(Page_ID id);
 static void TStemp_pg_cb(Page_ID id);
 static void TSwave_pg_cb(Page_ID id);
