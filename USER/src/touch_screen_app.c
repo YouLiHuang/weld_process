@@ -1,4 +1,3 @@
-
 #include "touch_screen_app.h"
 #include "user_config.h"
 
@@ -9,6 +8,44 @@
 #include "protect.h"
 #include "spi.h"
 
+/*--------------------user variables include-----------------------*/
+/*SEM -------------------------------------------------------------*/
+extern OS_SEM SENSOR_UPDATE_SEM;
+extern OS_SEM PLOT_SEM;
+extern OS_SEM ERROR_HANDLE_SEM;
+/*MUX -------------------------------------------------------------*/
+/*UART4 Resource Protection*/
+extern OS_MUTEX PLOT_Mux;
+extern OS_MUTEX ModBus_Mux;
+/*Modbus variables ----------------------------------------*/
+extern uint8_t ID_OF_DEVICE;
+extern uint16_t usRegInputBuf[REG_INPUT_NREGS];
+extern uint16_t usRegHoldingBuf[REG_HOLDING_NREGS];
+extern uint8_t ucRegCoilsBuf[REG_COILS_SIZE / 8];
+extern uint8_t ucRegDiscreteBuf[REG_DISCRETE_SIZE / 8];
+/* Drawing controllers --------------------------------------------*/
+extern Temp_draw_ctrl *temp_draw_ctrl;
+/*Welding real-time controller-------------------------------------*/
+extern weld_ctrl *weld_controller;
+/*Date ------------------------------------------------------------*/
+extern Date current_date;
+/*Error controller ------------------------------------------------*/
+extern Error_ctrl *err_ctrl;
+/*Sensor ----------------------------------------------------------*/
+extern Thermocouple *current_Thermocouple;
+/*debug -----------------------------------------------------------*/
+#if PID_DEBUG
+extern pid_feedforword_ctrl *pid_ctrl_debug;
+#endif
+/*key -------------------------------------------------------------*/
+extern uint8_t cur_GP;
+extern RDY_SCH_STATE cur_key1;
+extern ION_OFF_STATE cur_key2;
+extern SGW_CTW_STATE cur_key3;
+extern SWITCH_STATE switch_mode;
+
+/*-------------------------APP variables---------------------------*/
+static Page_Manager page_manger;
 /*list init name*/
 static char *temp_page_name_list[] = {
     "alarm1",
@@ -59,63 +96,9 @@ static char *wave_page_name_list[] = {
     "ki",
     "kd"};
 
-Page_Manager page_manger;
-// Page_Param *page_param = NULL; // Record the ID of the current screen and the status of the three buttons
-
-// A list of components on the parameter setting screen
-Component_Queue param_page_list;
-// A list of components for the temperature limit interface
-Component_Queue temp_page_list;
-// A list of communication interface components
-Component_Queue list;
-// A list of components on the Waveform page
-Component_Queue wave_page_list;
-
 /*...Users can add the required component list as needed...*/
 
-/*SEM -------------------------------------------------------------*/
-extern OS_SEM SENSOR_UPDATE_SEM;
-extern OS_SEM PLOT_SEM;
-extern OS_SEM ERROR_HANDLE_SEM;
-
-/*MUX -------------------------------------------------------------*/
-/*UART4 Resource Protection*/
-extern OS_MUTEX PLOT_Mux;
-
-/*Modbus variables ----------------------------------------*/
-extern uint8_t ID_OF_DEVICE;
-extern OS_MUTEX ModBus_Mux;
-extern uint16_t usRegInputBuf[REG_INPUT_NREGS];
-extern uint16_t usRegHoldingBuf[REG_HOLDING_NREGS];
-extern uint8_t ucRegCoilsBuf[REG_COILS_SIZE / 8];
-extern uint8_t ucRegDiscreteBuf[REG_DISCRETE_SIZE / 8];
-
-/* Drawing controllers --------------------------------------------*/
-extern Temp_draw_ctrl *temp_draw_ctrl;
-/*Welding real-time controller-------------------------------------*/
-extern weld_ctrl *weld_controller;
-#if PID_DEBUG
-extern pid_feedforword_ctrl *pid_ctrl_debug;
-#endif
-/*Date ------------------------------------------------------------*/
-extern Date current_date;
-/*Error controller ------------------------------------------------*/
-extern Error_ctrl *err_ctrl;
-
-/*Sensor ----------------------------------------------------------*/
-extern Thermocouple *current_Thermocouple;
-/*Plot buffer -----------------------------------------------------*/
-
-extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN];
-
-extern uint8_t cur_GP;
-extern RDY_SCH_STATE cur_key1;
-extern ION_OFF_STATE cur_key2;
-extern SGW_CTW_STATE cur_key3;
-extern SWITCH_STATE switch_mode;
-
 /*Functions prototype----------------------------------------------*/
-
 static void TSModbus_Sync_FromUi(Page_ID id);
 static void TSSync_Date_from_Screen(Component_Queue *page_list);
 static void TSTemp_updata_realtime(Page_ID id);
@@ -125,14 +108,83 @@ static void TSparam_pg_cb(Page_ID id);
 static void TStemp_pg_cb(Page_ID id);
 static void TSwave_pg_cb(Page_ID id);
 static void TSsetting_pg_cb(Page_ID id);
+/*...Users can add callback as needed...*/
 
-/*match list--------------------------------------------------------*/
+/*match list -------------------------------------------------------*/
 page_map PAGE_CB_MAP[] = {
     {PARAM_PAGE, NULL, TSparam_pg_cb, param_page_name_list, sizeof(param_page_name_list) / sizeof(char *)},
     {TEMP_PAGE, NULL, TStemp_pg_cb, temp_page_name_list, sizeof(temp_page_name_list) / sizeof(char *)},
     {UART_PAGE, NULL, TSsetting_pg_cb, setting_page_name_list, sizeof(setting_page_name_list) / sizeof(char *)},
     {WAVE_PAGE, NULL, TSwave_pg_cb, wave_page_name_list, sizeof(wave_page_name_list) / sizeof(char *)},
 };
+
+/**
+ * @description: UI page processing
+ * @param {Page_ID} id
+ * @return {*}
+ */
+void TSpage_process(Page_ID id)
+{
+
+    uint8_t index = 0;
+    Component_Queue *list;
+    /*match the page list*/
+    for (index = 0; index < sizeof(PAGE_CB_MAP) / sizeof(PAGE_CB_MAP[0]); index++)
+    {
+        list = PAGE_CB_MAP[index].que;
+        if (list->id == id)
+            PAGE_CB_MAP[index].pg_cb(id);
+    }
+}
+
+/**
+ * @description: page manager init
+ * @param {page_map} *map
+ * @return {*}
+ */
+bool PGManager_init(void)
+{
+    /*page init*/
+    for (uint8_t i = 0; i < sizeof(PAGE_CB_MAP) / sizeof(PAGE_CB_MAP[0]); i++)
+    {
+
+        if (PAGE_CB_MAP[i].que == NULL)
+        {
+            PAGE_CB_MAP[i].que = newList(PAGE_CB_MAP[i].id);
+        }
+        page_list_init(PAGE_CB_MAP[i].que,
+                       PAGE_CB_MAP[i].init_name_list,
+                       PAGE_CB_MAP[i].list_len);
+    }
+
+    return true;
+}
+
+/**
+ * @description: request manager
+ * @return {*}
+ */
+Page_Manager *request_PGManger(void)
+{
+    return &page_manger;
+}
+
+/**
+ * @description:get page list
+ * @return {*}
+ */
+Component_Queue *get_page_list(Page_ID id)
+{
+    uint8_t index;
+    /*match the page list*/
+    for (index = 0; index < sizeof(PAGE_CB_MAP) / sizeof(PAGE_CB_MAP[0]); index++)
+    {
+        if (PAGE_CB_MAP[index].que->id == id)
+            break;
+    }
+
+    return PAGE_CB_MAP[index].que;
+}
 
 /**
  * @description: real-time temp display
@@ -312,7 +364,6 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
             weld_controller->weld_time[i] = time[i];
         }
 
-
         /*save data*/
         save_param(weld_controller,
                    cur_GP,
@@ -371,7 +422,7 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
 }
 
 #if PID_DEBUG == 1
-static bool pid_param_get(uint16_t *pid_raw_param)
+static bool TSpid_param_get(uint16_t *pid_raw_param)
 {
 
     bool ret = true;
@@ -696,7 +747,7 @@ static void TSwave_pg_cb(Page_ID id)
     command_set_comp_val("wave_page.ki", "aph", 127);
     command_set_comp_val("wave_page.kd", "aph", 127);
     uint16_t pid_param[3] = {0};
-    if (pid_param_get(pid_param) == true)
+    if (TSpid_param_get(pid_param) == true)
     {
         pid_ctrl_debug->kp = pid_param[0] / 100.0;
         pid_ctrl_debug->ki = pid_param[1] / 1000.0;
@@ -767,7 +818,7 @@ static void TSwave_pg_cb(Page_ID id)
 
         for (uint16_t i = 0; i < temp_draw_ctrl->third_step_index_end; i += delta)
         {
-            draw_point(realtime_temp_buf[i]);
+            draw_point(temp_draw_ctrl->temp_buf[i]);
         }
     }
 }
@@ -845,72 +896,4 @@ static void TSsetting_pg_cb(Page_ID id)
     OSMutexPend(&PLOT_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
     TSTemp_updata_realtime(id);
     OSMutexPost(&PLOT_Mux, OS_OPT_POST_NONE, &err);
-}
-
-/**
- * @description: UI page processing
- * @param {Page_ID} id
- * @return {*}
- */
-void TSpage_process(Page_ID id)
-{
-
-    uint8_t index = 0;
-    Component_Queue *list;
-    /*match the page list*/
-    for (index = 0; index < sizeof(PAGE_CB_MAP) / sizeof(PAGE_CB_MAP[0]); index++)
-    {
-        list = PAGE_CB_MAP[index].que;
-        if (list->id == id)
-            PAGE_CB_MAP[index].pg_cb(id);
-    }
-}
-
-/**
- * @description: page manager init
- * @param {page_map} *map
- * @return {*}
- */
-bool PGManager_init(void)
-{
-    /*page init*/
-    for (uint8_t i = 0; i < sizeof(PAGE_CB_MAP) / sizeof(PAGE_CB_MAP[0]); i++)
-    {
-
-        if (PAGE_CB_MAP[i].que == NULL)
-        {
-            PAGE_CB_MAP[i].que = newList(PAGE_CB_MAP[i].id);
-        }
-        page_list_init(PAGE_CB_MAP[i].que,
-                       PAGE_CB_MAP[i].init_name_list,
-                       PAGE_CB_MAP[i].list_len);
-    }
-
-    return true;
-}
-
-/**
- * @description: request manager
- * @return {*}
- */
-Page_Manager *request_PGManger(void)
-{
-    return &page_manger;
-}
-
-/**
- * @description:get page list
- * @return {*}
- */
-Component_Queue *get_page_list(Page_ID id)
-{
-    uint8_t index;
-    /*match the page list*/
-    for (index = 0; index < sizeof(PAGE_CB_MAP) / sizeof(PAGE_CB_MAP[0]); index++)
-    {
-        if (PAGE_CB_MAP[index].que->id == id)
-            break;
-    }
-
-    return PAGE_CB_MAP[index].que;
 }

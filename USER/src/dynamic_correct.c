@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-25 10:31:52
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-05-16 10:05:42
+ * @LastEditTime: 2025-06-15 12:29:59
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -10,6 +10,7 @@
 #include "user_config.h"
 #include "dynamic_correct.h"
 #include "touchscreen.h"
+#include "touch_screen_app.h"
 #include "welding_process.h"
 #include "timer.h"
 #include "usart.h"
@@ -31,7 +32,7 @@ uint16_t Stable_Threshold_cnt = 0;
 extern Temp_draw_ctrl *temp_draw_ctrl;
 // Welding real-time controller
 extern weld_ctrl *weld_controller;
-extern Component_Queue *temp_page_list;
+// extern Component_Queue *list;
 
 #if 0
 static int16_t findMax(uint16_t arr[], uint16_t size)
@@ -84,16 +85,14 @@ static int16_t findValue(uint16_t arr[], uint16_t size, uint16_t val)
 void dynamic_param_adjust(void)
 {
 
+    Component_Queue *list = get_page_list(TEMP_PAGE);
     uint16_t step_end_time = temp_draw_ctrl->second_step_index_end;
     /*分析有温度曲线几个极值点*/
     int16_t left_err = 0;
     int16_t right_err = 0;
-
     /*Search starting point*/
     uint16_t index = findValue(realtime_temp_buf, TEMP_BUF_MAX_LEN, weld_controller->weld_temp[1] * 0.95);
-
     /*The data can be exported later for filtering algorithm testing...*/
-
     uint8_t point_index = 0;
     point point_arr[30];
 
@@ -182,13 +181,13 @@ void dynamic_param_adjust(void)
     }
 
     /*data sync*/
-    if (get_comp(temp_page_list, "GAIN1") != NULL)
+    if (get_comp(list, "GAIN1") != NULL)
     {
-        get_comp(temp_page_list, "GAIN1")->val = weld_controller->temp_gain1 * 100;
+        get_comp(list, "GAIN1")->val = weld_controller->temp_gain1 * 100;
     }
-    if (get_comp(temp_page_list, "GAIN2") != NULL)
+    if (get_comp(list, "GAIN2") != NULL)
     {
-        get_comp(temp_page_list, "GAIN2")->val = weld_controller->temp_gain2 * 100;
+        get_comp(list, "GAIN2")->val = weld_controller->temp_gain2 * 100;
     }
 }
 

@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-13 19:22:56
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-07 09:23:36
+ * @LastEditTime: 2025-06-15 12:27:37
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -15,13 +15,13 @@
 #include "usart.h"
 #include "welding_process.h"
 #include "modbus_app.h"
+#include "touch_screen_app.h"
 
-/*--------------------------------------------------------------Variables--------------------------------------------------------------*/
-extern Component_Queue *param_page_list;
-extern Component_Queue *temp_page_list;
+/*---------------------------Variables-----------------------------*/
 extern weld_ctrl *weld_controller;
 extern Steady_state_coefficient steady_coefficient;
 extern uint8_t ID_OF_DEVICE;
+extern uint8_t cur_GP;
 
 // input reg
 extern uint16_t usRegInputBuf[REG_INPUT_NREGS];
@@ -31,8 +31,11 @@ extern uint16_t usRegHoldingBuf[REG_HOLDING_NREGS];
 extern uint8_t ucRegCoilsBuf[REG_COILS_SIZE / 8];
 // switch state
 extern uint8_t ucRegDiscreteBuf[REG_DISCRETE_SIZE / 8];
-/*--------------------------------------------------------------------------------------------------------------------------------------*/
-static int remember_array;
+/*-----------------------------------------------------------------*/
+
+
+
+/*Functions prototype----------------------------------------------*/
 static void WREN(void);
 
 void SPI1_Init(void)
@@ -179,15 +182,15 @@ void Load_data_from_mem(void)
 	delay_ms(2000);
 	RLY_TRAN = 0;
 	// 从内存加载首个GP值
-	remember_array = 0;
-	remember_array = SPI_Load_Word(0);
-	if (remember_array >= 20)
-		remember_array = 0;
+	cur_GP = 0;
+	cur_GP = SPI_Load_Word(0);
+	if (cur_GP >= 20)
+		cur_GP = 0;
 
 	/*首次从内存读取数据*/
-	Load_param(weld_controller, remember_array);
-	Load_param_alarm(weld_controller, remember_array);
-	Load_Coefficient(remember_array);
+	Load_param(weld_controller, cur_GP);
+	Load_param_alarm(weld_controller, cur_GP);
+	Load_Coefficient(cur_GP);
 
 	/*modbus data init*/
 	usRegHoldingBuf[0] = weld_controller->alarm_temp[0];
@@ -333,6 +336,8 @@ void save_param_alarm(void *controller,
 }
 void Load_param(void *controller, int array_of_data)
 {
+	Component_Queue *list = get_page_list(PARAM_PAGE);
+
 	char *param_time_name_list[] = {
 		"time1",
 		"time2",
@@ -366,17 +371,18 @@ void Load_param(void *controller, int array_of_data)
 	for (uint8_t i = 0; i < sizeof(welding_time_load) / sizeof(uint16_t); i++)
 	{
 		ctrl->weld_time[i] = welding_time_load[i];
-		get_comp(param_page_list, param_time_name_list[i])->val = welding_time_load[i];
+		get_comp(list, param_time_name_list[i])->val = welding_time_load[i];
 	}
 	// temp1-temp3
 	for (uint8_t i = 0; i < sizeof(welding_Temp_load) / sizeof(uint16_t); i++)
 	{
 		ctrl->weld_temp[i] = welding_Temp_load[i];
-		get_comp(param_page_list, param_temp_name_list[i])->val = welding_Temp_load[i];
+		get_comp(list, param_temp_name_list[i])->val = welding_Temp_load[i];
 	}
 }
 void Load_param_alarm(void *controller, int array_of_data)
 {
+	Component_Queue *list = get_page_list(PARAM_PAGE);
 	double gain_raw[2] = {0};
 	uint16_t alarm_temperature_load[6] = {0};
 	char *temp_name_list[] = {
@@ -406,7 +412,7 @@ void Load_param_alarm(void *controller, int array_of_data)
 			alarm_temperature_load[i] = ALARM_MAX_TEMP;
 
 		ctrl->alarm_temp[i] = alarm_temperature_load[i];
-		get_comp(temp_page_list, temp_name_list[i])->val = alarm_temperature_load[i];
+		get_comp(list, temp_name_list[i])->val = alarm_temperature_load[i];
 	}
 
 	/*data sync to screen list*/
@@ -414,15 +420,15 @@ void Load_param_alarm(void *controller, int array_of_data)
 	{
 		ctrl->temp_gain1 = (double)gain_raw[0] / 100.0;
 		ctrl->temp_gain2 = (double)gain_raw[1] / 100.0;
-		get_comp(temp_page_list, "GAIN1")->val = ctrl->temp_gain1 * 100;
-		get_comp(temp_page_list, "GAIN2")->val = ctrl->temp_gain2 * 100;
+		get_comp(list, "GAIN1")->val = ctrl->temp_gain1 * 100;
+		get_comp(list, "GAIN2")->val = ctrl->temp_gain2 * 100;
 	}
 	else
 	{
 		ctrl->temp_gain1 = DEFAULT_GAIN1;
 		ctrl->temp_gain2 = DEFAULT_GAIN2;
-		get_comp(temp_page_list, "GAIN1")->val = DEFAULT_GAIN1 * 100;
-		get_comp(temp_page_list, "GAIN2")->val = DEFAULT_GAIN2 * 100;
+		get_comp(list, "GAIN1")->val = DEFAULT_GAIN1 * 100;
+		get_comp(list, "GAIN2")->val = DEFAULT_GAIN2 * 100;
 	}
 }
 

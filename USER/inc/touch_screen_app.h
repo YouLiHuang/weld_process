@@ -33,8 +33,9 @@ typedef struct Page_Manager
 } Page_Manager;
 
 /*screen task functions -------------------------------------------------------*/
-void TSpage_process(Page_ID id);
 bool PGManager_init(void);
+void TSpage_process(Page_ID id);
+
 Page_Manager *request_PGManger(void);
 Component_Queue *get_page_list(Page_ID id);
 
