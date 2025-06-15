@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-15 12:44:38
+ * @LastEditTime: 2025-06-15 16:41:51
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -1061,7 +1061,6 @@ void main_task(void *p_arg)
 				break;
 			}
 		}
-		Modbus_reg_sync();
 
 		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
@@ -1087,6 +1086,7 @@ void read_task(void *p_arg)
 		{
 			TSpage_process(request_PGManger()->id);
 		}
+		Modbus_reg_sync();
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);
 	}
