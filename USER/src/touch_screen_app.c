@@ -324,6 +324,7 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
 {
     uint16_t temp_HL[6] = {0}, gain[2] = {0};
     uint16_t temp[3] = {0}, time[5] = {0};
+    uint16_t screen_count;
     Page_ID id = request_PGManger()->id;
 
     char *weld_temp_name_list[] = {"temp1", "temp2", "temp3"};
@@ -365,6 +366,15 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
         for (uint8_t i = 0; i < sizeof(time) / sizeof(time[0]); i++)
         {
             weld_controller->weld_time[i] = time[i];
+        }
+
+        /*check if count is changed by user*/
+        command_get_comp_val(page_list, "count", "val");
+        screen_count = get_comp(page_list, "count")->val;
+        if (weld_controller->weld_count != screen_count)
+        {
+            weld_controller->weld_count = screen_count;
+            command_set_comp_val("count", "val", weld_controller->weld_count);
         }
 
         /*save data*/
@@ -409,6 +419,15 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
         weld_controller->temp_gain1 = gain[0] / 100.0;
         weld_controller->temp_gain2 = gain[1] / 100.0;
 
+        /*check if count is changed by user*/
+        command_get_comp_val(page_list, "count", "val");
+        screen_count = get_comp(page_list, "count")->val;
+        if (weld_controller->weld_count != screen_count)
+        {
+            weld_controller->weld_count = screen_count;
+            command_set_comp_val("count", "val", weld_controller->weld_count);
+        }
+
         /*save data to eeprom*/
         save_param_alarm(weld_controller,
                          cur_GP,
@@ -419,7 +438,7 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
         break;
     }
 
-    /*Ⅱ User Data --->  Modbus*/
+    /*User Data --->  Modbus buffer*/
     /*sync data to Modbus buffer*/
     TSModbus_Sync_FromUi(id);
 }
@@ -463,7 +482,6 @@ static void TSparam_pg_cb(Page_ID id)
     uint16_t screen_count = 0;
 
     const char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "UP_DOWN"};
-    const char *val_name_list[] = {"GP", "count"};
     const char *weld_time_name_list[] = {
         "time1",
         "time2",
@@ -489,18 +507,13 @@ static void TSparam_pg_cb(Page_ID id)
     last_key1 = cur_key1;
     last_gp = cur_GP;
 
-    /*sync weld count to screen*/
-    command_set_comp_val("count", "val", weld_controller->weld_count);
-
     /*----------------------------------------- update components compatible -----------------------------------------*/
+    /*get value from screen*/
     for (uint8_t i = 0; i < sizeof(key_name_list) / sizeof(key_name_list[0]); i++)
     {
         command_get_comp_val(list, key_name_list[i], "pic");
     }
-    for (uint8_t i = 0; i < sizeof(val_name_list) / sizeof(val_name_list[0]); i++)
-    {
-        command_get_comp_val(list, val_name_list[i], "val");
-    }
+    command_get_comp_val(list, "GP", "val");
 
     /*data convert*/
     cur_key1 = (RDY_SCH_STATE)get_comp(list, "RDY_SCH")->val;
@@ -508,12 +521,6 @@ static void TSparam_pg_cb(Page_ID id)
     cur_key3 = (SGW_CTW_STATE)get_comp(list, "SGW_CTW")->val;
     weld_controller->Count_Dir = (get_comp(list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
     cur_GP = get_comp(list, "GP")->val;
-    screen_count = get_comp(list, "count")->val;
-    if (weld_controller->weld_count != screen_count)
-    {
-        weld_controller->weld_count = screen_count;
-        command_set_comp_val("count", "val", weld_controller->weld_count);
-    }
 
     /*get current data*/
     command_get_variable_val(&current_date.Year, "rtc0");
@@ -589,6 +596,9 @@ static void TSparam_pg_cb(Page_ID id)
     command_set_comp_val("temp11", "val", temp_draw_ctrl->display_temp[0]);
     command_set_comp_val("temp22", "val", temp_draw_ctrl->display_temp[1]);
 
+    /*sync weld count to screen*/
+    command_set_comp_val("count", "val", weld_controller->weld_count);
+
     /*display Real-time temperature*/
     OSMutexPend(&PLOT_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
     TSTemp_updata_realtime(id);
@@ -610,7 +620,7 @@ static void TStemp_pg_cb(Page_ID id)
     uint32_t screen_count;
 
     const char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "UP_DOWN"};
-    const char *val_name_list[] = {"GP", "count", "switch"};
+    const char *val_name_list[] = {"GP", "switch"};
     const char *alarm_temp_name_list[] = {
         "alarm1",
         "alarm2",
@@ -634,10 +644,8 @@ static void TStemp_pg_cb(Page_ID id)
     last_key1 = cur_key1;
     last_gp = cur_GP;
 
-    /*sync weld count to screen*/
-    command_set_comp_val("count", "val", weld_controller->weld_count);
-
     /*----------------------------------------- update components compatible -----------------------------------------*/
+    /*get value from screen*/
     for (uint8_t i = 0; i < sizeof(key_name_list) / sizeof(key_name_list[0]); i++)
     {
         command_get_comp_val(list, key_name_list[i], "pic");
@@ -652,6 +660,7 @@ static void TStemp_pg_cb(Page_ID id)
     cur_key2 = (ION_OFF_STATE)get_comp(list, "ION_OFF")->val;
     cur_key3 = (SGW_CTW_STATE)get_comp(list, "SGW_CTW")->val;
     weld_controller->Count_Dir = (get_comp(list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
+    switch_mode = (SWITCH_STATE)get_comp(list, "switch")->val;
     cur_GP = get_comp(list, "GP")->val;
     screen_count = get_comp(list, "count")->val;
     if (weld_controller->weld_count != screen_count)
@@ -731,6 +740,9 @@ static void TStemp_pg_cb(Page_ID id)
     /*display average temperature*/
     command_set_comp_val("temp11", "val", temp_draw_ctrl->display_temp[0]);
     command_set_comp_val("temp22", "val", temp_draw_ctrl->display_temp[1]);
+
+    /*sync weld count to screen*/
+    command_set_comp_val("count", "val", weld_controller->weld_count);
 
     /*display Real-time temperature*/
     OSMutexPend(&PLOT_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);

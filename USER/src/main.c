@@ -60,7 +60,7 @@ CPU_STK MAIN_TASK_STK[MAIN_STK_SIZE];
 void main_task(void *p_arg);
 
 #define READ_TASK_PRIO 6
-#define READ_STK_SIZE 4096
+#define READ_STK_SIZE 3072
 OS_TCB READ_TaskTCB;
 CPU_STK READ_TASK_STK[READ_STK_SIZE];
 
@@ -1041,6 +1041,8 @@ void main_task(void *p_arg)
 		OSSemPend(&WELD_START_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
+			/*clear sem*/
+			OSSemSet(&WELD_START_SEM, 0, &err);
 			/*only check sensor before weld(avoid temp display error)*/
 			switch (start_type)
 			{
@@ -1062,7 +1064,9 @@ void main_task(void *p_arg)
 			}
 		}
 
-		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
+		Modbus_reg_sync();
+
+		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
 }
 
@@ -1086,7 +1090,6 @@ void read_task(void *p_arg)
 		{
 			TSpage_process(request_PGManger()->id);
 		}
-		Modbus_reg_sync();
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);
 	}
@@ -1115,7 +1118,7 @@ void computer_read_task(void *p_arg)
 		printf("> MODBUS NOT SUPPORT!\n");
 #endif
 
-		OSTimeDlyHMSM(0, 0, 0, 20, OS_OPT_TIME_PERIODIC, &err);
+		OSTimeDlyHMSM(0, 0, 0, 5, OS_OPT_TIME_PERIODIC, &err);
 	}
 }
 

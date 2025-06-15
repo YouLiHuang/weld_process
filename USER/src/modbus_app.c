@@ -345,7 +345,7 @@ void Modbus_reg_sync(void)
             gain2 = usRegHoldingBuf[hold_reg_index] / 100.0;
             if (gain2 != weld_controller->temp_gain2 && gain2 <= 1)
             {
-                weld_controller->temp_gain1 = gain2;
+                weld_controller->temp_gain2 = gain2;
             }
             break;
 

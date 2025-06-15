@@ -73,6 +73,8 @@ extern OS_SEM DATA_SAVE_SEM;
 
 /*---------------------------------------------------------- MODBUS ---------------------------------------------------------------*/
 extern OS_MUTEX ModBus_Mux;
+extern uint16_t usRegHoldingBuf[REG_HOLDING_NREGS];
+extern uint16_t usRegInputBuf[REG_INPUT_NREGS];
 extern uint8_t ucRegCoilsBuf[REG_COILS_SIZE / 8];
 extern uint8_t ucRegDiscreteBuf[REG_DISCRETE_SIZE / 8];
 
@@ -931,15 +933,6 @@ static void End_of_Weld()
 	welding_flag = IDEAL_MODE;
 	weld_controller->Duty_Cycle = 0;
 	weld_controller->state = IDEAL_STATE;
-	/*根据计数模式更新焊接计数值*/
-	if (weld_controller->Count_Dir == UP)
-		weld_controller->weld_count++;
-	if (weld_controller->Count_Dir == DOWN && weld_controller->weld_count > 0)
-		weld_controller->weld_count--;
-
-	/*conut updata*/
-	command_set_comp_val("param_page.count", "val", weld_controller->weld_count);
-	command_set_comp_val("temp_page.count", "val", weld_controller->weld_count);
 
 	/*MODBUS updata*/
 	OSMutexPend(&ModBus_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
@@ -953,6 +946,17 @@ static void End_of_Weld()
 	ucRegCoilsBuf[0] |= 0x01 << COIL_ADDR_3;
 	RLY_CNT = 1; // 1为计数，0清除计数信号
 	ucRegCoilsBuf[0] |= 0x01 << COIL_ADDR_5;
+	/*weld conut updata*/
+	if (weld_controller->Count_Dir == UP)
+	{
+		weld_controller->weld_count++;
+		usRegHoldingBuf[HOLD_ADDR_16] = weld_controller->weld_count;
+	}
+	else if (weld_controller->Count_Dir == DOWN && weld_controller->weld_count > 0)
+	{
+		weld_controller->weld_count--;
+		usRegHoldingBuf[HOLD_ADDR_16] = weld_controller->weld_count;
+	}
 	OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
 }
 
@@ -999,13 +1003,18 @@ static void simulate_weld()
 	ucRegCoilsBuf[0] |= 0x01 << COIL_ADDR_3;
 	RLY_CNT = 1; // 1为计数，0清除计数信号
 	ucRegCoilsBuf[0] |= 0x01 << COIL_ADDR_5;
-	OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
-
 	/*weld conut updata*/
 	if (weld_controller->Count_Dir == UP)
+	{
 		weld_controller->weld_count++;
+		usRegHoldingBuf[HOLD_ADDR_16] = weld_controller->weld_count;
+	}
 	else if (weld_controller->Count_Dir == DOWN && weld_controller->weld_count > 0)
+	{
 		weld_controller->weld_count--;
+		usRegHoldingBuf[HOLD_ADDR_16] = weld_controller->weld_count;
+	}
+	OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
 }
 
 /**
