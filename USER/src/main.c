@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-14 19:46:16
+ * @LastEditTime: 2025-06-15 12:44:38
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -164,11 +164,18 @@ pid_feedforword_ctrl *pid_ctrl_debug = NULL;
 Thermocouple *current_Thermocouple = NULL;
 // current date
 Date current_date;
-
+// Modbus slaver id
 uint8_t ID_OF_DEVICE = 0;
-
+// UI(touch screen) value
+uint8_t cur_GP = 0;
+RDY_SCH_STATE cur_key1 = RDY;
+ION_OFF_STATE cur_key2 = ION;
+SGW_CTW_STATE cur_key3 = SGW;
+SWITCH_STATE switch_mode = USER_MODE;
+// USB device
 extern USBH_HOST USB_Host __ALIGN_END;
 extern USB_OTG_CORE_HANDLE USB_OTG_Core __ALIGN_END;
+// key status(trigger by irq)
 extern START_TYPE start_type;
 // Temperature preservation buffer
 extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN];
@@ -177,12 +184,6 @@ extern uint16_t usRegInputBuf[REG_INPUT_NREGS];
 extern uint16_t usRegHoldingBuf[REG_HOLDING_NREGS];
 extern uint8_t ucRegCoilsBuf[REG_COILS_SIZE / 8];
 extern uint8_t ucRegDiscreteBuf[REG_DISCRETE_SIZE / 8];
-
-uint8_t cur_GP = 0;
-RDY_SCH_STATE cur_key1 = RDY;
-ION_OFF_STATE cur_key2 = ION;
-SGW_CTW_STATE cur_key3 = SGW;
-SWITCH_STATE switch_mode = USER_MODE;
 
 int main(void)
 {
@@ -333,7 +334,7 @@ and the time slice length is 1 system clock beat, 1 ms
 	OSSemCreate(&DATA_SAVE_SEM, "data save", 0, &err);
 
 	// err task
-	// 50ms调度——50ms时间片
+	// 100ms调度——10ms时间片
 	OSTaskCreate((OS_TCB *)&ErrorTaskTCB,
 				 (CPU_CHAR *)"error task",
 				 (OS_TASK_PTR)error_task,
@@ -349,7 +350,7 @@ and the time slice length is 1 system clock beat, 1 ms
 				 (OS_ERR *)&err);
 
 	// main task
-	// 30ms调度
+	// 50ms调度
 	OSTaskCreate((OS_TCB *)&Main_TaskTCB,
 				 (CPU_CHAR *)"Main task",
 				 (OS_TASK_PTR)main_task,
