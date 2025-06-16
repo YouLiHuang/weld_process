@@ -66,7 +66,7 @@ CPU_STK READ_TASK_STK[READ_STK_SIZE];
 
 void read_task(void *p_arg);
 
-#define COMPUTER_TASK_PRIO 7
+#define COMPUTER_TASK_PRIO 6
 #define COMPUTER_STK_SIZE 1024
 OS_TCB COMPUTER_TaskTCB;
 CPU_STK COMPUTER_TASK_STK[COMPUTER_STK_SIZE];
@@ -743,7 +743,7 @@ static void Overload_check(void)
 	}
 
 	/*sensor maybe disconnect*/
-	Thermocouple_check();
+	// Thermocouple_check();
 	/*temp overload protect 2*/
 	switch (current_Thermocouple->type)
 	{
@@ -1042,6 +1042,7 @@ void main_task(void *p_arg)
 		OSSemPend(&WELD_START_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
+			Thermocouple_check();
 			/*clear sem*/
 			OSSemSet(&WELD_START_SEM, 0, &err);
 			/*only check sensor before weld(avoid temp display error)*/
@@ -1067,7 +1068,7 @@ void main_task(void *p_arg)
 
 		Modbus_reg_sync();
 
-		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err); // 休眠
+		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
 }
 

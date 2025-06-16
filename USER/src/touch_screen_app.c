@@ -480,7 +480,6 @@ static void TSparam_pg_cb(Page_ID id)
     static RDY_SCH_STATE last_key1 = RDY;
     static uint8_t last_gp = 0;
 
-
     const char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "UP_DOWN"};
     const char *weld_time_name_list[] = {
         "time1",
@@ -825,6 +824,8 @@ static void TSwave_pg_cb(Page_ID id)
     if (err == OS_ERR_NONE)
     {
         uint16_t delta = 0;
+        /*clear screen*/
+        command_send("cle wave_line.id,0");
         /*后续改为透传模式！！！*/
         if (temp_draw_ctrl->third_step_index_start % win_width == 0)
             delta = temp_draw_ctrl->third_step_index_start / win_width;
@@ -833,7 +834,7 @@ static void TSwave_pg_cb(Page_ID id)
 
         for (uint16_t i = 0; i < temp_draw_ctrl->third_step_index_end; i += delta)
         {
-            draw_point(temp_draw_ctrl->temp_buf[i]);
+            draw_point(temp_draw_ctrl->temp_buf[i] * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
         }
     }
 }
