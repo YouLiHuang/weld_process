@@ -224,6 +224,7 @@ int main(void)
 	TIM4_PWM_Init();								// tim4 PWM(change RCC must init first)
 	TIM3_INIT();									// PID TIMER
 	TIM5_INIT();									// COUNT TIMER
+	TIM6_INIT(5);									// 5ms key scan timer
 	uart_init(115200);								// Touch screen communication interface initialization
 #if MODBUSSLAVE_ENABLE
 	eMBInit(MB_RTU, 1, 3, 115200, MB_PAR_NONE, 1);

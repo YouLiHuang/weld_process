@@ -240,10 +240,7 @@ void TIM2_IRQHandler(void)
 }
 
 
-/**
- * @description: start signal check software delay
- * @return {*}
- */
+
 void TIM6_DAC_IRQHandler(void)
 {
   TIM6_irq();

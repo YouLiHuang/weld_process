@@ -66,6 +66,7 @@ typedef enum START_TYPE
 
 } START_TYPE;
 
+void TIM6_INIT(uint16_t timr_outms);
 void INPUT_IO_INIT(void);
 void OUT_Init(void);
 void START_IO_INIT(void);

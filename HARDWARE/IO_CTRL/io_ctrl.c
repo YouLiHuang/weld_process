@@ -17,38 +17,73 @@
 START_TYPE start_type = START_IDEAL;
 extern OS_SEM WELD_START_SEM;
 
-/**
- * @description: this timer is used for key scan
- *  APH1 defalut clock=168M/4=42M pre(=4)!=1 so APB1_TIM3_CLK=42M*2=84M
- * @return {*}
- */
-void TIM6_INIT(void)
+
+void TIM6_INIT(uint16_t time_outms)
 {
 
-	// freq:100Hz(10ms)
-	uint16_t arr = 10000 - 1;
-	uint16_t psc = 84 - 1;
-
-	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
+	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
+
+	uint16_t preriod = time_outms * 1000;
+	if (preriod > 0xff)
+		preriod = 0xff;
+
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);
-	/*BASE Config*/
-	TIM_TimeBaseInitStructure.TIM_Period = arr;
-	TIM_TimeBaseInitStructure.TIM_Prescaler = psc;
-	TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
-	TIM_TimeBaseInit(TIM6, &TIM_TimeBaseInitStructure);
-	/*NVIC Config*/
+
+	TIM_TimeBaseStructure.TIM_Period = preriod;
+	TIM_TimeBaseStructure.TIM_Prescaler = 84 - 1;
+	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInit(TIM6, &TIM_TimeBaseStructure);
+	TIM_ARRPreloadConfig(TIM6, ENABLE);
+
+	/*NVIC*/
 	NVIC_InitStructure.NVIC_IRQChannel = TIM6_DAC_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
-	/*DISABLE*/
 	TIM_ClearITPendingBit(TIM6, TIM_IT_Update);
-	TIM_ITConfig(TIM6, TIM_IT_Update, DISABLE);
+	TIM_ITConfig(TIM6, TIM_IT_Update, ENABLE);
 	TIM_Cmd(TIM6, DISABLE);
+}
+
+/**
+ * @description: 5ms time out irq
+ * @return {*}
+ */
+void TIM6_irq(void)
+{
+
+	OS_ERR err;
+#if SYSTEM_SUPPORT_OS
+	OSIntEnter();
+#endif
+
+	if (TIM_GetITStatus(TIM6, TIM_IT_Update) == SET)
+	{
+		TIM_ClearITPendingBit(TIM6, TIM_IT_Update);
+		TIM_Cmd(TIM6, DISABLE);
+
+		/*check which key is pressed*/
+		if (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_0) == RESET)
+		{
+			/*notify main task to start weld*/
+			start_type = KEY0;
+			OSSemPost(&WELD_START_SEM, OS_OPT_POST_ALL, &err);
+		}
+		if (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_1) == RESET)
+		{
+			/*notify main task to start weld*/
+			start_type = KEY1;
+			OSSemPost(&WELD_START_SEM, OS_OPT_POST_ALL, &err);
+		}
+	}
+
+#if SYSTEM_SUPPORT_OS
+	OSIntExit();
+#endif
 }
 
 /**
@@ -105,44 +140,6 @@ void START_IO_INIT(void)
 }
 
 /**
- * @description: 10ms time out irq
- * @return {*}
- */
-void TIM6_irq(void)
-{
-
-	OS_ERR err;
-#if SYSTEM_SUPPORT_OS
-	OSIntEnter();
-#endif
-
-	if (TIM_GetITStatus(TIM6, TIM_IT_Update) == SET)
-	{
-		TIM_ClearITPendingBit(TIM6, TIM_IT_Update);
-		TIM_Cmd(TIM6, DISABLE);
-		TIM6->CNT = 0;
-
-		/*check which key is pressed*/
-		if (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_0) == RESET)
-		{
-			/*notify main task to start weld*/
-			start_type = KEY0;
-			OSSemPost(&WELD_START_SEM, OS_OPT_POST_ALL, &err);
-		}
-		if (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_1) == RESET)
-		{
-			/*notify main task to start weld*/
-			start_type = KEY1;
-			OSSemPost(&WELD_START_SEM, OS_OPT_POST_ALL, &err);
-		}
-	}
-
-#if SYSTEM_SUPPORT_OS
-	OSIntExit();
-#endif
-}
-
-/**
  * @description: start signal exit irq
  * @return {*}
  */
@@ -157,7 +154,6 @@ void Start_signal_irq(void)
 	{
 		EXTI_ClearITPendingBit(EXTI_Line0);
 		/*software delay*/
-		TIM6->CNT = 0;
 		TIM_Cmd(TIM6, ENABLE);
 	}
 	/*key2*/
@@ -165,7 +161,6 @@ void Start_signal_irq(void)
 	{
 		EXTI_ClearITPendingBit(EXTI_Line1);
 		/*software delay*/
-		TIM6->CNT = 0;
 		TIM_Cmd(TIM6, ENABLE);
 	}
 #if START_IO_ENABLE
