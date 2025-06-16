@@ -210,6 +210,7 @@ void DebugMon_Handler(void)
 extern USB_OTG_CORE_HANDLE USB_OTG_Core;
 extern USBH_HOST USB_Host;
 extern void USB_OTG_BSP_TimerIRQ(void);
+extern void TIM6_irq(void);
 
 /**
  * @brief  OTG_FS_IRQHandler
@@ -236,6 +237,16 @@ void OTG_HS_IRQHandler(void)
 void TIM2_IRQHandler(void)
 {
   USB_OTG_BSP_TimerIRQ();
+}
+
+
+/**
+ * @description: start signal check software delay
+ * @return {*}
+ */
+void TIM6_DAC_IRQHandler(void)
+{
+  TIM6_irq();
 }
 
 /**

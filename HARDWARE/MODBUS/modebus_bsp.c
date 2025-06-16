@@ -86,8 +86,8 @@ void modbus_serial_bsp_init(uint32_t bound)
 
     // Usart2 NVIC 配置
     NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3; // 抢占优先级3
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 4;        // 子优先级3
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0; // 抢占优先级3
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;        // 子优先级3
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;           // IRQ通道使能
     NVIC_Init(&NVIC_InitStructure);                           // 根据指定的参数初始化VIC寄存器、
 

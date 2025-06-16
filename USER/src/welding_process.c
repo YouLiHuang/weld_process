@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-13 09:22:31
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-14 19:11:33
+ * @LastEditTime: 2025-06-16 15:24:21
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -1086,6 +1086,14 @@ STOP_LABEL:
  */
 void welding_process(START_TYPE type)
 {
+	OS_ERR err;
+	uint8_t key = 0;
+
+	/*which key is pressed*/
+	key = (type == START1) ? RLY_START0_ACTIVE : RLY_START1_ACTIVE;
+
+	/*load different parameter sets based on the specific button pressed.*/
+	Load_Data(type);
 
 	/*The welding is stopped when the countdown timer reaches the end*/
 	if (weld_controller->weld_count == 0 && weld_controller->Count_Dir == DOWN)
@@ -1094,21 +1102,15 @@ void welding_process(START_TYPE type)
 	/*PWM deinit*/
 	PMW_TIMER_DEINIT();
 
-	/*load different parameter sets based on the specific button pressed.*/
-	Load_Data(type);
-
 	/*----------------------------------------------- real-time control ---------------------------------------------------*/
 
 	/*-------------------------------------------------------CTW-------------------------------------------------------*/
 	if (cur_key3 == CTW && cur_key2 == ION && cur_key1 == RDY)
 	{
-		OS_ERR err;
-		uint8_t key = 0;
 
 		key = RLY_INPUT_SCAN();
-
 		/*weld until release key*/
-		while (key == RLY_START1_ACTIVE || key == RLY_START0_ACTIVE)
+		while (key == RLY_START0_ACTIVE || key == RLY_START1_ACTIVE)
 		{
 
 			weld_controller->realtime_temp = temp_convert(current_Thermocouple);
@@ -1141,7 +1143,6 @@ void welding_process(START_TYPE type)
 				OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
 
 				/*weld interval*/
-				RLY_OVER = 0;
 				OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 			}
 
@@ -1152,17 +1153,14 @@ void welding_process(START_TYPE type)
 	/*simulate weld*/
 	else if (cur_key3 == CTW && cur_key2 == IOFF && cur_key1 == RDY)
 	{
-		OS_ERR err;
-		uint8_t key = 0;
 		key = RLY_INPUT_SCAN();
-		while (key == RLY_START1_ACTIVE || key == RLY_START0_ACTIVE)
+		while (key == RLY_START0_ACTIVE || key == RLY_START1_ACTIVE)
 		{
-
 			simulate_weld();
 			/*weld interval*/
 			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 			key = RLY_INPUT_SCAN();
-			if (!(key == RLY_START1_ACTIVE || key == RLY_START0_ACTIVE))
+			if (!(key == RLY_START0_ACTIVE || key == RLY_START1_ACTIVE))
 				break;
 		}
 	}
@@ -1170,65 +1168,65 @@ void welding_process(START_TYPE type)
 	/*------------------------------------------------------SGW-------------------------------------------------------*/
 	if (cur_key3 == SGW && cur_key2 == ION && cur_key1 == RDY)
 	{
-		OS_ERR err;
-		uint8_t key = 0;
-
-		key = RLY_INPUT_SCAN();
-		if (key == RLY_START1_ACTIVE || key == RLY_START0_ACTIVE)
+		/*clear screen*/
+		if (request_PGManger()->id == WAVE_PAGE)
 		{
-			/*clear screen*/
-			if (request_PGManger()->id == WAVE_PAGE)
-			{
-				command_send("cle wave_line.id,0");
-				OSTimeDly(5, OS_OPT_TIME_DLY, &err);
-			}
-			/*enter weld*/
-			weld_controller->realtime_temp = temp_convert(current_Thermocouple);
-			if (weld_controller->realtime_temp > weld_controller->weld_temp[2])
-				return;
+			command_send("cle wave_line.id,0");
+			OSTimeDly(5, OS_OPT_TIME_DLY, &err);
+		}
+		/*enter weld*/
+		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
+		if (weld_controller->realtime_temp > weld_controller->weld_temp[2])
+			return;
 
-			/*weld real-time control*/
-			weld_real_time_ctrl();
+		/*weld real-time control*/
+		weld_real_time_ctrl();
 
-			/*calculate three temperature to display*/
-			display_temp_cal();
+		/*calculate three temperature to display*/
+		display_temp_cal();
 
-			/*plot temp line(down)*/
-			if (request_PGManger()->id == WAVE_PAGE)
-				down_temp_line();
-			else /*not in wave page, notify plot task to plot temp line*/
-			{
-				/*avoid send one more time, which will plot one more line*/
-				OSSemSet(&PLOT_SEM, 0, &err);
-				OSSemPost(&PLOT_SEM, OS_OPT_POST_ALL, &err);
-			}
+		/*plot temp line(down)*/
+		if (request_PGManger()->id == WAVE_PAGE)
+			down_temp_line();
+		else /*not in wave page, notify plot task to plot temp line*/
+		{
+			/*avoid send one more time, which will plot one more line*/
+			OSSemSet(&PLOT_SEM, 0, &err);
+			OSSemPost(&PLOT_SEM, OS_OPT_POST_ALL, &err);
+		}
 
-			/*save data to disk*/
-			OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
+		/*save data to disk*/
+		OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
 
-			/*weld interval*/
-			RLY_OVER = 0;
-			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
+		/*weld interval*/
+		OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
 
-			/*wait until release key*/
-			while (1)
-			{
-				key = RLY_INPUT_SCAN();
-				if (key != RLY_START1_ACTIVE && key != RLY_START0_ACTIVE)
-					break;
+		/*wait until release key*/
+		while (1)
+		{
+			key = RLY_INPUT_SCAN();
+			if (key != RLY_START0_ACTIVE && key != RLY_START1_ACTIVE)
+				break;
 
-				// main task pend
-				OSTimeDly(10, OS_OPT_TIME_DLY, &err);
-			}
+			// main task pend
+			OSTimeDly(10, OS_OPT_TIME_DLY, &err);
 		}
 	}
 	/*weld simulate*/
 	else if (cur_key3 == SGW && cur_key2 == IOFF && cur_key1 == RDY)
 	{
-		OS_ERR err;
 		simulate_weld();
 		/*weld interval*/
 		OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
-		RLY_OVER = 0;
+		/*wait until release key*/
+		while (1)
+		{
+			key = RLY_INPUT_SCAN();
+			if (key != RLY_START0_ACTIVE && key != RLY_START1_ACTIVE)
+				break;
+
+			// main task pend
+			OSTimeDly(10, OS_OPT_TIME_DLY, &err);
+		}
 	}
 }

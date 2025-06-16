@@ -479,7 +479,7 @@ static void TSparam_pg_cb(Page_ID id)
     Component_Queue *list;
     static RDY_SCH_STATE last_key1 = RDY;
     static uint8_t last_gp = 0;
-    uint16_t screen_count = 0;
+
 
     const char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "UP_DOWN"};
     const char *weld_time_name_list[] = {
