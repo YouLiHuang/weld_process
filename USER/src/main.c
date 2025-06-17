@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-15 16:41:51
+ * @LastEditTime: 2025-06-17 09:57:33
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -77,6 +77,12 @@ void computer_read_task(void *p_arg);
 OS_TCB USB_TaskTCB;
 CPU_STK USB_TASK_STK[USB_STK_SIZE];
 void usb_task(void *p_arg);
+
+#define CHECK_TASK_PRIO 7
+#define CHECK_STK_SIZE 2048
+OS_TCB Check_TaskTCB;
+CPU_STK CHECK_TASK_STK[CHECK_STK_SIZE];
+void check_task(void *p_arg);
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -743,7 +749,7 @@ static void Overload_check(void)
 	}
 
 	/*sensor maybe disconnect*/
-	// Thermocouple_check();
+	Thermocouple_check();
 	/*temp overload protect 2*/
 	switch (current_Thermocouple->type)
 	{
@@ -990,7 +996,22 @@ void main_task(void *p_arg)
 				 (CPU_STK_SIZE)READ_STK_SIZE / 10,
 				 (CPU_STK_SIZE)READ_STK_SIZE,
 				 (OS_MSG_QTY)0,
-				 (OS_TICK)50,
+				 (OS_TICK)30,
+				 (void *)0,
+				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
+				 (OS_ERR *)&err);
+
+	// modbus task
+	OSTaskCreate((OS_TCB *)&COMPUTER_TaskTCB,
+				 (CPU_CHAR *)"computer read task",
+				 (OS_TASK_PTR)computer_read_task,
+				 (void *)0,
+				 (OS_PRIO)COMPUTER_TASK_PRIO,
+				 (CPU_STK *)&COMPUTER_TASK_STK[0],
+				 (CPU_STK_SIZE)COMPUTER_STK_SIZE / 10,
+				 (CPU_STK_SIZE)COMPUTER_STK_SIZE,
+				 (OS_MSG_QTY)0,
+				 (OS_TICK)30,
 				 (void *)0,
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
@@ -1010,17 +1031,17 @@ void main_task(void *p_arg)
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
 
-	// modbus task
-	OSTaskCreate((OS_TCB *)&COMPUTER_TaskTCB,
-				 (CPU_CHAR *)"computer read task",
-				 (OS_TASK_PTR)computer_read_task,
+	// check task
+	OSTaskCreate((OS_TCB *)&Check_TaskTCB,
+				 (CPU_CHAR *)"check task",
+				 (OS_TASK_PTR)check_task,
 				 (void *)0,
-				 (OS_PRIO)COMPUTER_TASK_PRIO,
-				 (CPU_STK *)&COMPUTER_TASK_STK[0],
-				 (CPU_STK_SIZE)COMPUTER_STK_SIZE / 10,
-				 (CPU_STK_SIZE)COMPUTER_STK_SIZE,
+				 (OS_PRIO)CHECK_TASK_PRIO,
+				 (CPU_STK *)&CHECK_TASK_STK[0],
+				 (CPU_STK_SIZE)CHECK_STK_SIZE / 10,
+				 (CPU_STK_SIZE)CHECK_STK_SIZE,
 				 (OS_MSG_QTY)0,
-				 (OS_TICK)40,
+				 (OS_TICK)10,
 				 (void *)0,
 				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
 				 (OS_ERR *)&err);
@@ -1028,21 +1049,10 @@ void main_task(void *p_arg)
 	while (1)
 	{
 
-		/*when the main task is ideal , check the sensor and current*/
-#if OVER_LOAD_CHECK
-		Overload_check();
-#endif
-
-		if (err_occur(err_ctrl))
-		{
-			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-		}
-
 		/*trigger by exit irq(keys are pressed)*/
-		OSSemPend(&WELD_START_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+		OSSemPend(&WELD_START_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
-			Thermocouple_check();
 			/*clear sem*/
 			OSSemSet(&WELD_START_SEM, 0, &err);
 			/*only check sensor before weld(avoid temp display error)*/
@@ -1065,8 +1075,6 @@ void main_task(void *p_arg)
 				break;
 			}
 		}
-
-		Modbus_reg_sync();
 
 		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
 	}
@@ -1092,6 +1100,8 @@ void read_task(void *p_arg)
 		{
 			TSpage_process(request_PGManger()->id);
 		}
+
+		Modbus_reg_sync();
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);
 	}
@@ -1153,3 +1163,26 @@ void usb_task(void *p_arg)
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);
 	}
 }
+
+/*-------------------------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------CHECK Thread-------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------------------------------*/
+void check_task(void *p_arg)
+{
+	OS_ERR err;
+
+	while (1)
+	{
+		/*when the main task is ideal , check the sensor and current*/
+#if OVER_LOAD_CHECK
+		Overload_check();
+#endif
+		if (err_occur(err_ctrl))
+		{
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+		}
+
+		OSTimeDlyHMSM(0, 0, 0, 1000, OS_OPT_TIME_PERIODIC, &err);
+	}
+}
+
