@@ -31,7 +31,7 @@
 /* Temperature control ---------------------------------------------------------------------------*/
 
 /*Temperature control parameters*/
-#define STABLE_ERR 8                 // Steady-state error compensation
+#define STABLE_ERR_E 8               // Steady-state error compensation
 #define STABLE_ERR_K 20              // Steady-state error compensation
 #define STABLE_ERR_J 20              // Steady-state error compensation
 #define FAST_RISE_TIME 150           // Cold-start temperature compensation time
@@ -43,7 +43,7 @@
 #define DEFAULT_GAIN2 0.64           // Determine the compensation time
 #define DEFAULT_SLOPE 1.3
 #define DEFAULT_INTERCEPT 1060
-#define FINAL_DUTY_LIMIT 2500
+#define FINAL_DUTY_LIMIT 1800
 
 #define DEFAULT_RISE_DUTY (PD_MAX * 0.5)
 #define MAX_RISE_STEP_DUTY (PD_MAX * 0.82)

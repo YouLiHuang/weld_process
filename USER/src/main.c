@@ -536,8 +536,8 @@ static void Power_on_check(void)
 {
 
 	OS_ERR err;
-	uint16_t start_temp = 0;
-	uint16_t end_temp = 0;
+	// uint16_t start_temp = 0;
+	// uint16_t end_temp = 0;
 
 #if POWER_ON_CHECK == 1
 

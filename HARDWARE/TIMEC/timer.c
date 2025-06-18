@@ -254,6 +254,23 @@ void TIM5_IRQHandler(void)
 
 #endif
 
+			switch (current_Thermocouple->type)
+			{
+			case J_TYPE:
+			case E_TYPE:
+				if (weld_controller->Duty_Cycle > PD_MAX)
+					weld_controller->Duty_Cycle = PD_MAX;
+				break;
+
+			case K_TYPE:
+				if (weld_controller->realtime_temp < weld_controller->weld_temp[0] * 0.95)
+				{
+					if (weld_controller->Duty_Cycle > PD_MAX * (0.1 + 0.9 * weld_controller->temp_gain2))
+						weld_controller->Duty_Cycle = PD_MAX * (0.1 + 0.9 * weld_controller->temp_gain2);
+				}
+				break;
+			}
+
 #if PWM_SAMPLE
 			if (weld_controller->realtime_temp < weld_controller->weld_temp[1] + TEMP_STABLE_ERR && weld_controller->realtime_temp > weld_controller->weld_temp[1] - TEMP_STABLE_ERR)
 			{
