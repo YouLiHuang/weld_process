@@ -63,6 +63,7 @@ static char *temp_page_name_list[] = {
     "ION_OFF",
     "SGW_CTW",
     "UP_DOWN",
+    "switch",
     "count",
     "GP"};
 
@@ -79,7 +80,6 @@ static char *param_page_name_list[] = {
     "ION_OFF",
     "SGW_CTW",
     "UP_DOWN",
-    "switch",
     "count",
     "GP",
     "rtc0",
@@ -452,9 +452,15 @@ static bool TSpid_param_get(uint16_t *pid_raw_param)
     uint16_t ki;
     uint16_t kd;
 
-    ret = command_get_variable_val(&kp, "kp");
-    ret = command_get_variable_val(&ki, "ki");
-    ret = command_get_variable_val(&kd, "kd");
+    Component_Queue *list = get_page_list(WAVE_PAGE);
+    ret = command_get_comp_val(list, "kp", "val");
+    ret = command_get_comp_val(list, "ki", "val");
+    ret = command_get_comp_val(list, "kd", "val");
+
+    kp = get_comp(list, "kp")->val;
+    ki = get_comp(list, "ki")->val;
+    kd = get_comp(list, "kd")->val;
+
     if (ret == true)
     {
         pid_raw_param[0] = kp;
@@ -659,7 +665,7 @@ static void TStemp_pg_cb(Page_ID id)
     cur_key2 = (ION_OFF_STATE)get_comp(list, "ION_OFF")->val;
     cur_key3 = (SGW_CTW_STATE)get_comp(list, "SGW_CTW")->val;
     weld_controller->Count_Dir = (get_comp(list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
-    switch_mode = (SWITCH_STATE)get_comp(list, "switch")->val;
+    switch_mode = (SWITCH_STATE)(get_comp(list, "switch")->val == 1) ? AUTO_MODE : USER_MODE;
     cur_GP = get_comp(list, "GP")->val;
     screen_count = get_comp(list, "count")->val;
     if (weld_controller->weld_count != screen_count)
@@ -757,9 +763,10 @@ static void TStemp_pg_cb(Page_ID id)
 static void TSwave_pg_cb(Page_ID id)
 {
 #if PID_DEBUG == 1
-    command_set_comp_val("wave_page.kp", "aph", 127);
-    command_set_comp_val("wave_page.ki", "aph", 127);
-    command_set_comp_val("wave_page.kd", "aph", 127);
+    Component_Queue *list = get_page_list(WAVE_PAGE);
+    command_set_comp_val("kp", "aph", 127);
+    command_set_comp_val("ki", "aph", 127);
+    command_set_comp_val("kd", "aph", 127);
     uint16_t pid_param[3] = {0};
     if (TSpid_param_get(pid_param) == true)
     {

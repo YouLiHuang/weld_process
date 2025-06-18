@@ -16,6 +16,7 @@
 #define KALMAN_FILTER 0 // filter enable
 
 /* Functional enable -----------------------------------------------------------------------------*/
+#define SENSOR_CHECK_ENABLE 1
 #define WRITE_CSV_ENABLE 0
 #define EXPLORE_DISK_ENABLE 0
 #define MODBUSSLAVE_ENABLE 1
@@ -24,14 +25,18 @@
 #define COMMUNICATE 0           // Communication with the Upper computer enable
 #define REALTIME_TEMP_DISPLAY 1 // Real-time temperature plotting enable
 #define HOST_WELD_CTRL 1        // Upper computer control welding enable
+#define RESERVE_CHECK_ENABLE 0
+#define FAST_RISE_ENABLE 0
 
 /* Temperature control ---------------------------------------------------------------------------*/
 
 /*Temperature control parameters*/
 #define STABLE_ERR 8                 // Steady-state error compensation
+#define STABLE_ERR_K 20              // Steady-state error compensation
+#define STABLE_ERR_J 20              // Steady-state error compensation
 #define FAST_RISE_TIME 150           // Cold-start temperature compensation time
 #define COMPENSATION_THRESHOLD 0.98f // Heat compensation temperature detection threshold
-#define TRANSITION_TIME 100          // Thermal compensation time
+#define TRANSITION_TIME 150          // Thermal compensation time
 #define TRANSITION_TIME_BASE 0.1     // coefficients of heat compensation time - Baseline value
 #define TRANSITION_TIME_CORRECT 2.9  // coefficients of heat compensation time - Adjustment range
 #define DEFAULT_GAIN1 0.7            // Determine the compensation strength

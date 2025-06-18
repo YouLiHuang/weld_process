@@ -230,7 +230,7 @@ int main(void)
 	TIM4_PWM_Init();								// tim4 PWM(change RCC must init first)
 	TIM3_INIT();									// PID TIMER
 	TIM5_INIT();									// COUNT TIMER
-	TIM6_INIT(5);									// 5ms key scan timer
+	TIM6_INIT(10);									// 5ms key scan timer
 	uart_init(115200);								// Touch screen communication interface initialization
 #if MODBUSSLAVE_ENABLE
 	eMBInit(MB_RTU, 1, 3, 115200, MB_PAR_NONE, 1);
@@ -254,6 +254,8 @@ int main(void)
 
 	/*Hardware test*/
 	/*...*/
+
+	current_Thermocouple = &Thermocouple_Lists[0];
 
 	/*-----------------------------------------------------------System level data objects-----------------------------------------------------------------*/
 	/*UCOSIII init*/
@@ -586,12 +588,13 @@ static void Power_on_check(void)
 
 #endif
 
-	/*reserve check*/
+/*reserve check*/
+#if RESERVE_CHECK_ENABLE
 	start_temp = temp_convert(current_Thermocouple);
 
 	/*PWM ON*/
-	TIM_SetCompare1(TIM1, PD_MAX / 4);
-	TIM_SetCompare1(TIM4, PD_MAX / 4);
+	TIM_SetCompare1(TIM1, PD_MAX / 2);
+	TIM_SetCompare1(TIM4, PD_MAX / 2);
 	TIM_Cmd(TIM4, ENABLE);
 	TIM_Cmd(TIM1, ENABLE);
 
@@ -613,6 +616,7 @@ static void Power_on_check(void)
 		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 	}
+#endif
 }
 
 /**
@@ -622,6 +626,7 @@ static void Power_on_check(void)
 static bool Thermocouple_check(void)
 {
 
+#if SENSOR_CHECK_ENABLE
 	OS_ERR err;
 	bool check_state = false;
 
@@ -629,7 +634,7 @@ static bool Thermocouple_check(void)
 	GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
 	GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
 
-	OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err);
+	OSTimeDlyHMSM(0, 0, 0, 5, OS_OPT_TIME_PERIODIC, &err);
 
 	if (GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E) != 0)
 	{
@@ -671,8 +676,11 @@ static bool Thermocouple_check(void)
 		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
 	}
-
 	return check_state;
+
+#else
+	return true;
+#endif
 }
 
 /**
@@ -748,8 +756,11 @@ static void Overload_check(void)
 		err_get_type(err_ctrl, TEMP_UP)->state = true;
 	}
 
+#if SENSOR_CHECK_ENABLE
 	/*sensor maybe disconnect*/
 	Thermocouple_check();
+#endif
+
 	/*temp overload protect 2*/
 	switch (current_Thermocouple->type)
 	{
@@ -1072,6 +1083,7 @@ void main_task(void *p_arg)
 				{
 					welding_process(KEY1);
 				}
+
 				break;
 			}
 		}
@@ -1101,7 +1113,7 @@ void read_task(void *p_arg)
 			TSpage_process(request_PGManger()->id);
 		}
 
-		Modbus_reg_sync();
+		// Modbus_reg_sync();
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);
 	}
@@ -1182,7 +1194,6 @@ void check_task(void *p_arg)
 			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 		}
 
-		OSTimeDlyHMSM(0, 0, 0, 1000, OS_OPT_TIME_PERIODIC, &err);
+		OSTimeDlyHMSM(0, 0, 10, 0, OS_OPT_TIME_PERIODIC, &err);
 	}
 }
-
