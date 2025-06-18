@@ -1261,7 +1261,7 @@ static void Second_Step_ECB(void)
 	/*---user config param---*/
 	Page_ID cur_Pgae_id = request_PGManger()->id;
 	Steady_state_coefficient ss = weld_controller->ss_coefficient;
-	uint16_t second_temp_avg_start = weld_controller->weld_temp[1] * 0.97;
+	uint16_t second_temp_record_start = weld_controller->weld_temp[1] * 0.97;
 	uint16_t hold_temp = COMPENSATION_THRESHOLD * weld_controller->weld_temp[1];
 	uint16_t current_hold_time = 0;
 	uint16_t hold_time = (TRANSITION_TIME_BASE + TRANSITION_TIME_CORRECT * weld_controller->temp_gain1) * TRANSITION_TIME;
@@ -1305,7 +1305,7 @@ static void Second_Step_ECB(void)
 			break;
 		}
 		/*second step temp avg*/
-		if (weld_controller->realtime_temp >= second_temp_avg_start &&
+		if (weld_controller->realtime_temp >= second_temp_record_start &&
 			temp_draw_ctrl->second_step_stable_index == 0)
 		{
 			if (weld_controller->pid_ctrl->stable_threshold_cnt >= weld_controller->pid_ctrl->stable_threshold)
@@ -1720,4 +1720,3 @@ static void Second_Step_KCB(void)
 	/*Record end coordinates*/
 	temp_draw_ctrl->second_step_index_end = temp_draw_ctrl->current_index - 1;
 }
-
