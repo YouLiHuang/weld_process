@@ -1113,7 +1113,7 @@ void read_task(void *p_arg)
 			TSpage_process(request_PGManger()->id);
 		}
 
-		// Modbus_reg_sync();
+		Modbus_reg_sync();
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);
 	}

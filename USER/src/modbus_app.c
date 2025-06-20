@@ -245,8 +245,8 @@ void Modbus_reg_sync(void)
     eMBEventType eEvent;
     uint8_t reg;
     Component *comp;
-    float gain1;
-    float gain2;
+    uint16_t gain1;
+    uint16_t gain2;
 
     static uint8_t discrete_index = 0;
     static uint8_t hold_reg_index = 0;
@@ -335,17 +335,15 @@ void Modbus_reg_sync(void)
             break;
             /*two gain*/
         case HOLD_ADDR_6:
-            gain1 = usRegHoldingBuf[hold_reg_index] / 100.0;
-            if (gain1 != weld_controller->temp_gain1 && gain1 <= 1)
+            if (abs(usRegHoldingBuf[hold_reg_index] - weld_controller->temp_gain1 * 100) > 1 && gain1 <= 1)
             {
-                weld_controller->temp_gain1 = gain1;
+                weld_controller->temp_gain1 = usRegHoldingBuf[hold_reg_index] / 100.0;
             }
             break;
         case HOLD_ADDR_7:
-            gain2 = usRegHoldingBuf[hold_reg_index] / 100.0;
-            if (gain2 != weld_controller->temp_gain2 && gain2 <= 1)
+            if (abs(usRegHoldingBuf[hold_reg_index] - weld_controller->temp_gain1 * 100) > 1 && gain2 <= 1)
             {
-                weld_controller->temp_gain2 = gain2;
+                weld_controller->temp_gain2 = usRegHoldingBuf[hold_reg_index] / 100.0;
             }
             break;
 
@@ -397,7 +395,6 @@ void Modbus_reg_sync(void)
             if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_time[4] && usRegHoldingBuf[hold_reg_index] <= 999)
             {
                 weld_controller->weld_time[4] = usRegHoldingBuf[hold_reg_index];
-                // get_comp(param_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
             /*count(param_page_list)*/
@@ -405,17 +402,14 @@ void Modbus_reg_sync(void)
             if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_count && usRegHoldingBuf[hold_reg_index] <= USER_MAX_COUNT)
             {
                 weld_controller->weld_count = usRegHoldingBuf[hold_reg_index];
-                // get_comp(param_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
-                // get_comp(temp_page_list, page_name_list[hold_reg_index])->val = usRegHoldingBuf[hold_reg_index];
             }
             break;
 
             /*GP*/
         case HOLD_ADDR_17:
-
             if (usRegHoldingBuf[hold_reg_index] != comp->val && usRegHoldingBuf[hold_reg_index] <= MAX_GP)
             {
-                // get_comp(param_page_list, "GP")->val = usRegHoldingBuf[hold_reg_index];
+                cur_GP = usRegHoldingBuf[hold_reg_index];
             }
             hold_reg_index = HOLD_ADDR_0;
             break;
