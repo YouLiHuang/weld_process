@@ -1007,7 +1007,7 @@ static void First_Step_ECB(void)
 	/*restrict duty avoid too fast rise*/
 	/*restrict param*/
 	weld_controller->restrict_temp = RESTRICT_TEMP_COFF * weld_controller->weld_temp[0];
-	weld_controller->restrict_duty = PD_MAX * (0.75 + 0.25 * weld_controller->temp_gain2);
+	weld_controller->restrict_duty = PD_MAX * (0.85 + 0.15 * weld_controller->temp_gain2);
 
 #if PID_DEBUG
 #else
@@ -1098,7 +1098,7 @@ static void First_Step_JCB(void)
 	/*restrict duty avoid too fast rise*/
 	/*restrict param*/
 	weld_controller->restrict_temp = RESTRICT_TEMP_COFF * weld_controller->weld_temp[0];
-	weld_controller->restrict_duty = PD_MAX * (0.75 + 0.25 * weld_controller->temp_gain2);
+	weld_controller->restrict_duty = PD_MAX * (0.85 + 0.15 * weld_controller->temp_gain2);
 
 #if PID_DEBUG
 #else
@@ -1188,7 +1188,7 @@ static void First_Step_KCB(void)
 
 	/*restrict param*/
 	weld_controller->restrict_temp = RESTRICT_TEMP_COFF * weld_controller->weld_temp[0];
-	weld_controller->restrict_duty = PD_MAX * (0.75 + 0.25 * weld_controller->temp_gain2);
+	weld_controller->restrict_duty = PD_MAX * (0.85 + 0.15 * weld_controller->temp_gain2);
 
 #if PID_DEBUG
 #else

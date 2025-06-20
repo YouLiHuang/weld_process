@@ -16,7 +16,7 @@
 #define KALMAN_FILTER 0 // filter enable
 
 /* Functional enable -----------------------------------------------------------------------------*/
-#define SENSOR_CHECK_ENABLE 1
+#define SENSOR_CHECK_ENABLE 0
 #define WRITE_CSV_ENABLE 0
 #define EXPLORE_DISK_ENABLE 0
 #define MODBUSSLAVE_ENABLE 1
