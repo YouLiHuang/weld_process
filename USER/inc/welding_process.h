@@ -87,6 +87,12 @@ typedef struct weld_realtime_controller
 
     /*ctrl param*/
     uint16_t final_duty;
+    uint16_t hold_temp;
+    uint16_t hold_time;
+
+    /*restrict temp*/
+    uint16_t restrict_temp;
+    uint16_t restrict_duty;
 
     /*Heat compensation*/
     uint16_t enter_transition_time;

@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-15 19:17:48
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-13 09:34:17
+ * @LastEditTime: 2025-06-20 10:00:40
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -254,23 +254,6 @@ void TIM5_IRQHandler(void)
 
 #endif
 
-			switch (current_Thermocouple->type)
-			{
-			case J_TYPE:
-			case E_TYPE:
-				if (weld_controller->Duty_Cycle > PD_MAX)
-					weld_controller->Duty_Cycle = PD_MAX;
-				break;
-
-			case K_TYPE:
-				if (weld_controller->realtime_temp < weld_controller->weld_temp[0] * 0.95)
-				{
-					if (weld_controller->Duty_Cycle > PD_MAX * (0.1 + 0.9 * weld_controller->temp_gain2))
-						weld_controller->Duty_Cycle = PD_MAX * (0.1 + 0.9 * weld_controller->temp_gain2);
-				}
-				break;
-			}
-
 #if PWM_SAMPLE
 			if (weld_controller->realtime_temp < weld_controller->weld_temp[1] + TEMP_STABLE_ERR && weld_controller->realtime_temp > weld_controller->weld_temp[1] - TEMP_STABLE_ERR)
 			{
@@ -303,6 +286,25 @@ void TIM5_IRQHandler(void)
 			if (temp_draw_ctrl->current_index < temp_draw_ctrl->buf_len_max)
 				temp_draw_ctrl->temp_buf[temp_draw_ctrl->current_index++] = weld_controller->realtime_temp;
 		}
+	}
+
+	/*restrict output*/
+	switch (current_Thermocouple->type)
+	{
+
+	case E_TYPE:
+		if (weld_controller->Duty_Cycle > PD_MAX)
+			weld_controller->Duty_Cycle = PD_MAX;
+		break;
+
+	case J_TYPE:
+	case K_TYPE:
+		if (weld_controller->realtime_temp < weld_controller->restrict_temp)
+		{
+			if (weld_controller->Duty_Cycle > weld_controller->restrict_duty)
+				weld_controller->Duty_Cycle = weld_controller->restrict_duty;
+		}
+		break;
 	}
 
 	TIM_ClearITPendingBit(TIM5, TIM_IT_Update);

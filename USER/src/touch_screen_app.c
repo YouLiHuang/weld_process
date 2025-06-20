@@ -76,6 +76,7 @@ static char *param_page_name_list[] = {
     "time3",
     "time4",
     "time5",
+    "hold_time",
     "RDY_SCH",
     "ION_OFF",
     "SGW_CTW",
@@ -323,12 +324,12 @@ static void TSModbus_Sync_FromUi(Page_ID id)
 static void TSSync_Date_from_Screen(Component_Queue *page_list)
 {
     uint16_t temp_HL[6] = {0}, gain[2] = {0};
-    uint16_t temp[3] = {0}, time[5] = {0};
+    uint16_t temp[3] = {0}, time[6] = {0};
     uint16_t screen_count;
     Page_ID id = request_PGManger()->id;
 
     char *weld_temp_name_list[] = {"temp1", "temp2", "temp3"};
-    char *weld_time_name_list[] = {"time1", "time2", "time3", "time4", "time5"};
+    char *weld_time_name_list[] = {"time1", "time2", "time3", "time4", "time5", "hold_time"};
     char *gain_name_list[] = {"GAIN1", "GAIN2"};
     char *alarm_temp_name_list[] = {"alarm1", "alarm2", "alarm3", "alarm4", "alarm5", "alarm6"};
 
@@ -336,6 +337,7 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
     switch (id)
     {
     case PARAM_PAGE:
+    {
         /*read dat from screen*/
         for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
         {
@@ -363,10 +365,13 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
         {
             weld_controller->weld_temp[i] = temp[i];
         }
+
         for (uint8_t i = 0; i < sizeof(time) / sizeof(time[0]); i++)
         {
             weld_controller->weld_time[i] = time[i];
         }
+        /*comp time*/
+        weld_controller->hold_time = time[5];
 
         /*check if count is changed by user*/
         command_get_comp_val(page_list, "count", "val");
@@ -384,11 +389,12 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
                    sizeof(temp) / sizeof(uint16_t),
                    time,
                    sizeof(time) / sizeof(uint16_t));
+    }
 
-        break;
+    break;
 
     case TEMP_PAGE:
-
+    {
         /*Ⅰ、读取界面上的参数*/
         for (uint8_t i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
         {
@@ -434,8 +440,9 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
                          temp_HL,
                          sizeof(temp_HL) / sizeof(uint16_t),
                          gain);
+    }
 
-        break;
+    break;
     }
 
     /*User Data --->  Modbus buffer*/
@@ -490,6 +497,7 @@ static void TSparam_pg_cb(Page_ID id)
     const char *weld_time_name_list[] = {
         "time1",
         "time2",
+        "hold_time",
         "time3",
         "time4",
         "time5",

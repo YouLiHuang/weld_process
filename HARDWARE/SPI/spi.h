@@ -1,11 +1,11 @@
-/*** 
+/***
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-05-12 08:50:13
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
  * @LastEditTime: 2025-05-12 16:00:42
- * @Description: 
+ * @Description:
  * @
- * @Copyright (c) 2025 by huangyouli, All Rights Reserved. 
+ * @Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
 #ifndef __SPI_H
 #define __SPI_H
@@ -21,18 +21,21 @@
 #define TEMP_NUM 3
 #define ALARM_NUM 6
 #define GAIN_NUM 2
-#define CALIBRATION_VALUE_NUM 2
 #define FIT_COEFFICIENT_NUM 2
+
 /*address config*/
-#define ADDR_PAGE_WIDTH 40
+#define ADDR_PAGE_WIDTH 50
 #define ADDR_OFFSET 2
 /*address base*/
+
+/*address base*/
 #define TIME_BASE_OFFSET 0
-#define TEMP_BASE_OFFSET 10
-#define ALARM_BASE_OFFSET 16
-#define GAIN_BASE_OFFSET 28
-#define CARLIBRATION_BASE_OFFSET 32 // E J
-#define FIT_COEFFICIENT_BASE_OFFSET 36
+#define TEMP_BASE_OFFSET TIME_BASE_OFFSET + TIME_NUM *ADDR_OFFSET
+#define ALARM_BASE_OFFSET TEMP_BASE_OFFSET + TEMP_NUM *ADDR_OFFSET
+#define GAIN_BASE_OFFSET ALARM_BASE_OFFSET + ALARM_NUM *ADDR_OFFSET
+#define FIT_COEFFICIENT_BASE_OFFSET GAIN_BASE_OFFSET + GAIN_NUM *ADDR_OFFSET
+#define HOLD_TIME_OFFSET FIT_COEFFICIENT_BASE_OFFSET + FIT_COEFFICIENT_NUM *ADDR_OFFSET
+
 /*address convert*/
 #define GP_BASE 0
 #define PAGE_BASE(group) (ADDR_PAGE_WIDTH * (group + 2))
@@ -41,8 +44,17 @@
 #define TEMP_BASE(group) (PAGE_BASE(group) + TEMP_BASE_OFFSET)
 #define ALARM_BASE(group) (PAGE_BASE(group) + ALARM_BASE_OFFSET)
 #define GAIN_BASE(group) (PAGE_BASE(group) + GAIN_BASE_OFFSET)
-#define CARLIBRATION_BASE(group) (PAGE_BASE(group) + CARLIBRATION_BASE_OFFSET)
 #define FIT_COEFFICIENT_BASE(group) (PAGE_BASE(group) + FIT_COEFFICIENT_BASE_OFFSET)
+#define HOLD_TIME_BASE(group) (PAGE_BASE(group) + HOLD_TIME_OFFSET)
+
+/*address convert*/
+#define GP_BASE 0
+#define PAGE_BASE(group) (ADDR_PAGE_WIDTH * (group + 2))
+#define TIME_BASE(group) (PAGE_BASE(group) + TIME_BASE_OFFSET)
+#define TEMP_BASE(group) (PAGE_BASE(group) + TEMP_BASE_OFFSET)
+#define ALARM_BASE(group) (PAGE_BASE(group) + ALARM_BASE_OFFSET)
+#define GAIN_BASE(group) (PAGE_BASE(group) + GAIN_BASE_OFFSET)
+#define HOLD_BASE(group) (PAGE_BASE(group) + HOLD_TIME_OFFSET)
 
 /*hardware api*/
 void SPI1_Init(void);

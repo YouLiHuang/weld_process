@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-13 19:22:56
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-15 12:27:37
+ * @LastEditTime: 2025-06-20 14:18:31
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -32,8 +32,6 @@ extern uint8_t ucRegCoilsBuf[REG_COILS_SIZE / 8];
 // switch state
 extern uint8_t ucRegDiscreteBuf[REG_DISCRETE_SIZE / 8];
 /*-----------------------------------------------------------------*/
-
-
 
 /*Functions prototype----------------------------------------------*/
 static void WREN(void);
@@ -280,8 +278,8 @@ void save_param(void *controller,
 				const uint16_t *time,
 				const uint8_t time_len)
 {
-	weld_ctrl *ctrl = (weld_ctrl *)controller;
-	/*保存组别*/
+	// weld_ctrl *ctrl = (weld_ctrl *)controller;
+
 	SPI_Save_Word(array_of_data, 0);
 	/*time1-time5*/
 	for (uint8_t i = 0; i < TIME_NUM; i++)
@@ -289,21 +287,27 @@ void save_param(void *controller,
 		SPI_Save_Word(time[i], TIME_BASE(array_of_data) + ADDR_OFFSET * i);
 	}
 
+	/*hold time*/
+	SPI_Save_Word(time[temp_len - 1], HOLD_BASE(array_of_data));
+
 	/*temp1-temp3*/
 	for (uint8_t i = 0; i < TEMP_NUM; i++)
 	{
 		SPI_Save_Word(temp[i], TEMP_BASE(array_of_data) + ADDR_OFFSET * i);
 	}
 
-	/*数据同步*/
-	for (uint8_t i = 0; i < sizeof(ctrl->weld_time) / sizeof(uint16_t); i++)
-	{
-		ctrl->weld_time[i] = time[i];
-	}
-	for (uint8_t i = 0; i < sizeof(ctrl->weld_temp) / sizeof(uint16_t); i++)
-	{
-		ctrl->weld_temp[i] = temp[i];
-	}
+	// /*数据同步*/
+	// for (uint8_t i = 0; i < sizeof(ctrl->weld_time) / sizeof(uint16_t); i++)
+	// {
+	// 	ctrl->weld_time[i] = time[i];
+	// }
+	// /*补偿时间*/
+	// ctrl->hold_time = time[time_len - 1];
+	// /*三段温度*/
+	// for (uint8_t i = 0; i < sizeof(ctrl->weld_temp) / sizeof(uint16_t); i++)
+	// {
+	// 	ctrl->weld_temp[i] = temp[i];
+	// }
 }
 
 void save_param_alarm(void *controller,
