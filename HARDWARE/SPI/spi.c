@@ -221,6 +221,7 @@ void Load_data_from_mem(void)
 		"time3",
 		"time4",
 		"time5",
+		"time6"
 
 	};
 	char *param_temp_list[] = {
@@ -286,10 +287,6 @@ void save_param(void *controller,
 	{
 		SPI_Save_Word(time[i], TIME_BASE(array_of_data) + ADDR_OFFSET * i);
 	}
-
-	/*hold time*/
-	SPI_Save_Word(time[temp_len - 1], HOLD_BASE(array_of_data));
-
 	/*temp1-temp3*/
 	for (uint8_t i = 0; i < TEMP_NUM; i++)
 	{
@@ -348,6 +345,7 @@ void Load_param(void *controller, int array_of_data)
 		"time3",
 		"time4",
 		"time5",
+		"time6"
 	};
 	char *param_temp_name_list[] = {
 		"temp1",
@@ -371,7 +369,7 @@ void Load_param(void *controller, int array_of_data)
 	}
 
 	/*param check & sync*/
-	// time1-time5
+	// time1-time6
 	for (uint8_t i = 0; i < sizeof(welding_time_load) / sizeof(uint16_t); i++)
 	{
 		ctrl->weld_time[i] = welding_time_load[i];

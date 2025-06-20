@@ -17,12 +17,11 @@
 
 /*------------------mem config------------------*/
 /*param number*/
-#define TIME_NUM 5
+#define TIME_NUM 6
 #define TEMP_NUM 3
 #define ALARM_NUM 6
 #define GAIN_NUM 2
 #define FIT_COEFFICIENT_NUM 2
-
 /*address config*/
 #define ADDR_PAGE_WIDTH 50
 #define ADDR_OFFSET 2
@@ -34,8 +33,6 @@
 #define ALARM_BASE_OFFSET TEMP_BASE_OFFSET + TEMP_NUM *ADDR_OFFSET
 #define GAIN_BASE_OFFSET ALARM_BASE_OFFSET + ALARM_NUM *ADDR_OFFSET
 #define FIT_COEFFICIENT_BASE_OFFSET GAIN_BASE_OFFSET + GAIN_NUM *ADDR_OFFSET
-#define HOLD_TIME_OFFSET FIT_COEFFICIENT_BASE_OFFSET + FIT_COEFFICIENT_NUM *ADDR_OFFSET
-
 /*address convert*/
 #define GP_BASE 0
 #define PAGE_BASE(group) (ADDR_PAGE_WIDTH * (group + 2))
@@ -45,7 +42,7 @@
 #define ALARM_BASE(group) (PAGE_BASE(group) + ALARM_BASE_OFFSET)
 #define GAIN_BASE(group) (PAGE_BASE(group) + GAIN_BASE_OFFSET)
 #define FIT_COEFFICIENT_BASE(group) (PAGE_BASE(group) + FIT_COEFFICIENT_BASE_OFFSET)
-#define HOLD_TIME_BASE(group) (PAGE_BASE(group) + HOLD_TIME_OFFSET)
+
 
 /*address convert*/
 #define GP_BASE 0

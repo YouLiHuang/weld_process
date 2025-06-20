@@ -1194,6 +1194,6 @@ void check_task(void *p_arg)
 			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 		}
 
-		OSTimeDlyHMSM(0, 0, 10, 0, OS_OPT_TIME_PERIODIC, &err);
+		OSTimeDlyHMSM(0, 0, 15, 0, OS_OPT_TIME_PERIODIC, &err);
 	}
 }

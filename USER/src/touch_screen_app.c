@@ -76,7 +76,7 @@ static char *param_page_name_list[] = {
     "time3",
     "time4",
     "time5",
-    "hold_time",
+    "time6",
     "RDY_SCH",
     "ION_OFF",
     "SGW_CTW",
@@ -329,7 +329,7 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
     Page_ID id = request_PGManger()->id;
 
     char *weld_temp_name_list[] = {"temp1", "temp2", "temp3"};
-    char *weld_time_name_list[] = {"time1", "time2", "time3", "time4", "time5", "hold_time"};
+    char *weld_time_name_list[] = {"time1", "time2", "time3", "time4", "time5","time6"};
     char *gain_name_list[] = {"GAIN1", "GAIN2"};
     char *alarm_temp_name_list[] = {"alarm1", "alarm2", "alarm3", "alarm4", "alarm5", "alarm6"};
 
@@ -370,9 +370,6 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
         {
             weld_controller->weld_time[i] = time[i];
         }
-        /*comp time*/
-        weld_controller->hold_time = time[5];
-
         /*check if count is changed by user*/
         command_get_comp_val(page_list, "count", "val");
         screen_count = get_comp(page_list, "count")->val;
@@ -497,10 +494,10 @@ static void TSparam_pg_cb(Page_ID id)
     const char *weld_time_name_list[] = {
         "time1",
         "time2",
-        "hold_time",
         "time3",
         "time4",
         "time5",
+        "time6"
     };
     const char *weld_temp_name_list[] = {
         "temp1",
@@ -565,6 +562,7 @@ static void TSparam_pg_cb(Page_ID id)
                 command_set_comp_val(weld_time_name_list[i], "val",
                                      weld_controller->weld_time[i]);
             }
+
             for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
             {
                 command_set_comp_val(weld_temp_name_list[i], "val",
@@ -581,11 +579,13 @@ static void TSparam_pg_cb(Page_ID id)
         if (cur_GP != last_gp && cur_GP <= GP_MAX)
         {
             Load_param(weld_controller, cur_GP);
+            /*send data to screen*/
             for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
             {
                 command_set_comp_val(weld_time_name_list[i], "val",
                                      weld_controller->weld_time[i]);
             }
+
             for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
             {
                 command_set_comp_val(weld_temp_name_list[i], "val",
@@ -792,7 +792,7 @@ static void TSwave_pg_cb(Page_ID id)
     char *tick_name[] = {"tick1", "tick2", "tick3", "tick4", "tick5"};
 
     /*updata axis*/
-    for (uint8_t i = 0; i < 5; i++)
+    for (uint8_t i = 0; i < 6; i++)
         total_time += weld_controller->weld_time[i];
     /*坐标划分ms*/
     if (total_time <= 500)
