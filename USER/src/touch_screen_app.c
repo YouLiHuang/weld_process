@@ -226,7 +226,7 @@ static void TSTemp_updata_realtime(Page_ID id)
     case J_TYPE:
         if (id == WAVE_PAGE)
         {
-            command_set_comp_val("step33", "val", weld_controller->realtime_temp);
+            command_set_comp_val("step3", "val", weld_controller->realtime_temp);
         }
         else
         {
@@ -329,7 +329,7 @@ static void TSSync_Date_from_Screen(Component_Queue *page_list)
     Page_ID id = request_PGManger()->id;
 
     char *weld_temp_name_list[] = {"temp1", "temp2", "temp3"};
-    char *weld_time_name_list[] = {"time1", "time2", "time3", "time4", "time5","time6"};
+    char *weld_time_name_list[] = {"time1", "time2", "time3", "time4", "time5", "time6"};
     char *gain_name_list[] = {"GAIN1", "GAIN2"};
     char *alarm_temp_name_list[] = {"alarm1", "alarm2", "alarm3", "alarm4", "alarm5", "alarm6"};
 
@@ -497,8 +497,7 @@ static void TSparam_pg_cb(Page_ID id)
         "time3",
         "time4",
         "time5",
-        "time6"
-    };
+        "time6"};
     const char *weld_temp_name_list[] = {
         "temp1",
         "temp2",
@@ -531,6 +530,11 @@ static void TSparam_pg_cb(Page_ID id)
     cur_key3 = (SGW_CTW_STATE)get_comp(list, "SGW_CTW")->val;
     weld_controller->Count_Dir = (get_comp(list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
     cur_GP = get_comp(list, "GP")->val;
+    if (RDY == cur_key1)
+    {
+        /*sync weld count to screen*/
+        command_set_comp_val("count", "val", weld_controller->weld_count);
+    }
 
     /*get current data*/
     command_get_variable_val(&current_date.Year, "rtc0");
@@ -609,9 +613,6 @@ static void TSparam_pg_cb(Page_ID id)
     command_set_comp_val("temp11", "val", temp_draw_ctrl->display_temp[0]);
     command_set_comp_val("temp22", "val", temp_draw_ctrl->display_temp[1]);
 
-    /*sync weld count to screen*/
-    command_set_comp_val("count", "val", weld_controller->weld_count);
-
     /*display Real-time temperature*/
     OSMutexPend(&PLOT_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
     TSTemp_updata_realtime(id);
@@ -675,10 +676,10 @@ static void TStemp_pg_cb(Page_ID id)
     weld_controller->Count_Dir = (get_comp(list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
     switch_mode = (SWITCH_STATE)(get_comp(list, "switch")->val == 1) ? AUTO_MODE : USER_MODE;
     cur_GP = get_comp(list, "GP")->val;
-    screen_count = get_comp(list, "count")->val;
-    if (weld_controller->weld_count != screen_count)
+
+    if (RDY == cur_key1)
     {
-        weld_controller->weld_count = screen_count;
+        /*sync weld count to screen*/
         command_set_comp_val("count", "val", weld_controller->weld_count);
     }
 

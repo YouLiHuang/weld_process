@@ -535,56 +535,13 @@ static bool Radiator_reset_callback(uint8_t index)
 static void Power_on_check(void)
 {
 
-	OS_ERR err;
+	//OS_ERR err;
 	// uint16_t start_temp = 0;
 	// uint16_t end_temp = 0;
 
 #if POWER_ON_CHECK == 1
 
-	/*check if senor is already*/
-	GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
-	GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
-	GPIO_SetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
-
-	OSTimeDlyHMSM(0, 0, 0, 5, OS_OPT_TIME_PERIODIC, &err);
-
-	if (GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E) != 0)
-	{
-		for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
-		{
-			if (Thermocouple_Lists[i].type == E_TYPE)
-				current_Thermocouple = &Thermocouple_Lists[i];
-		}
-	}
-
-	if (GPIO_ReadInputDataBit(CHECK_GPIO_K, CHECKIN_PIN_K) != 0)
-	{
-		for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
-		{
-			if (Thermocouple_Lists[i].type == K_TYPE)
-				current_Thermocouple = &Thermocouple_Lists[i];
-		}
-	}
-
-	if (GPIO_ReadInputDataBit(CHECK_GPIO_J, CHECKIN_PIN_J) != 0)
-	{
-		for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
-		{
-			if (Thermocouple_Lists[i].type == J_TYPE)
-				current_Thermocouple = &Thermocouple_Lists[i];
-		}
-	}
-
-	GPIO_ResetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
-	GPIO_ResetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
-	GPIO_ResetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
-
-	/*no Thermocouple detect*/
-	if (current_Thermocouple == NULL)
-	{
-		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-	}
+	Thermocouple_check();
 
 #endif
 
@@ -1113,7 +1070,7 @@ void read_task(void *p_arg)
 			TSpage_process(request_PGManger()->id);
 		}
 
-		Modbus_reg_sync();
+		//Modbus_reg_sync();
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);
 	}
@@ -1194,6 +1151,6 @@ void check_task(void *p_arg)
 			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 		}
 
-		OSTimeDlyHMSM(0, 0, 15, 0, OS_OPT_TIME_PERIODIC, &err);
+		OSTimeDlyHMSM(0, 0, 10, 0, OS_OPT_TIME_PERIODIC, &err);
 	}
 }

@@ -144,7 +144,7 @@ void Load_data_from_mem(void)
 {
 #if RESET_SPI_DATA
 	/*数据初始化*/
-	int time_init[] = {100, 500, 2500, 500, 100};
+	int time_init[] = {100, 500, 50, 2500, 500, 100};
 	int temp_init[] = {250, 400, 150};
 	int alarm_temp[] = {400, 100, 650, 100, 650, 100};
 
@@ -345,8 +345,7 @@ void Load_param(void *controller, int array_of_data)
 		"time3",
 		"time4",
 		"time5",
-		"time6"
-	};
+		"time6"};
 	char *param_temp_name_list[] = {
 		"temp1",
 		"temp2",

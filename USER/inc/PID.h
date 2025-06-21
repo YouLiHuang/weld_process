@@ -14,13 +14,17 @@
 #include "stdlib.h"
 
 /*pid adjust*/
-#define DEFAULT_KP 8
-#define DEFAULT_KI 0.02
-#define DEFAULT_KD 0.0
+#define DEFAULT_KP 5
+#define DEFAULT_KI 0.012
+#define DEFAULT_KD 20
 
-#define SECOND_KP 15.0
-#define SECOND_KI 0.045
-#define SECOND_KD 50.0
+#define FIRST_STEP_KP 8
+#define FIRST_STEP_KI 0.02
+#define FIRST_STEP_KD 20
+
+#define SECOND_KP 8.0
+#define SECOND_KI 0.02
+#define SECOND_KD 0.0
 
 /*PWM占空比上下限*/
 #define PD_MAX 8000

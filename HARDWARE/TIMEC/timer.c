@@ -209,7 +209,7 @@ void TIM5_IRQHandler(void)
 			break;
 			/*--------------------------------------------------------------------first step----------------------------------------------------------------------*/
 		case FIRST_STATE:
-			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + 2 * weld_controller->temp_comp,
+			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + weld_controller->temp_comp,
 														 weld_controller->realtime_temp,
 														 weld_controller->Duty_Cycle,
 														 weld_controller->pid_ctrl);
@@ -220,31 +220,36 @@ void TIM5_IRQHandler(void)
 		case SECOND_STATE:
 
 #if PID_DEBUG == 0
-			if (weld_controller->enter_transition_flag == false)
-			{
-				/*no first step*/
-				if (weld_controller->weld_time[1] == 0)
-				{
-					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] * COMPENSATION_THRESHOLD,
-																 weld_controller->realtime_temp,
-																 weld_controller->Duty_Cycle,
-																 weld_controller->pid_ctrl);
-				}
-				else
-				{
-					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + weld_controller->temp_comp,
-																 weld_controller->realtime_temp,
-																 weld_controller->Duty_Cycle,
-																 weld_controller->pid_ctrl);
-				}
-			}
-			else
-			{
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + weld_controller->temp_comp,
-															 weld_controller->realtime_temp,
-															 weld_controller->Duty_Cycle,
-															 weld_controller->pid_ctrl);
-			}
+			//			if (weld_controller->enter_transition_flag == false)
+			//			{
+			//				/*no first step*/
+			//				if (weld_controller->weld_time[1] == 0)
+			//				{
+			//					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] * COMPENSATION_THRESHOLD,
+			//																 weld_controller->realtime_temp,
+			//																 weld_controller->Duty_Cycle,
+			//																 weld_controller->pid_ctrl);
+			//				}
+			//				else
+			//				{
+			//					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + weld_controller->temp_comp,
+			//																 weld_controller->realtime_temp,
+			//																 weld_controller->Duty_Cycle,
+			//																 weld_controller->pid_ctrl);
+			//				}
+			//			}
+			//			else
+			//			{
+			//				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + weld_controller->temp_comp,
+			//															 weld_controller->realtime_temp,
+			//															 weld_controller->Duty_Cycle,
+			//															 weld_controller->pid_ctrl);
+			//			}
+
+			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + weld_controller->temp_comp,
+														 weld_controller->realtime_temp,
+														 weld_controller->Duty_Cycle,
+														 weld_controller->pid_ctrl);
 
 #else
 			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1],
@@ -290,23 +295,23 @@ void TIM5_IRQHandler(void)
 	}
 
 	/*restrict output*/
-	switch (current_Thermocouple->type)
-	{
+	// switch (current_Thermocouple->type)
+	// {
 
-	case E_TYPE:
-		if (weld_controller->Duty_Cycle > PD_MAX)
-			weld_controller->Duty_Cycle = PD_MAX;
-		break;
+	// case E_TYPE:
+	// 	if (weld_controller->Duty_Cycle > PD_MAX)
+	// 		weld_controller->Duty_Cycle = PD_MAX;
+	// 	break;
 
-	case J_TYPE:
-	case K_TYPE:
-		if (weld_controller->realtime_temp < weld_controller->restrict_temp)
-		{
-			if (weld_controller->Duty_Cycle > weld_controller->restrict_duty)
-				weld_controller->Duty_Cycle = weld_controller->restrict_duty;
-		}
-		break;
-	}
+	// case J_TYPE:
+	// case K_TYPE:
+	// 	if (weld_controller->realtime_temp < weld_controller->restrict_temp)
+	// 	{
+	// 		if (weld_controller->Duty_Cycle > weld_controller->restrict_duty)
+	// 			weld_controller->Duty_Cycle = weld_controller->restrict_duty;
+	// 	}
+	// 	break;
+	// }
 
 	TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
 

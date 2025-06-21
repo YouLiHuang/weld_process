@@ -16,7 +16,7 @@
 #define KALMAN_FILTER 0 // filter enable
 
 /* Functional enable -----------------------------------------------------------------------------*/
-#define SENSOR_CHECK_ENABLE 0
+#define SENSOR_CHECK_ENABLE 1
 #define WRITE_CSV_ENABLE 0
 #define EXPLORE_DISK_ENABLE 0
 #define MODBUSSLAVE_ENABLE 1
@@ -31,9 +31,9 @@
 /* Temperature control ---------------------------------------------------------------------------*/
 
 /*Temperature control parameters*/
-#define STABLE_ERR_E 8               // Steady-state error compensation
-#define STABLE_ERR_K 20              // Steady-state error compensation
-#define STABLE_ERR_J 20              // Steady-state error compensation
+#define STABLE_ERR_E 20              // Steady-state error compensation
+#define STABLE_ERR_K 35              // Steady-state error compensation
+#define STABLE_ERR_J 35              // Steady-state error compensation
 #define FAST_RISE_TIME 150           // Cold-start temperature compensation time
 #define COMPENSATION_THRESHOLD 0.98f // Heat compensation temperature detection threshold
 #define TRANSITION_TIME 150          // Thermal compensation time

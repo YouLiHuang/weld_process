@@ -494,7 +494,6 @@ void Modbus_reg_sync(void)
                 discrete_value |= 0x01 << discrete_index;
             else
                 discrete_value &= ~(0x01 << discrete_index);
-
             break;
         case DISCRETE_ADDR_1:
             if (cur_key2 == ION)
@@ -566,6 +565,7 @@ void Modbus_reg_sync(void)
         default:
             break;
         }
+
         discrete_index++;
 
         ucRegDiscreteBuf[0] = (uint8_t)discrete_value & 0x0f;
