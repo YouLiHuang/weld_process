@@ -5,6 +5,10 @@
 #include "sys.h"
 #include "usart.h"
 
+/*BSP PARAM*/
+uint8_t ID_OF_DEVICE = 0;
+uint32_t Baud_Rate_Modbus = 115200;
+
 void modbus_timer_bsp_init(uint32_t usTim1Timerout50us)
 {
     TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
@@ -106,9 +110,3 @@ void modbus_bound_set(uint32_t bound)
     USART_Init(USART3, &USART_InitStructure);                                       // 初始化串口2
     USART_ClearFlag(USART3, USART_FLAG_TC);
 }
-
-
-
-
-
-

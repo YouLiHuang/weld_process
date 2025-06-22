@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-17 09:57:33
+ * @LastEditTime: 2025-06-22 16:12:22
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -170,14 +170,13 @@ pid_feedforword_ctrl *pid_ctrl_debug = NULL;
 Thermocouple *current_Thermocouple = NULL;
 // current date
 Date current_date;
-// Modbus slaver id
-uint8_t ID_OF_DEVICE = 0;
 // UI(touch screen) value
 uint8_t cur_GP = 0;
 RDY_SCH_STATE cur_key1 = RDY;
 ION_OFF_STATE cur_key2 = ION;
 SGW_CTW_STATE cur_key3 = SGW;
 SWITCH_STATE switch_mode = USER_MODE;
+
 // USB device
 extern USBH_HOST USB_Host __ALIGN_END;
 extern USB_OTG_CORE_HANDLE USB_OTG_Core __ALIGN_END;
@@ -185,6 +184,9 @@ extern USB_OTG_CORE_HANDLE USB_OTG_Core __ALIGN_END;
 extern START_TYPE start_type;
 // Temperature preservation buffer
 extern uint16_t realtime_temp_buf[TEMP_BUF_MAX_LEN];
+// modbus bsp param
+extern uint8_t ID_OF_DEVICE;
+extern uint32_t Baud_Rate_Modbus;
 // MODBUS BUFFER
 extern uint16_t usRegInputBuf[REG_INPUT_NREGS];
 extern uint16_t usRegHoldingBuf[REG_HOLDING_NREGS];
@@ -232,12 +234,6 @@ int main(void)
 	TIM5_INIT();									// COUNT TIMER
 	TIM6_INIT(10);									// 5ms key scan timer
 	uart_init(115200);								// Touch screen communication interface initialization
-#if MODBUSSLAVE_ENABLE
-	eMBInit(MB_RTU, 1, 3, 115200, MB_PAR_NONE, 1);
-	eMBEnable();
-#else
-	modbus_serial_init(115200);
-#endif
 	log_bsp_init(115200);
 
 	/*IO Config*/
@@ -245,12 +241,19 @@ int main(void)
 	INPUT_IO_INIT(); // input IO init
 	OUT_Init();		 // output pin init
 	Check_IO_init(); // Thermocouple detection io initialization
-
 	/*user device init*/
-	SPI1_Init();	// spi init
-	ADC_DMA_INIT(); // ADC init
+	SPI1_Init();
+	ADC_DMA_INIT();
+
 	Touchscreen_init();
 	Load_data_from_mem();
+
+#if MODBUSSLAVE_ENABLE
+	eMBInit(MB_RTU, 1, 3, Baud_Rate_Modbus, MB_PAR_NONE, 1);
+	eMBEnable();
+#else
+	modbus_serial_init(115200);
+#endif
 
 	/*Hardware test*/
 	/*...*/
@@ -535,9 +538,9 @@ static bool Radiator_reset_callback(uint8_t index)
 static void Power_on_check(void)
 {
 
-	//OS_ERR err;
-	// uint16_t start_temp = 0;
-	// uint16_t end_temp = 0;
+	// OS_ERR err;
+	//  uint16_t start_temp = 0;
+	//  uint16_t end_temp = 0;
 
 #if POWER_ON_CHECK == 1
 
@@ -586,6 +589,7 @@ static bool Thermocouple_check(void)
 #if SENSOR_CHECK_ENABLE
 	OS_ERR err;
 	bool check_state = false;
+	uint8_t sensor_cnt = 0;
 
 	GPIO_SetBits(CHECK_GPIO_E, CHECKOUT_PIN_E);
 	GPIO_SetBits(CHECK_GPIO_J, CHECKOUT_PIN_J);
@@ -596,6 +600,7 @@ static bool Thermocouple_check(void)
 	if (GPIO_ReadInputDataBit(CHECK_GPIO_E, CHECKIN_PIN_E) != 0)
 	{
 		check_state = true;
+		sensor_cnt++;
 		for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
 		{
 			if (Thermocouple_Lists[i].type == E_TYPE)
@@ -606,6 +611,7 @@ static bool Thermocouple_check(void)
 	if (GPIO_ReadInputDataBit(CHECK_GPIO_K, CHECKIN_PIN_K) != 0)
 	{
 		check_state = true;
+		sensor_cnt++;
 		for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
 		{
 			if (Thermocouple_Lists[i].type == K_TYPE)
@@ -616,6 +622,7 @@ static bool Thermocouple_check(void)
 	if (GPIO_ReadInputDataBit(CHECK_GPIO_J, CHECKIN_PIN_J) != 0)
 	{
 		check_state = true;
+		sensor_cnt++;
 		for (uint8_t i = 0; i < sizeof(Thermocouple_Lists) / sizeof(Thermocouple); i++)
 		{
 			if (Thermocouple_Lists[i].type == J_TYPE)
@@ -628,7 +635,7 @@ static bool Thermocouple_check(void)
 	GPIO_ResetBits(CHECK_GPIO_K, CHECKOUT_PIN_K);
 
 	/*no Thermocouple detect*/
-	if (check_state == false)
+	if (check_state == false || sensor_cnt != 1)
 	{
 		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
@@ -1070,7 +1077,7 @@ void read_task(void *p_arg)
 			TSpage_process(request_PGManger()->id);
 		}
 
-		//Modbus_reg_sync();
+		// Modbus_reg_sync();
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);
 	}

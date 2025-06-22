@@ -27,6 +27,9 @@ extern ION_OFF_STATE cur_key2;
 extern SGW_CTW_STATE cur_key3;
 extern SWITCH_STATE switch_mode;
 
+extern uint8_t ID_OF_DEVICE;
+extern uint32_t Baud_Rate_Modbus;
+
 /* regs define ---------------------------------------------------------------*/
 // input reg
 uint16_t usRegInputBuf[REG_INPUT_NREGS] = {0x1000, 0x1001, 0x1002, 0x1003, 0x1004, 0x1005, 0x1006, 0x1007};

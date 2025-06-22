@@ -95,6 +95,7 @@ typedef enum
     WAVE_PAGE = 3,
     TEMP_PAGE = 4,
     UART_PAGE = 5,
+    ALARM_PAGE_EXTRA = 6,
     KEY_INPUT_PAGE = 7,
     /*...用户可扩展页面...*/
 

@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-13 19:22:56
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-22 10:44:28
+ * @LastEditTime: 2025-06-22 16:25:47
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -19,8 +19,10 @@
 
 /*---------------------------Variables-----------------------------*/
 extern weld_ctrl *weld_controller;
-extern uint8_t ID_OF_DEVICE;
 extern uint8_t cur_GP;
+extern uint8_t ID_OF_DEVICE;
+extern uint32_t Baud_Rate_Modbus;
+extern const uint32_t baud_rate_list[12];
 
 // input reg
 extern uint16_t usRegInputBuf[REG_INPUT_NREGS];
@@ -146,7 +148,7 @@ uint16_t SPI_Load_Word(uint16_t addr)
  */
 void Save_Param_toDisk(void)
 {
-	SPI_Save_Word(cur_GP, 0);
+	SPI_Save_Word(cur_GP, GP_ADRESS);
 	/*time1-time5*/
 	for (uint8_t i = 0; i < TIME_NUM; i++)
 	{
@@ -188,8 +190,6 @@ void Load_param(void *controller, int array_of_data)
 	};
 
 	weld_ctrl *ctrl = (weld_ctrl *)controller;
-	SPI_Save_Word(array_of_data, 0);
-	/*参数加载*/
 	uint16_t welding_time_load[5] = {0}, welding_Temp_load[3] = {0};
 	for (uint8_t i = 0; i < sizeof(welding_time_load) / sizeof(uint16_t); i++)
 	{
@@ -272,6 +272,10 @@ void Load_Coefficient(int array_of_data)
  */
 void Load_data_from_mem(void)
 {
+
+	uint16_t rate_H = 0;
+	uint16_t rate_L = 0;
+
 #if RESET_SPI_DATA
 	/*数据初始化*/
 	int time_init[] = {100, 500, 50, 2500, 500, 100};
@@ -299,23 +303,47 @@ void Load_data_from_mem(void)
 		}
 
 		// gain1 gain2
-		SPI_Save_Word(72 + array_of_data, GAIN_BASE(array_of_data));
-		SPI_Save_Word(60 + array_of_data, GAIN_BASE(array_of_data) + ADDR_OFFSET);
+		SPI_Save_Word(75 + array_of_data, GAIN_BASE(array_of_data));
+		SPI_Save_Word(30 + array_of_data, GAIN_BASE(array_of_data) + ADDR_OFFSET);
 	}
 #endif
 
-	// 软起动
+	/*soft start*/
 	delay_ms(2000);
 	RLY_TRAN = 1;
 	delay_ms(2000);
 	RLY_TRAN = 0;
-	// 从内存加载首个GP值
-	cur_GP = 0;
-	cur_GP = SPI_Load_Word(0);
+
+	/*gp*/
+	cur_GP = SPI_Load_Word(GP_ADRESS);
 	if (cur_GP >= 20)
 		cur_GP = 0;
 
-	/*首次从内存读取数据*/
+	/*slaver adress*/
+	command_set_comp_val_raw("uart_page.cb0", "val", 0); // default 0
+	ID_OF_DEVICE = SPI_Load_Word(SLAVER_ADRESS);
+	if (ID_OF_DEVICE > 15)
+	{
+		ID_OF_DEVICE = 15;
+	}
+	command_set_comp_val_raw("uart_page.cb0", "val", ID_OF_DEVICE);
+
+	/*modbus rate*/
+	rate_H = SPI_Load_Word(MODBUS_RATE_ADRESSH);
+	rate_L = SPI_Load_Word(MODBUS_RATE_ADRESSL);
+	Baud_Rate_Modbus = rate_H << 16 + rate_L;
+
+	/*sync data to screen*/
+	command_set_comp_val_raw("uart_page.cb1", "val", 7); // default 115200
+	for (uint8_t i = 0; i < sizeof(baud_rate_list) / sizeof(baud_rate_list[0]); i++)
+	{
+		if (baud_rate_list[i] == Baud_Rate_Modbus)
+		{
+			command_set_comp_val_raw("uart_page.cb1", "val", i);
+		}
+	}
+
+	/*load weld param*/
 	Load_param(weld_controller, cur_GP);
 	Load_param_alarm(weld_controller, cur_GP);
 	Load_Coefficient(cur_GP);
@@ -344,7 +372,7 @@ void Load_data_from_mem(void)
 	usRegHoldingBuf[16] = weld_controller->weld_count;
 	usRegHoldingBuf[17] = 0;
 
-	/*首次加载参数后需要发送到触摸屏*/
+	/*sync data to screen*/
 	char *param_time_list[] = {
 		"time1",
 		"time2",

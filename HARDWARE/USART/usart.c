@@ -7,14 +7,12 @@
 #include "welding_process.h"
 
 #include "touch_screen_app.h"
-//////////////////////////////////////////////////////////////////////////////////
-// 如果使用ucos,则包括下面的头文件即可.
+
 #if SYSTEM_SUPPORT_OS
 #include "includes.h" //ucos 使用
 #endif
 
 uint8_t USART_RX_BUF[USART_REC_LEN]; // 接收缓冲,最大USART_REC_LEN个字节.
-extern uint8_t ID_OF_DEVICE;		 // 焊机485通讯机号，默认是零
 
 /*信号量接口*/
 extern OS_SEM PAGE_UPDATE_SEM;

@@ -1,3 +1,12 @@
+/*** 
+ * @Author: huangyouli.scut@gmail.com
+ * @Date: 2025-06-22 15:23:39
+ * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
+ * @LastEditTime: 2025-06-22 15:59:58
+ * @Description: 
+ * @
+ * @Copyright (c) 2025 by huangyouli, All Rights Reserved. 
+ */
 #ifndef __SPI_H
 #define __SPI_H
 #include "sys.h"
@@ -7,6 +16,11 @@
 #define ALARM_MAX_TEMP 700
 
 /*------------------mem config------------------*/
+/*fix adress*/
+#define GP_ADRESS 0
+#define SLAVER_ADRESS 1
+#define MODBUS_RATE_ADRESSH 3
+#define MODBUS_RATE_ADRESSL 4
 /*param number*/
 #define TIME_NUM 6
 #define TEMP_NUM 3
@@ -36,16 +50,12 @@ void SPI1_Init(void);
 uint16_t SPI_Load_Word(uint16_t addr);
 void SPI_Save_Word(uint16_t data, uint16_t addr);
 /*user api*/
-// void save_param(void *controller, int array_of_data, const uint16_t *temp, const uint8_t temp_len, const uint16_t *time, const uint8_t time_len);
-// void save_param_alarm(void *controller, int array_of_data, const uint16_t *temp, const uint8_t temp_len, const uint16_t *gain);
-
 void Save_Param_toDisk(void);
 void Load_param(void *controller, int array_of_data);
 void Load_param_alarm(void *controller, int array_of_data);
 void Load_Coefficient(int array_of_data);
 /*computer api*/
 void Host_computer_reset(void);
-
 /*data init*/
 void Load_data_from_mem(void);
 

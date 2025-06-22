@@ -10,6 +10,13 @@
 #include "protect.h"
 #include "spi.h"
 
+/*FreeModbus includes*/
+#include "mb.h"
+#include "mbport.h"
+#include "mbrtu.h"
+#include "port_bsp.h"
+#include "modbus_app.h"
+
 /*--------------------user variables include-----------------------*/
 /*SEM */
 extern OS_SEM SENSOR_UPDATE_SEM;
@@ -121,6 +128,25 @@ page_map PAGE_CB_MAP[] = {
     {UART_PAGE, NULL, TSsetting_pg_cb, setting_page_name_list, sizeof(setting_page_name_list) / sizeof(char *)},
     {WAVE_PAGE, NULL, TSwave_pg_cb, wave_page_name_list, sizeof(wave_page_name_list) / sizeof(char *)},
 };
+
+/*other variables-----------------------------------------------------*/
+
+extern uint8_t ID_OF_DEVICE;
+extern uint32_t Baud_Rate_Modbus;
+
+const uint32_t baud_rate_list[12] = {
+    2400,
+    4800,
+    9600,
+    19200,
+    31250,
+    57600,
+    115200,
+    230400,
+    250000,
+    256000,
+    512000,
+    821600};
 
 /**
  * @description: UI page processing
@@ -755,7 +781,10 @@ static void TSsetting_pg_cb(Page_ID id)
     uint8_t index;
     Component_Queue *list;
     OS_ERR err;
-    Component *comp = NULL;
+    bool modbus_change = false;
+    uint8_t new_adress = 0;
+    uint8_t rate_index = 0;
+    uint32_t new_rate = 115200;
 
     /*match the page list*/
     for (index = 0; index < sizeof(PAGE_CB_MAP) / sizeof(PAGE_CB_MAP[0]); index++)
@@ -765,9 +794,8 @@ static void TSsetting_pg_cb(Page_ID id)
             break;
     }
 
-    /*1、读取界面设定的地址*/
+    /*get data from screen*/
     command_get_comp_val(list, "adress", "val");
-    /*2、读取页面设定的波特率*/
     command_get_comp_val(list, "baudrate", "val");
 
     /*3、设定热电偶类型*/
@@ -786,7 +814,7 @@ static void TSsetting_pg_cb(Page_ID id)
         break;
     }
 
-    /*4、订阅热电偶校准信号*/
+#if 0
     OSSemPend(&SENSOR_UPDATE_SEM, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
     if (OS_ERR_NONE == err)
     {
@@ -798,20 +826,46 @@ static void TSsetting_pg_cb(Page_ID id)
         Thermocouple_err_eliminate();
 #endif
     }
-    /*5、显示实时温度*/
-    command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
+#endif
 
-    /*6、数据同步*/
-    comp = get_comp(list, "adress");
-    if (comp != NULL)
-        ID_OF_DEVICE = comp->val;
+    /*display Real-time temperature*/
+    OSMutexPend(&PLOT_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+    TSTemp_updata_realtime(id);
+    OSMutexPost(&PLOT_Mux, OS_OPT_POST_NONE, &err);
 
-    comp = get_comp(list, "baudrate");
-    if (comp != NULL)
+    /*date sync*/
+    new_adress = get_comp(list, "adress")->val;
+    if (new_adress != ID_OF_DEVICE)
     {
-        uint8_t index = get_comp(list, "baudrate")->val;
-        /*set bounds*/
+        modbus_change = true;
+        ID_OF_DEVICE = new_adress;
     }
+
+    rate_index = get_comp(list, "baudrate")->val;
+    if (rate_index < sizeof(baud_rate_list) / sizeof(baud_rate_list[0]))
+    {
+        new_rate = baud_rate_list[rate_index];
+        if (new_rate != Baud_Rate_Modbus)
+        {
+            modbus_change = true;
+            Baud_Rate_Modbus = new_rate;
+        }
+    }
+
+    if (modbus_change)
+    {
+#if MODBUSSLAVE_ENABLE
+        eMBInit(MB_RTU, new_adress, 3, new_rate, MB_PAR_NONE, 1);
+        eMBEnable();
+#endif
+    }
+
+    /*save new bsp to disk*/
+    SPI_Save_Word(ID_OF_DEVICE, SLAVER_ADRESS);
+    uint16_t rate_L = Baud_Rate_Modbus & 0xff;
+    uint16_t rate_H = Baud_Rate_Modbus >> 16;
+    SPI_Save_Word(rate_H, MODBUS_RATE_ADRESSH);
+    SPI_Save_Word(rate_L, MODBUS_RATE_ADRESSL);
 
     /*display Real-time temperature*/
     OSMutexPend(&PLOT_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
