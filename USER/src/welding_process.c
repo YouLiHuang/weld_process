@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-13 09:22:31
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-22 10:59:00
+ * @LastEditTime: 2025-06-22 11:02:33
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -1041,9 +1041,6 @@ void welding_process(START_TYPE type)
 {
 	OS_ERR err;
 	uint8_t key = 0;
-
-	/*which key is pressed*/
-	key = (type == START1) ? RLY_START0_ACTIVE : RLY_START1_ACTIVE;
 
 	/*load different parameter sets based on the specific button pressed.*/
 	Load_Data(type);
