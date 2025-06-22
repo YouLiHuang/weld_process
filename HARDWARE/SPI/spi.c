@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-13 19:22:56
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-20 14:18:31
+ * @LastEditTime: 2025-06-22 10:44:28
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -19,7 +19,6 @@
 
 /*---------------------------Variables-----------------------------*/
 extern weld_ctrl *weld_controller;
-extern Steady_state_coefficient steady_coefficient;
 extern uint8_t ID_OF_DEVICE;
 extern uint8_t cur_GP;
 
@@ -140,6 +139,161 @@ uint16_t SPI_Load_Word(uint16_t addr)
 	return tmp;
 }
 
+/*-------------------------------------------------SAVE API-----------------------------------------------------*/
+/**
+ * @description: save api
+ * @return {*}
+ */
+void Save_Param_toDisk(void)
+{
+	SPI_Save_Word(cur_GP, 0);
+	/*time1-time5*/
+	for (uint8_t i = 0; i < TIME_NUM; i++)
+	{
+		SPI_Save_Word(weld_controller->weld_time[i], TIME_BASE(cur_GP) + ADDR_OFFSET * i);
+	}
+	/*temp1-temp3*/
+	for (uint8_t i = 0; i < TEMP_NUM; i++)
+	{
+		SPI_Save_Word(weld_controller->weld_temp[i], TEMP_BASE(cur_GP) + ADDR_OFFSET * i);
+	}
+
+	/*alarm1-alarm6*/
+	for (uint8_t i = 0; i < ALARM_NUM; i++)
+	{
+		SPI_Save_Word(weld_controller->alarm_temp[i], ALARM_BASE(cur_GP) + ADDR_OFFSET * i);
+	}
+
+	/*gain1-gain2*/
+	SPI_Save_Word(weld_controller->temp_gain1 * 100, GAIN_BASE(cur_GP) + ADDR_OFFSET * 0);
+	SPI_Save_Word(weld_controller->temp_gain1 * 100, GAIN_BASE(cur_GP) + ADDR_OFFSET * 1);
+}
+
+/*-------------------------------------------------Load API-----------------------------------------------------*/
+void Load_param(void *controller, int array_of_data)
+{
+	Component_Queue *list = get_page_list(PARAM_PAGE);
+
+	char *param_time_name_list[] = {
+		"time1",
+		"time2",
+		"time3",
+		"time4",
+		"time5",
+		"time6"};
+	char *param_temp_name_list[] = {
+		"temp1",
+		"temp2",
+		"temp3",
+	};
+
+	weld_ctrl *ctrl = (weld_ctrl *)controller;
+	SPI_Save_Word(array_of_data, 0);
+	/*参数加载*/
+	uint16_t welding_time_load[5] = {0}, welding_Temp_load[3] = {0};
+	for (uint8_t i = 0; i < sizeof(welding_time_load) / sizeof(uint16_t); i++)
+	{
+		welding_time_load[i] = SPI_Load_Word(TIME_BASE(array_of_data) + ADDR_OFFSET * i);
+	}
+
+	/* temp1~temp3*/
+	for (uint8_t i = 0; i < sizeof(welding_Temp_load) / sizeof(uint16_t); i++)
+	{
+		welding_Temp_load[i] = SPI_Load_Word(TEMP_BASE(array_of_data) + ADDR_OFFSET * i);
+	}
+
+	/*param check & sync*/
+	for (uint8_t i = 0; i < sizeof(welding_time_load) / sizeof(uint16_t); i++)
+	{
+		if (i == 3 && welding_time_load[i] > 9999)
+		{
+			welding_time_load[i] = 9999;
+		}
+		else if (welding_time_load[i] > 999)
+		{
+			welding_time_load[i] = 999;
+		}
+	}
+
+	for (uint8_t i = 0; i < sizeof(welding_Temp_load) / sizeof(uint16_t); i++)
+	{
+		if (i % 2 == 0 && welding_Temp_load[i] > 200)
+		{
+			welding_Temp_load[i] = 200;
+		}
+		else if (welding_Temp_load[i] > 650)
+		{
+			welding_Temp_load[i] = 650;
+		}
+	}
+
+	// time1-time6
+	for (uint8_t i = 0; i < sizeof(welding_time_load) / sizeof(uint16_t); i++)
+	{
+		ctrl->weld_time[i] = welding_time_load[i];
+		get_comp(list, param_time_name_list[i])->val = welding_time_load[i];
+	}
+	// temp1-temp3
+	for (uint8_t i = 0; i < sizeof(welding_Temp_load) / sizeof(uint16_t); i++)
+	{
+		ctrl->weld_temp[i] = welding_Temp_load[i];
+		get_comp(list, param_temp_name_list[i])->val = welding_Temp_load[i];
+	}
+}
+void Load_param_alarm(void *controller, int array_of_data)
+{
+	Component_Queue *list = get_page_list(PARAM_PAGE);
+	uint16_t gain_raw[2] = {0};
+	uint16_t alarm_temperature_load[6] = {0};
+
+	weld_ctrl *ctrl = (weld_ctrl *)controller;
+	/*param load*/
+	for (uint8_t i = 0; i < sizeof(alarm_temperature_load) / sizeof(uint16_t); i++)
+	{
+		alarm_temperature_load[i] = SPI_Load_Word(ALARM_BASE(array_of_data) + ADDR_OFFSET * i);
+	}
+
+	for (uint8_t i = 0; i < sizeof(gain_raw) / sizeof(uint16_t); i++)
+	{
+		gain_raw[i] = SPI_Load_Word(GAIN_BASE(array_of_data) + ADDR_OFFSET * i);
+	}
+
+	/*param check & sync*/
+	for (uint8_t i = 0; i < sizeof(alarm_temperature_load) / sizeof(uint16_t); i++)
+	{
+		if (alarm_temperature_load[i] > ALARM_MAX_TEMP)
+			alarm_temperature_load[i] = ALARM_MAX_TEMP;
+
+		ctrl->alarm_temp[i] = alarm_temperature_load[i];
+	}
+
+	for (uint8_t i = 0; i < sizeof(gain_raw) / sizeof(uint16_t); i++)
+	{
+		if (gain_raw[i] > 100)
+		{
+			gain_raw[i] = 100;
+		}
+	}
+
+	/*data sync to screen list*/
+	ctrl->temp_gain1 = (double)gain_raw[0] / 100.0;
+	ctrl->temp_gain2 = (double)gain_raw[1] / 100.0;
+}
+void Load_Coefficient(int array_of_data)
+{
+	uint16_t gain_raw1, gain_raw2;
+	gain_raw1 = SPI_Load_Word(FIT_COEFFICIENT_BASE(array_of_data) + ADDR_OFFSET * 0);
+	gain_raw2 = SPI_Load_Word(FIT_COEFFICIENT_BASE(array_of_data) + ADDR_OFFSET * 1);
+	if (gain_raw1 != 0 && gain_raw2 != 0)
+	{
+		weld_controller->ss_coefficient.slope = gain_raw1 / 100.0;
+		weld_controller->ss_coefficient.intercept = gain_raw2;
+	}
+}
+/**
+ * @description: first load data
+ * @return {*}
+ */
 void Load_data_from_mem(void)
 {
 #if RESET_SPI_DATA
@@ -269,178 +423,5 @@ void Load_data_from_mem(void)
 	for (uint8_t i = 0; i < sizeof(param_temp_list) / sizeof(param_temp_list[0]); i++)
 	{
 		command_set_comp_val_raw(param_temp_list[i], "val", weld_controller->weld_temp[i]);
-	}
-}
-
-void save_param(void *controller,
-				int array_of_data,
-				const uint16_t *temp,
-				const uint8_t temp_len,
-				const uint16_t *time,
-				const uint8_t time_len)
-{
-	// weld_ctrl *ctrl = (weld_ctrl *)controller;
-
-	SPI_Save_Word(array_of_data, 0);
-	/*time1-time5*/
-	for (uint8_t i = 0; i < TIME_NUM; i++)
-	{
-		SPI_Save_Word(time[i], TIME_BASE(array_of_data) + ADDR_OFFSET * i);
-	}
-	/*temp1-temp3*/
-	for (uint8_t i = 0; i < TEMP_NUM; i++)
-	{
-		SPI_Save_Word(temp[i], TEMP_BASE(array_of_data) + ADDR_OFFSET * i);
-	}
-
-	// /*数据同步*/
-	// for (uint8_t i = 0; i < sizeof(ctrl->weld_time) / sizeof(uint16_t); i++)
-	// {
-	// 	ctrl->weld_time[i] = time[i];
-	// }
-	// /*补偿时间*/
-	// ctrl->hold_time = time[time_len - 1];
-	// /*三段温度*/
-	// for (uint8_t i = 0; i < sizeof(ctrl->weld_temp) / sizeof(uint16_t); i++)
-	// {
-	// 	ctrl->weld_temp[i] = temp[i];
-	// }
-}
-
-void save_param_alarm(void *controller,
-					  int array_of_data,
-					  const uint16_t *temp,
-					  const uint8_t temp_len,
-					  const uint16_t *gain)
-{
-	weld_ctrl *ctrl = (weld_ctrl *)controller;
-	/*存储组号*/
-	SPI_Save_Word(array_of_data, 0);
-	/*alarm1-alarm6*/
-	for (uint8_t i = 0; i < ALARM_NUM; i++)
-	{
-		SPI_Save_Word(temp[i], ALARM_BASE(array_of_data) + ADDR_OFFSET * i);
-	}
-
-	/*gain1-gain2*/
-	for (uint8_t i = 0; i < GAIN_NUM; i++)
-	{
-		SPI_Save_Word(gain[i], GAIN_BASE(array_of_data) + ADDR_OFFSET * i);
-	}
-	/*数据同步*/
-	for (uint8_t i = 0; i < sizeof(ctrl->alarm_temp) / sizeof(uint16_t); i++)
-	{
-		ctrl->alarm_temp[i] = temp[i];
-	}
-	ctrl->temp_gain1 = gain[0] / 100.0;
-	ctrl->temp_gain2 = gain[1] / 100.0;
-}
-void Load_param(void *controller, int array_of_data)
-{
-	Component_Queue *list = get_page_list(PARAM_PAGE);
-
-	char *param_time_name_list[] = {
-		"time1",
-		"time2",
-		"time3",
-		"time4",
-		"time5",
-		"time6"};
-	char *param_temp_name_list[] = {
-		"temp1",
-		"temp2",
-		"temp3",
-	};
-
-	weld_ctrl *ctrl = (weld_ctrl *)controller;
-	SPI_Save_Word(array_of_data, 0);
-	/*参数加载*/
-	uint16_t welding_time_load[5] = {0}, welding_Temp_load[3] = {0};
-	for (uint8_t i = 0; i < sizeof(welding_time_load) / sizeof(uint16_t); i++)
-	{
-		welding_time_load[i] = SPI_Load_Word(TIME_BASE(array_of_data) + ADDR_OFFSET * i);
-	}
-
-	/* temp1~temp3*/
-	for (uint8_t i = 0; i < sizeof(welding_Temp_load) / sizeof(uint16_t); i++)
-	{
-		welding_Temp_load[i] = SPI_Load_Word(TEMP_BASE(array_of_data) + ADDR_OFFSET * i);
-	}
-
-	/*param check & sync*/
-	// time1-time6
-	for (uint8_t i = 0; i < sizeof(welding_time_load) / sizeof(uint16_t); i++)
-	{
-		ctrl->weld_time[i] = welding_time_load[i];
-		get_comp(list, param_time_name_list[i])->val = welding_time_load[i];
-	}
-	// temp1-temp3
-	for (uint8_t i = 0; i < sizeof(welding_Temp_load) / sizeof(uint16_t); i++)
-	{
-		ctrl->weld_temp[i] = welding_Temp_load[i];
-		get_comp(list, param_temp_name_list[i])->val = welding_Temp_load[i];
-	}
-}
-void Load_param_alarm(void *controller, int array_of_data)
-{
-	Component_Queue *list = get_page_list(PARAM_PAGE);
-	double gain_raw[2] = {0};
-	uint16_t alarm_temperature_load[6] = {0};
-	char *temp_name_list[] = {
-		"alarm1",
-		"alarm2",
-		"alarm3",
-		"alarm4",
-		"alarm5",
-		"alarm6",
-	};
-	weld_ctrl *ctrl = (weld_ctrl *)controller;
-	/*param load*/
-	for (uint8_t i = 0; i < sizeof(alarm_temperature_load) / sizeof(uint16_t); i++)
-	{
-		alarm_temperature_load[i] = SPI_Load_Word(ALARM_BASE(array_of_data) + ADDR_OFFSET * i);
-	}
-
-	for (uint8_t i = 0; i < sizeof(gain_raw) / sizeof(double); i++)
-	{
-		gain_raw[i] = SPI_Load_Word(GAIN_BASE(array_of_data) + ADDR_OFFSET * i);
-	}
-
-	/*param check & sync*/
-	for (uint8_t i = 0; i < sizeof(alarm_temperature_load) / sizeof(uint16_t); i++)
-	{
-		if (alarm_temperature_load[i] > ALARM_MAX_TEMP)
-			alarm_temperature_load[i] = ALARM_MAX_TEMP;
-
-		ctrl->alarm_temp[i] = alarm_temperature_load[i];
-		get_comp(list, temp_name_list[i])->val = alarm_temperature_load[i];
-	}
-
-	/*data sync to screen list*/
-	if (gain_raw[0] / 100.0 != 0 && gain_raw[1] / 100.0 != 0)
-	{
-		ctrl->temp_gain1 = (double)gain_raw[0] / 100.0;
-		ctrl->temp_gain2 = (double)gain_raw[1] / 100.0;
-		get_comp(list, "GAIN1")->val = ctrl->temp_gain1 * 100;
-		get_comp(list, "GAIN2")->val = ctrl->temp_gain2 * 100;
-	}
-	else
-	{
-		ctrl->temp_gain1 = DEFAULT_GAIN1;
-		ctrl->temp_gain2 = DEFAULT_GAIN2;
-		get_comp(list, "GAIN1")->val = DEFAULT_GAIN1 * 100;
-		get_comp(list, "GAIN2")->val = DEFAULT_GAIN2 * 100;
-	}
-}
-
-void Load_Coefficient(int array_of_data)
-{
-	uint16_t gain_raw1, gain_raw2;
-	gain_raw1 = SPI_Load_Word(FIT_COEFFICIENT_BASE(array_of_data) + ADDR_OFFSET * 0);
-	gain_raw2 = SPI_Load_Word(FIT_COEFFICIENT_BASE(array_of_data) + ADDR_OFFSET * 1);
-	if (gain_raw1 != 0 && gain_raw2 != 0)
-	{
-		weld_controller->ss_coefficient.slope = gain_raw1 / 100.0;
-		weld_controller->ss_coefficient.intercept = gain_raw2;
 	}
 }

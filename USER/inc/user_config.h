@@ -31,7 +31,7 @@
 /* Temperature control ---------------------------------------------------------------------------*/
 
 /*Temperature control parameters*/
-#define STABLE_ERR_E 20              // Steady-state error compensation
+#define STABLE_ERR_E 10              // Steady-state error compensation
 #define STABLE_ERR_K 35              // Steady-state error compensation
 #define STABLE_ERR_J 35              // Steady-state error compensation
 #define FAST_RISE_TIME 150           // Cold-start temperature compensation time
@@ -45,6 +45,7 @@
 #define DEFAULT_INTERCEPT 1060
 #define FINAL_DUTY_LIMIT 1800
 #define RESTRICT_TEMP_COFF 0.95
+#define RESTRICT_BASE_COFF 0.1
 #define TEMP_AVG_SAMPLE_START 0.97
 
 #define DEFAULT_RISE_DUTY (PD_MAX * 0.5)
@@ -77,6 +78,7 @@
 /* protect macro ---------------------------------------------------------------------------------*/
 /*Thermocouple detection interval*/
 #define KEJ_CHECK_DUTY 40
+#define LOW_TEMP_LIMIT 5
 /*Marco of check io define*/
 #define CHECK_RCC_E RCC_AHB1Periph_GPIOE
 #define CHECK_GPIO_E GPIOE

@@ -323,125 +323,9 @@ static void TSModbus_Sync_FromUi(Page_ID id)
 
 static void TSSync_Date_from_Screen(Component_Queue *page_list)
 {
-    uint16_t temp_HL[6] = {0}, gain[2] = {0};
-    uint16_t temp[3] = {0}, time[6] = {0};
-    uint16_t screen_count;
     Page_ID id = request_PGManger()->id;
-
-    char *weld_temp_name_list[] = {"temp1", "temp2", "temp3"};
-    char *weld_time_name_list[] = {"time1", "time2", "time3", "time4", "time5", "time6"};
-    char *gain_name_list[] = {"GAIN1", "GAIN2"};
-    char *alarm_temp_name_list[] = {"alarm1", "alarm2", "alarm3", "alarm4", "alarm5", "alarm6"};
-
-    /*Ⅰ Screen --->  User Data*/
-    switch (id)
-    {
-    case PARAM_PAGE:
-    {
-        /*read dat from screen*/
-        for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
-        {
-            command_get_comp_val(page_list, weld_temp_name_list[i], "val");
-        }
-        for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
-        {
-            command_get_comp_val(page_list, weld_time_name_list[i], "val");
-        }
-
-        command_get_comp_val(page_list, "count", "val");
-
-        /*get data from list*/
-        for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
-        {
-            time[i] = get_comp(page_list, weld_time_name_list[i])->val;
-        }
-        for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
-        {
-            temp[i] = get_comp(page_list, weld_temp_name_list[i])->val;
-        }
-
-        /*data sync*/
-        for (uint8_t i = 0; i < sizeof(temp) / sizeof(temp[0]); i++)
-        {
-            weld_controller->weld_temp[i] = temp[i];
-        }
-
-        for (uint8_t i = 0; i < sizeof(time) / sizeof(time[0]); i++)
-        {
-            weld_controller->weld_time[i] = time[i];
-        }
-        /*check if count is changed by user*/
-        command_get_comp_val(page_list, "count", "val");
-        screen_count = get_comp(page_list, "count")->val;
-        if (weld_controller->weld_count != screen_count)
-        {
-            weld_controller->weld_count = screen_count;
-            command_set_comp_val("count", "val", weld_controller->weld_count);
-        }
-
-        /*save data*/
-        save_param(weld_controller,
-                   cur_GP,
-                   temp,
-                   sizeof(temp) / sizeof(uint16_t),
-                   time,
-                   sizeof(time) / sizeof(uint16_t));
-    }
-
-    break;
-
-    case TEMP_PAGE:
-    {
-        /*Ⅰ、读取界面上的参数*/
-        for (uint8_t i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
-        {
-            /*参数读取*/
-            command_get_comp_val(page_list, gain_name_list[i], "val");
-        }
-        for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
-        {
-            /*参数读取*/
-            command_get_comp_val(page_list, alarm_temp_name_list[i], "val");
-        }
-
-        /*get data from list*/
-        for (uint8_t i = 0; i < sizeof(temp_HL) / sizeof(uint16_t); i++)
-        {
-            temp_HL[i] = get_comp(page_list, alarm_temp_name_list[i])->val;
-        }
-        for (uint8_t i = 0; i < sizeof(gain) / sizeof(uint16_t); i++)
-        {
-            gain[i] = get_comp(page_list, gain_name_list[i])->val;
-        }
-
-        /*data sync*/
-        for (uint8_t i = 0; i < sizeof(temp_HL) / sizeof(temp_HL[0]); i++)
-        {
-            weld_controller->alarm_temp[i] = temp_HL[i];
-        }
-        weld_controller->temp_gain1 = gain[0] / 100.0;
-        weld_controller->temp_gain2 = gain[1] / 100.0;
-
-        /*check if count is changed by user*/
-        command_get_comp_val(page_list, "count", "val");
-        screen_count = get_comp(page_list, "count")->val;
-        if (weld_controller->weld_count != screen_count)
-        {
-            weld_controller->weld_count = screen_count;
-            command_set_comp_val("count", "val", weld_controller->weld_count);
-        }
-
-        /*save data to eeprom*/
-        save_param_alarm(weld_controller,
-                         cur_GP,
-                         temp_HL,
-                         sizeof(temp_HL) / sizeof(uint16_t),
-                         gain);
-    }
-
-    break;
-    }
-
+    /*save data*/
+    Save_Param_toDisk();
     /*User Data --->  Modbus buffer*/
     /*sync data to Modbus buffer*/
     TSModbus_Sync_FromUi(id);
@@ -530,11 +414,6 @@ static void TSparam_pg_cb(Page_ID id)
     cur_key3 = (SGW_CTW_STATE)get_comp(list, "SGW_CTW")->val;
     weld_controller->Count_Dir = (get_comp(list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
     cur_GP = get_comp(list, "GP")->val;
-    if (RDY == cur_key1)
-    {
-        /*sync weld count to screen*/
-        command_set_comp_val("count", "val", weld_controller->weld_count);
-    }
 
     /*get current data*/
     command_get_variable_val(&current_date.Year, "rtc0");
@@ -572,6 +451,8 @@ static void TSparam_pg_cb(Page_ID id)
                 command_set_comp_val(weld_temp_name_list[i], "val",
                                      weld_controller->weld_temp[i]);
             }
+            /*sync weld count to screen*/
+            command_set_comp_val("count", "val", weld_controller->weld_count);
         }
     }
 
@@ -597,15 +478,20 @@ static void TSparam_pg_cb(Page_ID id)
             }
         }
 
-        /*default - read data from screen*/
+        /*read data from screen*/
         for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
         {
-            command_get_comp_val(list, weld_temp_name_list[i], "val");
+            if (command_get_comp_val(list, weld_temp_name_list[i], "val"))
+                weld_controller->weld_temp[i] = get_comp(list, weld_temp_name_list[i])->val;
         }
         for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
         {
-            command_get_comp_val(list, weld_time_name_list[i], "val");
+            if (command_get_comp_val(list, weld_time_name_list[i], "val"))
+                weld_controller->weld_time[i] = get_comp(list, weld_time_name_list[i])->val;
         }
+        command_get_comp_val(list, "count", "val");
+        if (weld_controller->weld_count != get_comp(list, "count")->val)
+            weld_controller->weld_count = get_comp(list, "count")->val;
     }
 
     /*---------------------------------------------handle key action end-------------------------------------------------*/
@@ -631,7 +517,6 @@ static void TStemp_pg_cb(Page_ID id)
     Component_Queue *list;
     static RDY_SCH_STATE last_key1 = RDY;
     static uint8_t last_gp = 0;
-    uint32_t screen_count;
 
     const char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "UP_DOWN"};
     const char *val_name_list[] = {"GP", "switch"};
@@ -677,12 +562,6 @@ static void TStemp_pg_cb(Page_ID id)
     switch_mode = (SWITCH_STATE)(get_comp(list, "switch")->val == 1) ? AUTO_MODE : USER_MODE;
     cur_GP = get_comp(list, "GP")->val;
 
-    if (RDY == cur_key1)
-    {
-        /*sync weld count to screen*/
-        command_set_comp_val("count", "val", weld_controller->weld_count);
-    }
-
     /*------------------------------------------- handle key action start ---------------------------------------------*/
 
     // 1、SCH——>RDY：exit change mode
@@ -713,6 +592,8 @@ static void TStemp_pg_cb(Page_ID id)
 
             command_set_comp_val(gain_name_list[1], "val",
                                  weld_controller->temp_gain2 * 100);
+            /*sync weld count to screen*/
+            command_set_comp_val("count", "val", weld_controller->weld_count);
         }
     }
 
@@ -738,14 +619,22 @@ static void TStemp_pg_cb(Page_ID id)
                                  weld_controller->temp_gain2 * 100);
         }
 
-        /*default read data from screen*/
+        /*read data from screen*/
         for (uint8_t i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
         {
-            command_get_comp_val(list, gain_name_list[i], "val");
+            if (command_get_comp_val(list, gain_name_list[i], "val"))
+                weld_controller->alarm_temp[i] = get_comp(list, alarm_temp_name_list[i])->val;
         }
         for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
         {
             command_get_comp_val(list, alarm_temp_name_list[i], "val");
+        }
+        weld_controller->temp_gain1 = get_comp(list, gain_name_list[0])->val / 100.0;
+        weld_controller->temp_gain2 = get_comp(list, gain_name_list[1])->val / 100.0;
+        command_get_comp_val(list, "count", "val");
+        if (weld_controller->weld_count != get_comp(list, "count")->val)
+        {
+            weld_controller->weld_count = get_comp(list, "count")->val;
         }
     }
 
