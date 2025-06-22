@@ -510,7 +510,7 @@
         <Ww>
           <count>4</count>
           <WinNumber>2</WinNumber>
-          <ItemText>err_ctrl</ItemText>
+          <ItemText>err_ctrl,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>5</count>
@@ -889,7 +889,7 @@
 
   <Group>
     <GroupName>HARDWARE</GroupName>
-    <tvExp>1</tvExp>
+    <tvExp>0</tvExp>
     <tvExpOptDlg>0</tvExpOptDlg>
     <cbSel>0</cbSel>
     <RteFlg>0</RteFlg>

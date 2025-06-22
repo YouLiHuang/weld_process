@@ -166,7 +166,7 @@ void Save_Param_toDisk(void)
 
 	/*gain1-gain2*/
 	SPI_Save_Word(weld_controller->temp_gain1 * 100, GAIN_BASE(cur_GP) + ADDR_OFFSET * 0);
-	SPI_Save_Word(weld_controller->temp_gain1 * 100, GAIN_BASE(cur_GP) + ADDR_OFFSET * 1);
+	SPI_Save_Word(weld_controller->temp_gain2 * 100, GAIN_BASE(cur_GP) + ADDR_OFFSET * 1);
 }
 
 /*-------------------------------------------------Load API-----------------------------------------------------*/
@@ -203,30 +203,6 @@ void Load_param(void *controller, int array_of_data)
 	}
 
 	/*param check & sync*/
-	for (uint8_t i = 0; i < sizeof(welding_time_load) / sizeof(uint16_t); i++)
-	{
-		if (i == 3 && welding_time_load[i] > 9999)
-		{
-			welding_time_load[i] = 9999;
-		}
-		else if (welding_time_load[i] > 999)
-		{
-			welding_time_load[i] = 999;
-		}
-	}
-
-	for (uint8_t i = 0; i < sizeof(welding_Temp_load) / sizeof(uint16_t); i++)
-	{
-		if (i % 2 == 0 && welding_Temp_load[i] > 200)
-		{
-			welding_Temp_load[i] = 200;
-		}
-		else if (welding_Temp_load[i] > 650)
-		{
-			welding_Temp_load[i] = 650;
-		}
-	}
-
 	// time1-time6
 	for (uint8_t i = 0; i < sizeof(welding_time_load) / sizeof(uint16_t); i++)
 	{

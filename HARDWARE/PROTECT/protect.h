@@ -32,7 +32,7 @@
 
 /*threshold kinds*/
 #define OVER_TEMP_THRESHOLD 20
-#define LOW_TEMP_THRESHOLD 20
+#define LOW_TEMP_THRESHOLD 200
 #define SENSOR_ERR_THRESHOLD 1
 #define REVERSE_ERR_THRESHOLD 20
 
