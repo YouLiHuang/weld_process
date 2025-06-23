@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-13 09:22:31
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-23 09:29:00
+ * @LastEditTime: 2025-06-23 15:09:46
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -610,7 +610,7 @@ static void First_Step()
 		}
 
 		/*low temp alarm*/
-		if (weld_controller->realtime_temp < weld_controller->second_step_start_temp + LOW_TEMP_LIMIT &&
+		if (weld_controller->realtime_temp < weld_controller->first_step_start_temp + LOW_TEMP_LIMIT &&
 			last_tick != weld_controller->step_time_tick)
 		{
 			last_tick = weld_controller->step_time_tick;
