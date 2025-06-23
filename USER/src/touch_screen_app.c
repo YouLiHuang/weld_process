@@ -613,11 +613,38 @@ static void TStemp_pg_cb(Page_ID id)
                                      weld_controller->alarm_temp[i]);
             }
 
-            command_set_comp_val(gain_name_list[0], "val",
-                                 weld_controller->temp_gain1 * 100);
+            float gain_float = 0.0;
+            float gain_delta = 0.0;
+            uint16_t gain_int = 0;
 
-            command_set_comp_val(gain_name_list[1], "val",
-                                 weld_controller->temp_gain2 * 100);
+            gain_float = weld_controller->temp_gain1 * 100.0;
+            gain_int = gain_float;
+            gain_delta = gain_float - gain_int;
+            if (gain_delta >= 0.5)
+            {
+                command_set_comp_val(gain_name_list[0], "val",
+                                     gain_int + 1);
+            }
+            else
+            {
+                command_set_comp_val(gain_name_list[0], "val",
+                                     gain_int);
+            }
+
+            gain_float = weld_controller->temp_gain2 * 100.0;
+            gain_int = gain_float;
+            gain_delta = gain_float - gain_int;
+            if (gain_delta >= 0.5)
+            {
+                command_set_comp_val(gain_name_list[1], "val",
+                                     gain_int + 1);
+            }
+            else
+            {
+                command_set_comp_val(gain_name_list[1], "val",
+                                     gain_int);
+            }
+
             /*sync weld count to screen*/
             command_set_comp_val("count", "val", weld_controller->weld_count);
         }
@@ -757,6 +784,7 @@ static void TSwave_pg_cb(Page_ID id)
         uint16_t delta = 0;
         /*clear screen*/
         command_send("cle wave_line.id,0");
+        OSTimeDly(10, OS_OPT_TIME_DLY, &err);
         /*后续改为透传模式！！！*/
         if (temp_draw_ctrl->third_step_index_start % win_width == 0)
             delta = temp_draw_ctrl->third_step_index_start / win_width;

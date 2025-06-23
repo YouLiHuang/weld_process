@@ -167,8 +167,8 @@ void Save_Param_toDisk(void)
 	}
 
 	/*gain1-gain2*/
-	SPI_Save_Word(weld_controller->temp_gain1 * 100, GAIN_BASE(cur_GP) + ADDR_OFFSET * 0);
-	SPI_Save_Word(weld_controller->temp_gain2 * 100, GAIN_BASE(cur_GP) + ADDR_OFFSET * 1);
+	SPI_Save_Word(weld_controller->temp_gain1 * 100.0, GAIN_BASE(cur_GP) + ADDR_OFFSET * 0);
+	SPI_Save_Word(weld_controller->temp_gain2 * 100.0, GAIN_BASE(cur_GP) + ADDR_OFFSET * 1);
 }
 
 /*-------------------------------------------------Load API-----------------------------------------------------*/

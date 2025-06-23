@@ -905,7 +905,6 @@ void error_task(void *p_arg)
 {
 	OS_ERR err;
 	bool err_wait = false;
-	Page_ID cur_id;
 
 	while (1)
 	{

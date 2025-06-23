@@ -31,7 +31,7 @@
 /* Temperature control ---------------------------------------------------------------------------*/
 
 /*Temperature control parameters*/
-#define STABLE_ERR_E 20              // Steady-state error compensation
+#define STABLE_ERR_E 15              // Steady-state error compensation
 #define STABLE_ERR_K 35              // Steady-state error compensation
 #define STABLE_ERR_J 35              // Steady-state error compensation
 #define FAST_RISE_TIME 150           // Cold-start temperature compensation time
