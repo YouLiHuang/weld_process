@@ -324,13 +324,13 @@ static void TSModbus_Sync_FromUi(Page_ID id)
             usRegHoldingBuf[index] = weld_controller->weld_time[1];
             break;
         case HOLD_ADDR_13:
-            usRegHoldingBuf[index] = weld_controller->weld_time[2];
-            break;
-        case HOLD_ADDR_14:
             usRegHoldingBuf[index] = weld_controller->weld_time[3];
             break;
-        case HOLD_ADDR_15:
+        case HOLD_ADDR_14:
             usRegHoldingBuf[index] = weld_controller->weld_time[4];
+            break;
+        case HOLD_ADDR_15:
+            usRegHoldingBuf[index] = weld_controller->weld_time[5];
             break;
         case HOLD_ADDR_16:
             usRegHoldingBuf[index] = weld_controller->weld_count;

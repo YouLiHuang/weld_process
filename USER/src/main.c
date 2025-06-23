@@ -252,7 +252,7 @@ int main(void)
 	Load_data_from_mem();
 
 #if MODBUSSLAVE_ENABLE
-	eMBInit(MB_RTU, 1, 3, Baud_Rate_Modbus, MB_PAR_NONE, 1);
+	eMBInit(MB_RTU, 1, 3, 115200, MB_PAR_NONE, 1);
 	eMBEnable();
 #else
 	modbus_serial_init(115200);
@@ -1109,7 +1109,7 @@ void read_task(void *p_arg)
 			TSpage_process(request_PGManger()->id);
 		}
 
-		// Modbus_reg_sync();
+		Modbus_reg_sync();
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);
 	}
