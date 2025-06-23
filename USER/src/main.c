@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-23 09:27:58
+ * @LastEditTime: 2025-06-23 12:29:50
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -392,37 +392,53 @@ and the time slice length is 1 system clock beat, 1 ms
 
 static bool Temp_up_err_callback(uint8_t index)
 {
+	Page_ID cur_id;
+	cur_id = request_PGManger()->id;
+	Page_to(cur_id, ALARM_PAGE);
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
 	return true;
 }
 
 static bool Temp_down_err_callback(uint8_t index)
 {
-
+	Page_ID cur_id;
+	cur_id = request_PGManger()->id;
+	Page_to(cur_id, ALARM_PAGE);
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
 	return true;
 }
 
 static bool Current_out_of_ctrl_callback(uint8_t index)
 {
+	Page_ID cur_id;
+	cur_id = request_PGManger()->id;
+	Page_to(cur_id, ALARM_PAGE);
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
 	return true;
 }
 static bool Thermocouple_recheck_callback(uint8_t index)
 {
-
+	Page_ID cur_id;
+	cur_id = request_PGManger()->id;
+	Page_to(cur_id, ALARM_PAGE);
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
 	return true;
 }
 
 static bool Transformer_over_heat_callback(uint8_t index)
 {
+	Page_ID cur_id;
+	cur_id = request_PGManger()->id;
+	Page_to(cur_id, ALARM_PAGE);
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
 	return true;
 }
 
 static bool Radiator_over_heat_callback(uint8_t index)
 {
+	Page_ID cur_id;
+	cur_id = request_PGManger()->id;
+	Page_to(cur_id, ALARM_PAGE);
 	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
 	return true;
 }
@@ -950,8 +966,6 @@ void error_task(void *p_arg)
 				break;
 			}
 
-			cur_id = request_PGManger()->id;
-			Page_to(cur_id, ALARM_PAGE);
 			for (uint8_t i = 0; i < err_ctrl->error_cnt; i++)
 			{
 				if (true == err_ctrl->err_list[i]->state && err_ctrl->err_list[i]->error_callback != NULL)

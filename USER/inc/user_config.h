@@ -31,12 +31,12 @@
 /* Temperature control ---------------------------------------------------------------------------*/
 
 /*Temperature control parameters*/
-#define STABLE_ERR_E 10              // Steady-state error compensation
+#define STABLE_ERR_E 30              // Steady-state error compensation
 #define STABLE_ERR_K 35              // Steady-state error compensation
 #define STABLE_ERR_J 35              // Steady-state error compensation
 #define FAST_RISE_TIME 150           // Cold-start temperature compensation time
 #define COMPENSATION_THRESHOLD 0.98f // Heat compensation temperature detection threshold
-#define RISE_TIME_LIMIT 1500         // max of the rise time
+#define RISE_TIME_LIMIT 2000         // max of the rise time
 #define TRANSITION_TIME 150          // Thermal compensation time
 #define TRANSITION_TIME_BASE 0.1     // coefficients of heat compensation time - Baseline value
 #define TRANSITION_TIME_CORRECT 2.9  // coefficients of heat compensation time - Adjustment range
