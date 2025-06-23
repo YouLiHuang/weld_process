@@ -507,14 +507,22 @@ static void TSparam_pg_cb(Page_ID id)
         /*read data from screen*/
         for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
         {
-            if (command_get_comp_val(list, weld_temp_name_list[i], "val"))
-                weld_controller->weld_temp[i] = get_comp(list, weld_temp_name_list[i])->val;
+            command_get_comp_val(list, weld_temp_name_list[i], "val");
         }
         for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
         {
-            if (command_get_comp_val(list, weld_time_name_list[i], "val"))
-                weld_controller->weld_time[i] = get_comp(list, weld_time_name_list[i])->val;
+            command_get_comp_val(list, weld_time_name_list[i], "val");
         }
+
+        for (uint8_t i = 0; i < sizeof(weld_temp_name_list) / sizeof(char *); i++)
+        {
+            weld_controller->weld_temp[i] = get_comp(list, weld_temp_name_list[i])->val;
+        }
+        for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
+        {
+            weld_controller->weld_time[i] = get_comp(list, weld_time_name_list[i])->val;
+        }
+
         command_get_comp_val(list, "count", "val");
         if (weld_controller->weld_count != get_comp(list, "count")->val)
             weld_controller->weld_count = get_comp(list, "count")->val;
@@ -675,15 +683,20 @@ static void TStemp_pg_cb(Page_ID id)
         /*read data from screen*/
         for (uint8_t i = 0; i < sizeof(gain_name_list) / sizeof(char *); i++)
         {
-            if (command_get_comp_val(list, gain_name_list[i], "val"))
-                weld_controller->alarm_temp[i] = get_comp(list, alarm_temp_name_list[i])->val;
+            command_get_comp_val(list, gain_name_list[i], "val");
         }
         for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
         {
             command_get_comp_val(list, alarm_temp_name_list[i], "val");
         }
+
         weld_controller->temp_gain1 = get_comp(list, gain_name_list[0])->val / 100.0;
         weld_controller->temp_gain2 = get_comp(list, gain_name_list[1])->val / 100.0;
+        for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
+        {
+            weld_controller->alarm_temp[i] = get_comp(list, alarm_temp_name_list[i])->val;
+        }
+
         command_get_comp_val(list, "count", "val");
         if (weld_controller->weld_count != get_comp(list, "count")->val)
         {

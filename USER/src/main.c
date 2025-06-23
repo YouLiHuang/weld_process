@@ -1110,12 +1110,10 @@ void read_task(void *p_arg)
 		/*query page id*/
 		if (Page_id_get() == true)
 		{
-			OSMutexPend(&ModBus_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 			TSpage_process(request_PGManger()->id);
-			OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
 		}
 
-		Modbus_reg_sync();
+		//Modbus_reg_sync();
 
 		OSTimeDlyHMSM(0, 0, 0, 30, OS_OPT_TIME_PERIODIC, &err);
 	}
