@@ -32,9 +32,9 @@
 
 /*threshold kinds*/
 #define OVER_TEMP_THRESHOLD 20
-#define LOW_TEMP_THRESHOLD 200
-#define SENSOR_ERR_THRESHOLD 1
-#define REVERSE_ERR_THRESHOLD 20
+#define LOW_TEMP_THRESHOLD 100
+#define SENSOR_ERR_THRESHOLD 5
+#define REVERSE_ERR_THRESHOLD 100
 
 typedef bool (*err_callback)(u8 index);
 typedef bool (*err_reset_callback)(u8 index);
@@ -50,7 +50,8 @@ typedef enum mERROR_TYPE
     IGBT_OVER_HEAT,
     RADIATOR,
     TRANSFORMER_OVER_HEAT,
-    SENSOR_ERROR
+    SENSOR_ERROR,
+    TEMP_RISE_SLOW
 
 } mERROR_TYPE;
 

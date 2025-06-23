@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-13 09:22:31
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-22 11:02:33
+ * @LastEditTime: 2025-06-23 09:29:00
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -569,6 +569,7 @@ static void First_Step()
 	bool target_temp_enter = false;
 	uint16_t target_temp = 0.98 * weld_controller->weld_temp[0];
 	uint16_t time_limit = RISE_TIME_LIMIT;
+	uint16_t last_tick = 0;
 
 	/*enter first step*/
 	weld_controller->state = FIRST_STATE;
@@ -608,18 +609,20 @@ static void First_Step()
 			break;
 		}
 
-		/*low alarm*/
-		// if (weld_controller->realtime_temp < weld_controller->first_step_start_temp + LOW_TEMP_LIMIT)
-		// {
-		// 	if (err_ctrl->temp_low_cnt++ > err_ctrl->temp_low_threshold)
-		// 	{
-		// 		stop_weld();
-		// 		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-		// 		OS_ERR err;
-		// 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-		// 		break;
-		// 	}
-		// }
+		/*low temp alarm*/
+		if (weld_controller->realtime_temp < weld_controller->second_step_start_temp + LOW_TEMP_LIMIT &&
+			last_tick != weld_controller->step_time_tick)
+		{
+			last_tick = weld_controller->step_time_tick;
+			if (err_ctrl->temp_low_cnt++ > err_ctrl->temp_low_threshold)
+			{
+				stop_weld();
+				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+				OS_ERR err;
+				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+				break;
+			}
+		}
 
 		/*restrict output*/
 		if (weld_controller->realtime_temp < weld_controller->restrict_temp)
@@ -679,7 +682,10 @@ static void Second_Step()
 	Steady_state_coefficient ss = weld_controller->ss_coefficient;
 	uint16_t second_temp_record_start = weld_controller->weld_temp[1] * TEMP_AVG_SAMPLE_START;
 	uint16_t current_hold_time = 0;
+	uint16_t time_limit = RISE_TIME_LIMIT;
 	uint16_t hold_time = weld_controller->weld_time[2];
+	uint16_t last_tick = 0;
+
 	/*enter second step*/
 	weld_controller->state = SECOND_STATE;
 	/*start sample*/
@@ -711,7 +717,7 @@ static void Second_Step()
 
 	/*real-time control*/
 	TIM_Cmd(TIM5, ENABLE);
-	while (weld_controller->step_time_tick < weld_controller->weld_time[3])
+	while (weld_controller->step_time_tick < time_limit)
 	{
 		/*temp sample*/
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
@@ -726,18 +732,30 @@ static void Second_Step()
 		}
 
 		/*low temp alarm*/
-		// if (weld_controller->realtime_temp < weld_controller->second_step_start_temp + LOW_TEMP_LIMIT &&
-		// 	weld_controller->realtime_temp > weld_controller->second_step_start_temp - LOW_TEMP_LIMIT)
-		// {
-		// 	if (err_ctrl->temp_low_cnt++ > err_ctrl->temp_low_threshold)
-		// 	{
-		// 		stop_weld();
-		// 		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
-		// 		OS_ERR err;
-		// 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
-		// 		break;
-		// 	}
-		// }
+		if (weld_controller->realtime_temp < weld_controller->second_step_start_temp + LOW_TEMP_LIMIT &&
+			last_tick != weld_controller->step_time_tick)
+		{
+			last_tick = weld_controller->step_time_tick;
+			if (err_ctrl->temp_low_cnt++ > err_ctrl->temp_low_threshold)
+			{
+				stop_weld();
+				err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+				OS_ERR err;
+				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+				break;
+			}
+		}
+
+		/*rise too slow alarm*/
+		if (weld_controller->step_time_tick >= time_limit &&
+			weld_controller->enter_transition_flag == false)
+		{
+			stop_weld();
+			err_get_type(err_ctrl, TEMP_RISE_SLOW)->state = true;
+			OS_ERR err;
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+			break;
+		}
 
 		/*second step temp avg record*/
 		if (weld_controller->realtime_temp >= second_temp_record_start &&
@@ -767,6 +785,7 @@ static void Second_Step()
 				weld_controller->enter_transition_time = weld_controller->step_time_tick;
 				/*hold time*/
 				weld_controller->step_time_tick = 0;
+				time_limit = weld_controller->weld_time[3];
 			}
 		}
 

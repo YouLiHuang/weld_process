@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-22 16:12:22
+ * @LastEditTime: 2025-06-23 09:27:58
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -93,6 +93,7 @@ static bool Current_out_of_ctrl_callback(uint8_t index);
 static bool Thermocouple_recheck_callback(uint8_t index);
 static bool Transformer_over_heat_callback(uint8_t index);
 static bool Radiator_over_heat_callback(uint8_t index);
+static bool Temp_rise_slow_callback(uint8_t index);
 /*Error reset callback -------------------------------------------------------*/
 static bool Thermocouple_reset_callback(uint8_t index);
 static bool Current_out_of_ctrl_reset_callback(uint8_t index);
@@ -100,6 +101,7 @@ static bool Temp_up_reset_callback(uint8_t index);
 static bool Temp_down_reset_callback(uint8_t index);
 static bool Transformer_reset_callback(uint8_t index);
 static bool Radiator_reset_callback(uint8_t index);
+static bool Temp_rise_slow_reset_Callback(uint8_t index);
 /*main task functions --------------------------------------------------------*/
 static void Power_on_check(void);
 static bool Thermocouple_check(void);
@@ -116,6 +118,7 @@ const error_match_list match_list[] = {
 	{TRANSFORMER_OVER_HEAT, "f7", Transformer_over_heat_callback, Transformer_reset_callback},
 	{SENSOR_ERROR, "f8", Thermocouple_recheck_callback, Thermocouple_reset_callback},
 	{MCU_OVER_HEAT, "f9", NULL, NULL},
+	{TEMP_RISE_SLOW, "f12", Temp_rise_slow_callback, Temp_rise_slow_reset_Callback}
 
 };
 
@@ -424,6 +427,14 @@ static bool Radiator_over_heat_callback(uint8_t index)
 	return true;
 }
 
+static bool Temp_rise_slow_callback(uint8_t index)
+{
+	Page_ID cur_id = request_PGManger()->id;
+	Page_to(cur_id, ALARM_PAGE_EXTRA);
+	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
+	return true;
+}
+
 /*---------------------------------------------------------------------------------------*/
 /*--------------------------------------reset callback-----------------------------------*/
 /*---------------------------------------------------------------------------------------*/
@@ -529,6 +540,14 @@ static bool Radiator_reset_callback(uint8_t index)
 		ret = true;
 	}
 	return ret;
+}
+
+static bool Temp_rise_slow_reset_Callback(uint8_t index)
+{
+
+	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
+	err_ctrl->err_list[index]->state = false; // clear error state
+	return true;
 }
 
 /*--------------------------------------------------------------------------------------*/
