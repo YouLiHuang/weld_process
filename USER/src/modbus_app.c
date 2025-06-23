@@ -289,6 +289,7 @@ void Modbus_reg_sync(void)
             }
         }
 
+#if 1
         /*holding reg*/
         for (hold_reg_index = HOLD_ADDR_0; hold_reg_index <= HOLD_ADDR_17; hold_reg_index++)
         {
@@ -467,7 +468,7 @@ void Modbus_reg_sync(void)
                 break;
             }
         }
-
+#endif
         /*discrete reg - read only*/
         for (discrete_index = DISCRETE_ADDR_0; discrete_index <= DISCRETE_ADDR_11; discrete_index++)
         {

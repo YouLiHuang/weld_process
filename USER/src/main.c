@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-23 12:29:50
+ * @LastEditTime: 2025-06-23 21:33:57
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -674,8 +674,12 @@ static bool Thermocouple_check(void)
 	{
 		err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
 		OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_ALL, &err);
+		return false;
 	}
-	return check_state;
+	else
+	{
+		return true;
+	}
 
 #else
 	return true;
@@ -1106,7 +1110,9 @@ void read_task(void *p_arg)
 		/*query page id*/
 		if (Page_id_get() == true)
 		{
+			OSMutexPend(&ModBus_Mux, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
 			TSpage_process(request_PGManger()->id);
+			OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
 		}
 
 		Modbus_reg_sync();
