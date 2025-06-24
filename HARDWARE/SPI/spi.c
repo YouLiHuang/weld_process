@@ -282,10 +282,19 @@ void Load_data_from_mem(void)
 	int temp_init[] = {250, 400, 150};
 	int alarm_temp[] = {400, 100, 650, 100, 650, 100};
 
+	uint32_t baud_rate_default = 115200;
+
+	// GP
+	SPI_Save_Word(0, GP_ADRESS);
+	// machine id
+	SPI_Save_Word(1, SLAVER_ADRESS);
+	// baud rate
+	SPI_Save_Word(baud_rate_default & 0xff, MODBUS_RATE_ADRESSL);
+	SPI_Save_Word(baud_rate_default >> 16, MODBUS_RATE_ADRESSH);
+
 	for (int array_of_data = 1; array_of_data < 20; array_of_data++)
 	{
-		// GP
-		SPI_Save_Word(0, array_of_data);
+
 		// time1-time5
 		for (uint8_t i = 0; i < sizeof(time_init) / sizeof(int); i++)
 		{

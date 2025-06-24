@@ -621,14 +621,14 @@ static void TStemp_pg_cb(Page_ID id)
                                      weld_controller->alarm_temp[i]);
             }
 
-            float gain_float = 0.0;
-            float gain_delta = 0.0;
+            float gain_float = 0.0f;
+            float gain_delta = 0.0f;
             uint16_t gain_int = 0;
 
-            gain_float = weld_controller->temp_gain1 * 100.0;
+            gain_float = weld_controller->temp_gain1 * 100.0f;
             gain_int = gain_float;
             gain_delta = gain_float - gain_int;
-            if (gain_delta >= 0.5)
+            if (gain_delta >= 0.5f)
             {
                 command_set_comp_val(gain_name_list[0], "val",
                                      gain_int + 1);
@@ -639,10 +639,10 @@ static void TStemp_pg_cb(Page_ID id)
                                      gain_int);
             }
 
-            gain_float = weld_controller->temp_gain2 * 100.0;
+            gain_float = weld_controller->temp_gain2 * 100.0f;
             gain_int = gain_float;
             gain_delta = gain_float - gain_int;
-            if (gain_delta >= 0.5)
+            if (gain_delta >= 0.5f)
             {
                 command_set_comp_val(gain_name_list[1], "val",
                                      gain_int + 1);

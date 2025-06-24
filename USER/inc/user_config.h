@@ -35,22 +35,16 @@
 #define STABLE_ERR_K 35              // Steady-state error compensation
 #define STABLE_ERR_J 35              // Steady-state error compensation
 #define FAST_RISE_TIME 150           // Cold-start temperature compensation time
-#define COMPENSATION_THRESHOLD 0.98f // Heat compensation temperature detection threshold
 #define RISE_TIME_LIMIT 2500         // max of the rise time
-#define TRANSITION_TIME 150          // Thermal compensation time
-#define TRANSITION_TIME_BASE 0.1     // coefficients of heat compensation time - Baseline value
-#define TRANSITION_TIME_CORRECT 2.9  // coefficients of heat compensation time - Adjustment range
-#define DEFAULT_GAIN1 0.7            // Determine the compensation strength
-#define DEFAULT_GAIN2 0.64           // Determine the compensation time
-#define DEFAULT_SLOPE 1.3
-#define DEFAULT_INTERCEPT 1060
-#define FINAL_DUTY_LIMIT 1800
-#define RESTRICT_TEMP_COFF 0.95
-#define RESTRICT_BASE_COFF 0.1
-#define TEMP_AVG_SAMPLE_START 0.97
-
-#define DEFAULT_RISE_DUTY (PD_MAX * 0.5)
-#define MAX_RISE_STEP_DUTY (PD_MAX * 0.82)
+#define DEFAULT_SLOPE 1.3            // dynamic algorithm coff
+#define DEFAULT_INTERCEPT 1060       // dynamic algorithm coff
+#define FINAL_DUTY_LIMIT 1800        // dynamic algorithm limit
+#define DEFAULT_GAIN1 0.3            // Determine the compensation strength
+#define DEFAULT_GAIN2 0.3            // Determine the compensation time
+#define COMPENSATION_THRESHOLD 0.98f // Heat compensation temperature detection threshold
+#define RESTRICT_BASE_COFF 0.1       // restrict output coff
+#define RESTRICT_TEMP_COFF 0.95      // lower than this temp reestrict the output
+#define TEMP_AVG_SAMPLE_START 0.97   // higher than this temp, start temp sample
 
 /* Temperature calibration macro------------------------------------------------------------------*/
 #define ROOM_TEMP 20     // Default room temperature

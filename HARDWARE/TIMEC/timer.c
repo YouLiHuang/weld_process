@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-01-15 19:17:48
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-20 10:00:40
+ * @LastEditTime: 2025-06-24 09:46:26
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -220,32 +220,6 @@ void TIM5_IRQHandler(void)
 		case SECOND_STATE:
 
 #if PID_DEBUG == 0
-			//			if (weld_controller->enter_transition_flag == false)
-			//			{
-			//				/*no first step*/
-			//				if (weld_controller->weld_time[1] == 0)
-			//				{
-			//					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] * COMPENSATION_THRESHOLD,
-			//																 weld_controller->realtime_temp,
-			//																 weld_controller->Duty_Cycle,
-			//																 weld_controller->pid_ctrl);
-			//				}
-			//				else
-			//				{
-			//					weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + weld_controller->temp_comp,
-			//																 weld_controller->realtime_temp,
-			//																 weld_controller->Duty_Cycle,
-			//																 weld_controller->pid_ctrl);
-			//				}
-			//			}
-			//			else
-			//			{
-			//				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + weld_controller->temp_comp,
-			//															 weld_controller->realtime_temp,
-			//															 weld_controller->Duty_Cycle,
-			//															 weld_controller->pid_ctrl);
-			//			}
-
 			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + weld_controller->temp_comp,
 														 weld_controller->realtime_temp,
 														 weld_controller->Duty_Cycle,
@@ -286,6 +260,7 @@ void TIM5_IRQHandler(void)
 			break;
 		}
 
+		/*--------------------------------------------------------------------temp sample----------------------------------------------------------------------*/
 		/*Data visualization collection, Reduce the sampling rate*/
 		if (weld_controller->weld_time_tick % temp_draw_ctrl->sample_freq == 0)
 		{
@@ -293,25 +268,6 @@ void TIM5_IRQHandler(void)
 				temp_draw_ctrl->temp_buf[temp_draw_ctrl->current_index++] = weld_controller->realtime_temp;
 		}
 	}
-
-	/*restrict output*/
-	// switch (current_Thermocouple->type)
-	// {
-
-	// case E_TYPE:
-	// 	if (weld_controller->Duty_Cycle > PD_MAX)
-	// 		weld_controller->Duty_Cycle = PD_MAX;
-	// 	break;
-
-	// case J_TYPE:
-	// case K_TYPE:
-	// 	if (weld_controller->realtime_temp < weld_controller->restrict_temp)
-	// 	{
-	// 		if (weld_controller->Duty_Cycle > weld_controller->restrict_duty)
-	// 			weld_controller->Duty_Cycle = weld_controller->restrict_duty;
-	// 	}
-	// 	break;
-	// }
 
 	TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
 

@@ -1,5 +1,14 @@
 /*
  * @Author: huangyouli.scut@gmail.com
+ * @Date: 2025-06-24 09:38:01
+ * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
+ * @LastEditTime: 2025-06-24 09:54:34
+ * @Description:
+ *
+ * Copyright (c) 2025 by huangyouli, All Rights Reserved.
+ */
+/*
+ * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-13 09:22:31
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
  * @LastEditTime: 2025-06-23 15:09:46
@@ -330,15 +339,20 @@ static void down_temp_line()
 static void display_temp_cal(void)
 {
 	uint32_t sum = 0;
-
 	/*step 1*/
-	temp_draw_ctrl->display_temp[0] = weld_controller->second_step_start_temp;
+	sum = 0;
+	for (uint16_t i = temp_draw_ctrl->first_step_stable_index; i < temp_draw_ctrl->first_step_index_end; i++)
+		sum += temp_draw_ctrl->temp_buf[i];
+	temp_draw_ctrl->display_temp[0] = sum / (temp_draw_ctrl->first_step_index_end - temp_draw_ctrl->first_step_stable_index + 1);
+
 	/*step 2*/
+	sum = 0;
 	for (uint16_t i = temp_draw_ctrl->second_step_stable_index; i < temp_draw_ctrl->second_step_index_end; i++)
 		sum += temp_draw_ctrl->temp_buf[i];
 	temp_draw_ctrl->display_temp[1] = sum / (temp_draw_ctrl->second_step_index_end - temp_draw_ctrl->second_step_stable_index + 1);
+
 	/*step 3*/
-	temp_draw_ctrl->display_temp[2] = weld_controller->weld_temp[2];
+	// temp_draw_ctrl->display_temp[2] = weld_controller->weld_temp[2];
 }
 
 /**
@@ -570,6 +584,7 @@ static void First_Step()
 	uint16_t target_temp = 0.98 * weld_controller->weld_temp[0];
 	uint16_t time_limit = RISE_TIME_LIMIT;
 	uint16_t last_tick = 0;
+	uint16_t first_temp_record_start = weld_controller->weld_temp[0] * TEMP_AVG_SAMPLE_START;
 
 	/*enter first step*/
 	weld_controller->state = FIRST_STATE;
@@ -622,6 +637,16 @@ static void First_Step()
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 				break;
 			}
+		}
+
+		/*first step temp avg record*/
+		if (weld_controller->realtime_temp >= first_temp_record_start &&
+			temp_draw_ctrl->first_step_stable_index == 0)
+		{
+			if (weld_controller->pid_ctrl->stable_threshold_cnt >= weld_controller->pid_ctrl->stable_threshold)
+				temp_draw_ctrl->first_step_stable_index = temp_draw_ctrl->current_index;
+			else
+				weld_controller->pid_ctrl->stable_threshold_cnt++;
 		}
 
 		/*restrict output*/
