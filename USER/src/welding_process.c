@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-24 09:38:01
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-24 15:41:27
+ * @LastEditTime: 2025-06-24 15:44:28
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -839,7 +839,7 @@ static void Second_Step()
 				weld_controller->Duty_Cycle = weld_controller->restrict_duty;
 		}
 
-				if (weld_controller->Duty_Cycle > PD_MAX)
+		if (weld_controller->Duty_Cycle > PD_MAX)
 			weld_controller->Duty_Cycle = PD_MAX;
 		TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
 		TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
