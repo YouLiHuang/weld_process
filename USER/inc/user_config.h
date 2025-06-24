@@ -45,7 +45,7 @@
 #define RESTRICT_BASE_COFF 0.1       // restrict output coff
 #define RESTRICT_TEMP_COFF 0.95      // lower than this temp reestrict the output
 #define TEMP_AVG_SAMPLE_START 0.97   // higher than this temp, start temp sample
-#define DELTA_STABLE 5.0f
+#define DELTA_STABLE 0.3f
 
 /* Temperature calibration macro------------------------------------------------------------------*/
 #define ROOM_TEMP 20     // Default room temperature
