@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-24 09:38:01
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-24 09:54:34
+ * @LastEditTime: 2025-06-24 15:23:20
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -451,8 +451,8 @@ static void Weld_Preparation()
 	if (weld_controller->weld_temp[1] < USER_SET_MIN_TEMP)
 		weld_controller->weld_temp[1] = USER_SET_MIN_TEMP;
 
-	if (weld_controller->weld_temp[0] > USER_FIRST_SET_MAX)
-		weld_controller->weld_temp[0] = USER_FIRST_SET_MAX;
+	if (weld_controller->weld_temp[0] > USER_SET_MAX_TEMP)
+		weld_controller->weld_temp[0] = USER_SET_MAX_TEMP;
 
 	if (weld_controller->weld_temp[1] > USER_SET_MAX_TEMP)
 		weld_controller->weld_temp[1] = USER_SET_MAX_TEMP;
@@ -746,7 +746,8 @@ static void Second_Step()
 	{
 		/*temp sample*/
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
-		/*alarm*/
+		/*------------------------------------------------------------- alarm -------------------------------------------------------------*/
+		/*temp too high*/
 		if (weld_controller->realtime_temp > weld_controller->alarm_temp[2])
 		{
 			stop_weld();
@@ -756,7 +757,7 @@ static void Second_Step()
 			break;
 		}
 
-		/*low temp alarm*/
+		/*low temp alarm(check per ms)*/
 		if (weld_controller->realtime_temp < weld_controller->second_step_start_temp + LOW_TEMP_LIMIT &&
 			last_tick != weld_controller->step_time_tick)
 		{
@@ -782,14 +783,40 @@ static void Second_Step()
 			break;
 		}
 
+		/*------------------------------------------------------------ control -----------------------------------------------------------*/
+		
 		/*second step temp avg record*/
-		if (weld_controller->realtime_temp >= second_temp_record_start &&
-			temp_draw_ctrl->second_step_stable_index == 0)
+		if (weld_controller->pid_ctrl->delta < DELTA_STABLE && weld_controller->pid_ctrl->delta > -1*DELTA_STABLE)
 		{
 			if (weld_controller->pid_ctrl->stable_threshold_cnt >= weld_controller->pid_ctrl->stable_threshold)
+			{
+				/*record tick*/
 				temp_draw_ctrl->second_step_stable_index = temp_draw_ctrl->current_index;
+
+				/*only execute the code below one time ———> enter hold area*/
+				if (weld_controller->enter_transition_flag == false &&
+					weld_controller->enter_transition_time == 0)
+				{
+					weld_controller->enter_transition_flag = true;
+					weld_controller->enter_transition_time = weld_controller->step_time_tick;
+					/*hold time*/
+					weld_controller->step_time_tick = 0;
+					time_limit = weld_controller->weld_time[3];
+				}
+			}
 			else
 				weld_controller->pid_ctrl->stable_threshold_cnt++;
+		}
+
+		/*in hold area hold the temp (heat compensation)*/
+		if (weld_controller->enter_transition_flag == true)
+		{
+			current_hold_time = weld_controller->step_time_tick - weld_controller->enter_transition_time;
+			if (current_hold_time < hold_time)
+			{
+				if (weld_controller->Duty_Cycle < weld_controller->final_duty)
+					weld_controller->Duty_Cycle = weld_controller->final_duty;
+			}
 		}
 
 		/*temp rise step ---> restrict output*/
@@ -800,30 +827,19 @@ static void Second_Step()
 		}
 
 		/*enter transition area (heat compensation)*/
-		if (weld_controller->realtime_temp > weld_controller->hold_temp)
-		{
-			/*only execute the code below one time*/
-			if (weld_controller->enter_transition_flag == false &&
-				weld_controller->enter_transition_time == 0)
-			{
-				weld_controller->enter_transition_flag = true;
-				weld_controller->enter_transition_time = weld_controller->step_time_tick;
-				/*hold time*/
-				weld_controller->step_time_tick = 0;
-				time_limit = weld_controller->weld_time[3];
-			}
-		}
-
-		/*in transition area hold the temp (heat compensation)*/
-		if (weld_controller->enter_transition_flag == true)
-		{
-			current_hold_time = weld_controller->step_time_tick - weld_controller->enter_transition_time;
-			if (current_hold_time < hold_time)
-			{
-				if (weld_controller->Duty_Cycle < weld_controller->final_duty)
-					weld_controller->Duty_Cycle = weld_controller->final_duty;
-			}
-		}
+		// if (weld_controller->realtime_temp > weld_controller->hold_temp)
+		// {
+		// 	/*only execute the code below one time*/
+		// 	if (weld_controller->enter_transition_flag == false &&
+		// 		weld_controller->enter_transition_time == 0)
+		// 	{
+		// 		weld_controller->enter_transition_flag = true;
+		// 		weld_controller->enter_transition_time = weld_controller->step_time_tick;
+		// 		/*hold time*/
+		// 		weld_controller->step_time_tick = 0;
+		// 		time_limit = weld_controller->weld_time[3];
+		// 	}
+		// }
 
 		if (weld_controller->Duty_Cycle > PD_MAX)
 			weld_controller->Duty_Cycle = PD_MAX;

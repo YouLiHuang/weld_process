@@ -45,6 +45,7 @@
 #define RESTRICT_BASE_COFF 0.1       // restrict output coff
 #define RESTRICT_TEMP_COFF 0.95      // lower than this temp reestrict the output
 #define TEMP_AVG_SAMPLE_START 0.97   // higher than this temp, start temp sample
+#define DELTA_STABLE 5.0f
 
 /* Temperature calibration macro------------------------------------------------------------------*/
 #define ROOM_TEMP 20     // Default room temperature
@@ -90,9 +91,9 @@
 #define CHECKOUT_PIN_K GPIO_Pin_13
 #define CHECKIN_PIN_K GPIO_Pin_14
 /*UI PARAM ----------------------------------------------------------------------------------------*/
-#define USER_FIRST_SET_MAX 300
+#define USER_FIRST_SET_MAX 650
 #define USER_SET_MAX_TEMP 650.0 // User-set maximum temperature
-#define USER_SET_MIN_TEMP 200.0 // User-set minimum temperature
+#define USER_SET_MIN_TEMP 100   // User-set minimum temperature
 #define USER_MAX_WELD_TIME 9999 // Maximum welding time
 #define USER_MAX_COUNT 50000
 #define MAX_GP 19
