@@ -33,7 +33,4 @@ typedef uint32_t ULONG;
 #define FALSE 0
 #endif
 
-// void EnterCriticalSection(void);
-// void ExitCriticalSection(void);
-
 #endif

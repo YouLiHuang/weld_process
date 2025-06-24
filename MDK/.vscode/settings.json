@@ -75,7 +75,8 @@
         "thermocouple.h": "c",
         "mb.h": "c",
         "touch_screen_app.h": "c",
-        "stm32f4xx_tim.h": "c"
+        "stm32f4xx_tim.h": "c",
+        "port.h": "c"
     },
     // 头部注释
     "fileheader.customMade": {
