@@ -9,6 +9,7 @@ typedef struct point_save
 
 } point;
 
+int16_t findValue(uint16_t *arr, uint16_t size, uint16_t val);
 void dynamic_param_adjust(void);
 void dynamic_pwm_adjust(void);
 

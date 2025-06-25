@@ -334,15 +334,15 @@ void Modbus_reg_sync(void)
                 break;
                 /*two gain*/
             case HOLD_ADDR_6:
-                if (abs(usRegHoldingBuf[hold_reg_index] - weld_controller->temp_gain1 * 100) > 1 && gain1 <= 1)
+                if (abs(usRegHoldingBuf[hold_reg_index] - weld_controller->temp_gain1 * 1000) > 1 && gain1 <= 1)
                 {
-                    weld_controller->temp_gain1 = usRegHoldingBuf[hold_reg_index] / 100.0;
+                    weld_controller->temp_gain1 = usRegHoldingBuf[hold_reg_index] / 1000.0;
                 }
                 break;
             case HOLD_ADDR_7:
-                if (abs(usRegHoldingBuf[hold_reg_index] - weld_controller->temp_gain1 * 100) > 1 && gain2 <= 1)
+                if (abs(usRegHoldingBuf[hold_reg_index] - weld_controller->temp_gain1 * 1000) > 1 && gain2 <= 1)
                 {
-                    weld_controller->temp_gain2 = usRegHoldingBuf[hold_reg_index] / 100.0;
+                    weld_controller->temp_gain2 = usRegHoldingBuf[hold_reg_index] / 1000.0;
                 }
                 break;
 

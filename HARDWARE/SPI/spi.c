@@ -167,8 +167,8 @@ void Save_Param_toDisk(void)
 	}
 
 	/*gain1-gain2*/
-	SPI_Save_Word(weld_controller->temp_gain1 * 100.0, GAIN_BASE(cur_GP) + ADDR_OFFSET * 0);
-	SPI_Save_Word(weld_controller->temp_gain2 * 100.0, GAIN_BASE(cur_GP) + ADDR_OFFSET * 1);
+	SPI_Save_Word(weld_controller->temp_gain1 * 1000, GAIN_BASE(cur_GP) + ADDR_OFFSET * 0);
+	SPI_Save_Word(weld_controller->temp_gain2 * 1000, GAIN_BASE(cur_GP) + ADDR_OFFSET * 1);
 }
 
 /*-------------------------------------------------Load API-----------------------------------------------------*/
@@ -245,15 +245,15 @@ void Load_param_alarm(void *controller, int array_of_data)
 
 	for (uint8_t i = 0; i < sizeof(gain_raw) / sizeof(uint16_t); i++)
 	{
-		if (gain_raw[i] > 100)
+		if (gain_raw[i] > 1000)
 		{
-			gain_raw[i] = 100;
+			gain_raw[i] = 1000;
 		}
 	}
 
 	/*data sync to screen list*/
-	ctrl->temp_gain1 = (double)gain_raw[0] / 100.0;
-	ctrl->temp_gain2 = (double)gain_raw[1] / 100.0;
+	ctrl->temp_gain1 = (double)gain_raw[0] / 1000.0;
+	ctrl->temp_gain2 = (double)gain_raw[1] / 1000.0;
 }
 void Load_Coefficient(int array_of_data)
 {
@@ -365,8 +365,8 @@ void Load_data_from_mem(void)
 	usRegHoldingBuf[4] = weld_controller->alarm_temp[4];
 	usRegHoldingBuf[5] = weld_controller->alarm_temp[5];
 
-	usRegHoldingBuf[6] = weld_controller->temp_gain1 * 100;
-	usRegHoldingBuf[7] = weld_controller->temp_gain2 * 100;
+	usRegHoldingBuf[6] = weld_controller->temp_gain1 * 1000;
+	usRegHoldingBuf[7] = weld_controller->temp_gain2 * 1000;
 
 	usRegHoldingBuf[8] = weld_controller->weld_temp[0];
 	usRegHoldingBuf[9] = weld_controller->weld_temp[1];
@@ -415,8 +415,8 @@ void Load_data_from_mem(void)
 	{
 		command_set_comp_val_raw(alarm_name_list[i], "val", weld_controller->alarm_temp[i]);
 	}
-	command_set_comp_val_raw("temp_page.GAIN1", "val", weld_controller->temp_gain1 * 100);
-	command_set_comp_val_raw("temp_page.GAIN2", "val", weld_controller->temp_gain2 * 100);
+	command_set_comp_val_raw("temp_page.GAIN1", "val", weld_controller->temp_gain1 * 1000);
+	command_set_comp_val_raw("temp_page.GAIN2", "val", weld_controller->temp_gain2 * 1000);
 	/*默认自动模式*/
 	command_set_comp_val_raw("temp_page.switch", "val", 0);
 

@@ -302,10 +302,10 @@ static void TSModbus_Sync_FromUi(Page_ID id)
             break;
             /*two gain*/
         case HOLD_ADDR_6:
-            usRegHoldingBuf[index] = weld_controller->temp_gain1 * 100;
+            usRegHoldingBuf[index] = weld_controller->temp_gain1 * 1000;
             break;
         case HOLD_ADDR_7:
-            usRegHoldingBuf[index] = weld_controller->temp_gain2 * 100;
+            usRegHoldingBuf[index] = weld_controller->temp_gain2 * 1000;
             break;
         case HOLD_ADDR_8:
             usRegHoldingBuf[index] = weld_controller->weld_temp[0];
@@ -625,7 +625,7 @@ static void TStemp_pg_cb(Page_ID id)
             float gain_delta = 0.0f;
             uint16_t gain_int = 0;
 
-            gain_float = weld_controller->temp_gain1 * 100.0f;
+            gain_float = weld_controller->temp_gain1 * 1000.0f;
             gain_int = gain_float;
             gain_delta = gain_float - gain_int;
             if (gain_delta >= 0.5f)
@@ -639,7 +639,7 @@ static void TStemp_pg_cb(Page_ID id)
                                      gain_int);
             }
 
-            gain_float = weld_controller->temp_gain2 * 100.0f;
+            gain_float = weld_controller->temp_gain2 * 1000.0f;
             gain_int = gain_float;
             gain_delta = gain_float - gain_int;
             if (gain_delta >= 0.5f)
@@ -674,10 +674,10 @@ static void TStemp_pg_cb(Page_ID id)
             }
 
             command_set_comp_val(gain_name_list[0], "val",
-                                 weld_controller->temp_gain1 * 100);
+                                 weld_controller->temp_gain1 * 1000.0f);
 
             command_set_comp_val(gain_name_list[1], "val",
-                                 weld_controller->temp_gain2 * 100);
+                                 weld_controller->temp_gain2 * 1000.0f);
         }
 
         /*read data from screen*/
@@ -690,8 +690,8 @@ static void TStemp_pg_cb(Page_ID id)
             command_get_comp_val(list, alarm_temp_name_list[i], "val");
         }
 
-        weld_controller->temp_gain1 = get_comp(list, gain_name_list[0])->val / 100.0;
-        weld_controller->temp_gain2 = get_comp(list, gain_name_list[1])->val / 100.0;
+        weld_controller->temp_gain1 = get_comp(list, gain_name_list[0])->val / 1000.0;
+        weld_controller->temp_gain2 = get_comp(list, gain_name_list[1])->val / 1000.0;
         for (uint8_t i = 0; i < sizeof(alarm_temp_name_list) / sizeof(char *); i++)
         {
             weld_controller->alarm_temp[i] = get_comp(list, alarm_temp_name_list[i])->val;

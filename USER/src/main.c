@@ -222,7 +222,7 @@ int main(void)
 	err_clear(err_ctrl);
 
 	/*plot controller init*/
-	temp_draw_ctrl = new_temp_draw_ctrl(realtime_temp_buf, 500, 2000, 500);
+	temp_draw_ctrl = new_temp_draw_ctrl(realtime_temp_buf, 500, 3000, 500);
 
 	/*UI INIT*/
 	PGManager_init();

@@ -65,7 +65,7 @@ static int16_t findMin(uint16_t arr[], uint16_t size)
 #endif
 
 /*Find the first target point that is closest to a given value*/
-static int16_t findValue(uint16_t arr[], uint16_t size, uint16_t val)
+int16_t findValue(uint16_t *arr, uint16_t size, uint16_t val)
 {
     uint16_t index = 0;
 
@@ -162,8 +162,8 @@ void dynamic_param_adjust(void)
             second_step_last != weld_controller->weld_temp[1])
         {
             /*save best gain*/
-            SPI_Save_Word((uint16_t)weld_controller->temp_gain1 * 100, GAIN_BASE(0) + ADDR_OFFSET * 0);
-            SPI_Save_Word((uint16_t)weld_controller->temp_gain1 * 100, GAIN_BASE(0) + ADDR_OFFSET * 1);
+            SPI_Save_Word((uint16_t)weld_controller->temp_gain1 * 1000, GAIN_BASE(0) + ADDR_OFFSET * 0);
+            SPI_Save_Word((uint16_t)weld_controller->temp_gain1 * 1000, GAIN_BASE(0) + ADDR_OFFSET * 1);
         }
 
         /*record last set*/
@@ -192,11 +192,11 @@ void dynamic_param_adjust(void)
     /*data sync*/
     if (get_comp(list, "GAIN1") != NULL)
     {
-        get_comp(list, "GAIN1")->val = weld_controller->temp_gain1 * 100;
+        get_comp(list, "GAIN1")->val = weld_controller->temp_gain1 * 1000;
     }
     if (get_comp(list, "GAIN2") != NULL)
     {
-        get_comp(list, "GAIN2")->val = weld_controller->temp_gain2 * 100;
+        get_comp(list, "GAIN2")->val = weld_controller->temp_gain2 * 1000;
     }
 }
 
