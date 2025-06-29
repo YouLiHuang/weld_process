@@ -209,28 +209,31 @@ void TIM5_IRQHandler(void)
 			break;
 			/*--------------------------------------------------------------------first step----------------------------------------------------------------------*/
 		case FIRST_STATE:
-			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + weld_controller->temp_comp,
-														 weld_controller->realtime_temp,
-														 weld_controller->Duty_Cycle,
-														 weld_controller->pid_ctrl);
+			if (weld_controller->ctrl_step != FAST_RISE_STEP)
+			{
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[0] + weld_controller->temp_comp,
+															 weld_controller->realtime_temp,
+															 weld_controller->Duty_Cycle,
+															 weld_controller->pid_ctrl);
+			}
 
 			break;
 
 			/*--------------------------------------------------------------------second step----------------------------------------------------------------------*/
 		case SECOND_STATE:
-
 #if PID_DEBUG == 0
-			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + weld_controller->temp_comp,
-														 weld_controller->realtime_temp,
-														 weld_controller->Duty_Cycle,
-														 weld_controller->pid_ctrl);
-
+			if (weld_controller->ctrl_step != FAST_RISE_STEP)
+			{
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1] + weld_controller->temp_comp,
+															 weld_controller->realtime_temp,
+															 weld_controller->Duty_Cycle,
+															 weld_controller->pid_ctrl);
+			}
 #else
 			weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[1],
 														 weld_controller->realtime_temp,
 														 weld_controller->Duty_Cycle,
 														 weld_controller->pid_ctrl);
-
 #endif
 
 #if PWM_SAMPLE
