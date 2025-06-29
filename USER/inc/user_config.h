@@ -39,13 +39,11 @@
 #define DEFAULT_SLOPE 1.3            // dynamic algorithm coff
 #define DEFAULT_INTERCEPT 1060       // dynamic algorithm coff
 #define FINAL_DUTY_LIMIT 1800        // dynamic algorithm limit
-#define DEFAULT_GAIN1 0.2            // Determine the compensation strength
-#define DEFAULT_GAIN2 0.2            // Determine the compensation time
+#define DEFAULT_GAIN1 0.175          // Determine the compensation strength
+#define DEFAULT_GAIN2 0.175          // Determine the compensation time
 #define COMPENSATION_THRESHOLD 0.98f // Heat compensation temperature detection threshold
 #define RESTRICT_TEMP_ERR 20         // restrict err
 #define RESTRICT_BASE_COFF 0.1       // restrict output coff
-#define RESTRICT_TEMP_COFF 0.95      // lower than this temp reestrict the output
-#define DELTA_STABLE 5
 
 /* Temperature calibration macro------------------------------------------------------------------*/
 #define ROOM_TEMP 20     // Default room temperature

@@ -144,7 +144,7 @@ weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl)
 		ctrl->hold_temp = 0;
 		ctrl->final_duty = 0;
 		ctrl->temp_comp = STABLE_ERR_E;
-		ctrl->restrict_temp = ctrl->weld_temp[0] * RESTRICT_TEMP_COFF;
+		ctrl->restrict_temp = 0;
 		ctrl->ss_coefficient.slope = DEFAULT_SLOPE;
 		ctrl->ss_coefficient.intercept = DEFAULT_INTERCEPT;
 
