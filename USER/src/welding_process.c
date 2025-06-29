@@ -643,9 +643,8 @@ static void Preload()
 	weld_controller->step_time_tick = 0;
 }
 
-
 /**
- * @description: 
+ * @description:
  * @return {*}
  */
 static void First_Temp_ctrl()
@@ -655,7 +654,7 @@ static void First_Temp_ctrl()
 	uint16_t time_limit = weld_controller->weld_time[1];  // fast rise
 	uint16_t hold_time = weld_controller->weld_time[2];	  // hold time
 	uint16_t alarm_high = weld_controller->alarm_temp[0]; // alarm
-	uint16_t fast_rise_duty = PD_MAX / 3;
+	uint16_t fast_rise_duty = PD_MAX * 0.75;
 
 	/*enter first step*/
 	weld_controller->state = FIRST_STATE;
@@ -745,7 +744,7 @@ static void First_Temp_ctrl()
 			}
 
 			/*next step*/
-			if (weld_controller->step_time_tick >= FAST_RISE_TIME_DEFAULT - 1)
+			if (weld_controller->step_time_tick >= time_limit - 1)
 			{
 				weld_controller->step_time_tick = 0;
 				time_limit = RISE_TIME_LIMIT;
@@ -873,9 +872,9 @@ static void Second_Temp_ctrl(void)
 	uint16_t fast_rise_duty = 0;
 
 	if (weld_controller->weld_time[2] != 0)
-		fast_rise_duty = PD_MAX * (RESTRICT_BASE_COFF + (1 - RESTRICT_BASE_COFF) * weld_controller->temp_gain2);
+		fast_rise_duty = PD_MAX * (2 * RESTRICT_BASE_COFF + (1 - 2 * RESTRICT_BASE_COFF) * weld_controller->temp_gain2);
 	else
-		fast_rise_duty = PD_MAX / 3;
+		fast_rise_duty = PD_MAX * 0.75;
 
 	/*enter second step*/
 	weld_controller->state = SECOND_STATE;
