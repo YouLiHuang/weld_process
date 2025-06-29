@@ -16,6 +16,15 @@
 #include "io_ctrl.h"
 
 /*state*/
+typedef enum TEMP_CTRL_STATE
+{
+
+    FAST_RISE_STEP = 0,
+    PID_RESTRICT_STEP,
+    PID_STABLE_STEP
+
+} TEMP_CTRL_STATE;
+
 typedef enum WELD_STATE
 {
     IDEAL_STATE = 0,

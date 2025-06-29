@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-24 09:38:01
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-24 15:44:28
+ * @LastEditTime: 2025-06-29 16:22:12
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -777,6 +777,169 @@ static void First_Step()
 }
 
 /**
+ * @description:
+ * @return {*}
+ */
+static void Second_Temp_ctrl(void)
+{
+
+	TEMP_CTRL_STATE ctrl_step = FAST_RISE_STEP;
+	Page_ID cur_Pgae_id = request_PGManger()->id;
+	uint16_t last_tick = 0;
+	uint16_t time_limit = 0;
+
+	/*enter second step*/
+	weld_controller->state = SECOND_STATE;
+	/*reset timer*/
+	weld_controller->step_time_tick = 0;
+	/*start sample*/
+	temp_draw_ctrl->second_step_index_start = temp_draw_ctrl->current_index;
+	temp_draw_ctrl->second_step_stable_index = 0;
+	/*restrict param*/
+	weld_controller->restrict_temp = weld_controller->weld_temp[1] - RESTRICT_TEMP_ERR;
+	weld_controller->restrict_duty = PD_MAX * (RESTRICT_BASE_COFF + (1 - RESTRICT_BASE_COFF) * weld_controller->temp_gain2);
+
+#if PID_DEBUG
+	weld_controller->pid_ctrl->kp = pid_ctrl_debug->kp;
+	weld_controller->pid_ctrl->ki = pid_ctrl_debug->ki;
+	weld_controller->pid_ctrl->kd = pid_ctrl_debug->kd;
+#else
+	/*pid reload*/
+	pid_dynamic_reload();
+#endif
+
+	/*real-time control*/
+	TIM_Cmd(TIM5, ENABLE);
+	while (weld_controller->step_time_tick < time_limit)
+	{
+		/*temp sample*/
+		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
+
+		/*------------------------------------------------------------- alarm -------------------------------------------------------------*/
+		/*temp too high*/
+		if (weld_controller->realtime_temp > weld_controller->alarm_temp[2])
+		{
+			stop_weld();
+			err_get_type(err_ctrl, TEMP_UP)->state = true;
+			OS_ERR err;
+			OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+			break;
+		}
+		/*---------------------------------------------------------------------------------------------------------------------------------*/
+
+		/*------------------------------------------------------- real-temp ctrl ----------------------------------------------------------*/
+		switch (ctrl_step)
+		{
+		case FAST_RISE_STEP:
+		{
+			time_limit = FAST_RISE_TIME;
+
+			/*low temp alarm(check per ms)/reverse*/
+			if (weld_controller->realtime_temp < weld_controller->second_step_start_temp + LOW_TEMP_LIMIT &&
+				last_tick != weld_controller->step_time_tick)
+			{
+				last_tick = weld_controller->step_time_tick;
+				if (err_ctrl->temp_low_cnt++ > err_ctrl->temp_low_threshold)
+				{
+					stop_weld();
+					err_get_type(err_ctrl, SENSOR_ERROR)->state = true;
+					OS_ERR err;
+					OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+					break;
+				}
+			}
+			/*next step*/
+			if (weld_controller->step_time_tick >= time_limit)
+			{
+				weld_controller->step_time_tick = 0;
+				ctrl_step = PID_RESTRICT_STEP;
+			}
+			
+			/*only when temp is lower than restrict temp*/
+			if (weld_controller->realtime_temp < weld_controller->restrict_temp)
+			{
+				if (weld_controller->Duty_Cycle < weld_controller->restrict_duty)
+					weld_controller->Duty_Cycle = weld_controller->restrict_duty;
+			}
+			break;
+		}
+
+		case PID_RESTRICT_STEP:
+		{
+			time_limit = RISE_TIME_LIMIT;
+			/*rise too slow*/
+			if (weld_controller->step_time_tick >= time_limit)
+			{
+				weld_controller->step_time_tick = 0;
+				stop_weld();
+				err_get_type(err_ctrl, TEMP_RISE_SLOW)->state = true;
+				OS_ERR err;
+				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+				break;
+			}
+
+			/*next step*/
+			if (weld_controller->realtime_temp >= weld_controller->realtime_temp)
+			{
+				weld_controller->step_time_tick = 0;
+				ctrl_step = PID_STABLE_STEP;
+			}
+			/*restrict output*/
+			else
+			{
+				if (weld_controller->Duty_Cycle > weld_controller->restrict_duty)
+					weld_controller->Duty_Cycle = weld_controller->restrict_duty;
+			}
+
+			break;
+		}
+
+		case PID_STABLE_STEP:
+			time_limit = weld_controller->weld_time[3];
+			break;
+		}
+		/*---------------------------------------------------------------------------------------------------------------------------------*/
+
+		/*err happen*/
+		if (true == err_occur(err_ctrl))
+			break;
+
+		/*restrict max output*/
+		if (weld_controller->Duty_Cycle > PD_MAX)
+			weld_controller->Duty_Cycle = PD_MAX;
+		TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
+		TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
+
+#if REALTIME_TEMP_DISPLAY == 1
+		if (weld_controller->step_time_tick % temp_draw_ctrl->delta_tick == 0)
+		{
+			switch (cur_Pgae_id)
+			{
+			case WAVE_PAGE:
+				draw_point(weld_controller->realtime_temp * DRAW_AREA_HIGH / MAX_TEMP_DISPLAY);
+				command_set_comp_val("step3", "val", weld_controller->realtime_temp);
+				break;
+			case PARAM_PAGE:
+				command_set_comp_val("temp33", "val", weld_controller->realtime_temp);
+				break;
+			}
+		}
+#endif
+	}
+
+	/*timer reset*/
+	TIM_Cmd(TIM5, DISABLE);
+	TIM5->CNT = 0;
+	/*PWM off*/
+	TIM_SetCompare1(TIM1, 0);
+	TIM_SetCompare1(TIM4, 0);
+	/*end of step*/
+	weld_controller->state = IDEAL_STATE;
+	/*Record end coordinates*/
+	temp_draw_ctrl->second_step_index_end = temp_draw_ctrl->current_index - 1;
+}
+
+/**
  * @description: In the second stage of welding, the temperature is maintained
  * @return {*}
  */
@@ -1153,7 +1316,8 @@ static void weld_real_time_ctrl()
 #endif
 		err_cnt_clear(err_ctrl);
 		weld_controller->second_step_start_temp = temp_convert(current_Thermocouple);
-		Second_Step();
+		// Second_Step();
+		Second_Temp_ctrl();
 		if (true == err_occur(err_ctrl))
 			goto STOP_LABEL;
 	}
