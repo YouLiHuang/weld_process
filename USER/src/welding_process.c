@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-24 09:38:01
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-29 16:22:12
+ * @LastEditTime: 2025-06-29 19:53:03
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -492,17 +492,28 @@ static void Weld_Preparation()
 		weld_controller->temp_comp = STABLE_ERR_K;
 		break;
 	}
+	/*pre load*/
+	if (weld_controller->weld_time[0] > 999) //
+		weld_controller->weld_time[0] = 999;
 
-	if (weld_controller->weld_time[1] > 19999) // first step
-		weld_controller->weld_time[1] = 19999;
-	if (weld_controller->weld_time[2] > 200) // fast rise time
-		weld_controller->weld_time[2] = 200;
-	if (weld_controller->weld_time[2] < 20) // fast rise time
-		weld_controller->weld_time[2] = 20;
-	if (weld_controller->weld_time[3] > 49999) // second time
-		weld_controller->weld_time[3] = 49999;
-	if (weld_controller->weld_time[4] > 999) // third time
-		weld_controller->weld_time[4] = 999;
+	/*first step*/
+	if (weld_controller->weld_time[1] > 200) // fast rise time1
+		weld_controller->weld_time[1] = 200;
+	if (weld_controller->weld_time[1] < 20) // fast rise time1
+		weld_controller->weld_time[1] = 20;
+	if (weld_controller->weld_time[2] > 19999) // first step
+		weld_controller->weld_time[2] = 19999;
+
+	/*second step*/
+	if (weld_controller->weld_time[3] > 200) // fast rise time2
+		weld_controller->weld_time[3] = 200;
+	if (weld_controller->weld_time[3] < 20) // fast rise time2
+		weld_controller->weld_time[3] = 20;
+	if (weld_controller->weld_time[4] > 49999) // second time
+		weld_controller->weld_time[4] = 49999;
+
+	if (weld_controller->weld_time[5] > 999) // third time
+		weld_controller->weld_time[5] = 999;
 
 	if (weld_controller->weld_temp[0] < USER_SET_MIN_TEMP)
 		weld_controller->weld_temp[0] = USER_SET_MIN_TEMP;
@@ -632,12 +643,19 @@ static void Preload()
 	weld_controller->step_time_tick = 0;
 }
 
+
+/**
+ * @description: 
+ * @return {*}
+ */
 static void First_Temp_ctrl()
 {
 	Page_ID cur_Page_id = request_PGManger()->id;
 	uint16_t last_tick = 0;
-	uint16_t time_limit = FAST_RISE_TIME_DEFAULT;
-	uint16_t fast_rise_duty = PD_MAX * (3 * RESTRICT_BASE_COFF + (1 - 3 * RESTRICT_BASE_COFF) * weld_controller->temp_gain1);
+	uint16_t time_limit = weld_controller->weld_time[1];  // fast rise
+	uint16_t hold_time = weld_controller->weld_time[2];	  // hold time
+	uint16_t alarm_high = weld_controller->alarm_temp[0]; // alarm
+	uint16_t fast_rise_duty = PD_MAX / 3;
 
 	/*enter first step*/
 	weld_controller->state = FIRST_STATE;
@@ -715,19 +733,19 @@ static void First_Temp_ctrl()
 		switch (weld_controller->ctrl_step)
 		{
 		case FAST_RISE_STEP:
-			time_limit = FAST_RISE_TIME_DEFAULT;
 			/*temp too high*/
-			if (weld_controller->realtime_temp > weld_controller->alarm_temp[0])
+			if (weld_controller->realtime_temp > alarm_high)
 			{
 				stop_weld();
 				err_get_type(err_ctrl, TEMP_UP)->state = true;
 				OS_ERR err;
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+				time_limit = 0;
 				break;
 			}
 
 			/*next step*/
-			if (weld_controller->step_time_tick >= FAST_RISE_TIME_DEFAULT - 10)
+			if (weld_controller->step_time_tick >= FAST_RISE_TIME_DEFAULT - 1)
 			{
 				weld_controller->step_time_tick = 0;
 				time_limit = RISE_TIME_LIMIT;
@@ -746,22 +764,24 @@ static void First_Temp_ctrl()
 		case PID_RESTRICT_STEP:
 			time_limit = RISE_TIME_LIMIT;
 			/*temp too high*/
-			if (weld_controller->realtime_temp > weld_controller->alarm_temp[0])
+			if (weld_controller->realtime_temp > alarm_high)
 			{
 				stop_weld();
 				err_get_type(err_ctrl, TEMP_UP)->state = true;
 				OS_ERR err;
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+				time_limit = 0;
 				break;
 			}
+
 			/*rise too slow*/
-			if (weld_controller->step_time_tick >= time_limit - 10)
+			if (weld_controller->step_time_tick >= time_limit - 1)
 			{
-				weld_controller->step_time_tick = 0;
 				stop_weld();
 				err_get_type(err_ctrl, TEMP_RISE_SLOW)->state = true;
 				OS_ERR err;
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+				time_limit = 0;
 				break;
 			}
 
@@ -769,7 +789,7 @@ static void First_Temp_ctrl()
 			if (weld_controller->realtime_temp >= weld_controller->restrict_temp)
 			{
 				weld_controller->step_time_tick = 0;
-				time_limit = weld_controller->weld_time[1];
+				time_limit = hold_time;
 				weld_controller->ctrl_step = PID_STABLE_STEP;
 				break;
 			}
@@ -783,17 +803,18 @@ static void First_Temp_ctrl()
 			break;
 
 		case PID_STABLE_STEP:
-			time_limit = weld_controller->weld_time[1];
+			time_limit = hold_time;
 			/*temp too high*/
-			if (weld_controller->realtime_temp > weld_controller->alarm_temp[0])
+			if (weld_controller->realtime_temp > alarm_high)
 			{
 				stop_weld();
 				err_get_type(err_ctrl, TEMP_UP)->state = true;
 				OS_ERR err;
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+				time_limit = 0;
 				break;
 			}
-			if (weld_controller->step_time_tick >= time_limit)
+			if (weld_controller->step_time_tick >= time_limit - 1)
 				break;
 
 			break;
@@ -846,13 +867,15 @@ static void Second_Temp_ctrl(void)
 
 	Page_ID cur_Pgae_id = request_PGManger()->id;
 	uint16_t last_tick = 0;
-	uint16_t time_limit = 0;
+	uint16_t time_limit = weld_controller->weld_time[3];  // fast rise
+	uint16_t hold_time = weld_controller->weld_time[4];	  // hold time
+	uint16_t alarm_high = weld_controller->alarm_temp[2]; // alarm temp
 	uint16_t fast_rise_duty = 0;
 
-	if (weld_controller->weld_time[1] != 0)
+	if (weld_controller->weld_time[2] != 0)
 		fast_rise_duty = PD_MAX * (RESTRICT_BASE_COFF + (1 - RESTRICT_BASE_COFF) * weld_controller->temp_gain2);
 	else
-		fast_rise_duty = PD_MAX * (3 * RESTRICT_BASE_COFF + (1 - 3 * RESTRICT_BASE_COFF) * weld_controller->temp_gain2);
+		fast_rise_duty = PD_MAX / 3;
 
 	/*enter second step*/
 	weld_controller->state = SECOND_STATE;
@@ -860,8 +883,6 @@ static void Second_Temp_ctrl(void)
 	weld_controller->ctrl_step = FAST_RISE_STEP;
 	/*reset timer*/
 	weld_controller->step_time_tick = 0;
-	/*fast rise time*/
-	time_limit = weld_controller->weld_time[2];
 	/*start sample*/
 	temp_draw_ctrl->second_step_index_start = temp_draw_ctrl->current_index;
 	temp_draw_ctrl->second_step_stable_index = 0;
@@ -931,19 +952,20 @@ static void Second_Temp_ctrl(void)
 		switch (weld_controller->ctrl_step)
 		{
 		case FAST_RISE_STEP:
-			// time_limit = weld_controller->weld_time[2];
 			/*temp too high*/
-			if (weld_controller->realtime_temp > weld_controller->alarm_temp[2])
+			if (weld_controller->realtime_temp > alarm_high)
 			{
+
 				stop_weld();
 				err_get_type(err_ctrl, TEMP_UP)->state = true;
 				OS_ERR err;
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+				time_limit = 0;
 				break;
 			}
 
 			/*next step*/
-			if (weld_controller->step_time_tick >= time_limit - 10)
+			if (weld_controller->step_time_tick >= time_limit - 1)
 			{
 				weld_controller->step_time_tick = 0;
 				time_limit = RISE_TIME_LIMIT;
@@ -962,22 +984,23 @@ static void Second_Temp_ctrl(void)
 		case PID_RESTRICT_STEP:
 			time_limit = RISE_TIME_LIMIT;
 			/*temp too high*/
-			if (weld_controller->realtime_temp > weld_controller->alarm_temp[2])
+			if (weld_controller->realtime_temp > alarm_high)
 			{
 				stop_weld();
 				err_get_type(err_ctrl, TEMP_UP)->state = true;
 				OS_ERR err;
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+				time_limit = 0;
 				break;
 			}
 			/*rise too slow*/
-			if (weld_controller->step_time_tick >= time_limit)
+			if (weld_controller->step_time_tick >= time_limit - 1)
 			{
-				weld_controller->step_time_tick = 0;
 				stop_weld();
 				err_get_type(err_ctrl, TEMP_RISE_SLOW)->state = true;
 				OS_ERR err;
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
+				time_limit = 0;
 				break;
 			}
 
@@ -985,7 +1008,7 @@ static void Second_Temp_ctrl(void)
 			if (weld_controller->realtime_temp >= weld_controller->restrict_temp)
 			{
 				weld_controller->step_time_tick = 0;
-				time_limit = weld_controller->weld_time[3];
+				time_limit = hold_time;
 				weld_controller->ctrl_step = PID_STABLE_STEP;
 				break;
 			}
@@ -999,9 +1022,9 @@ static void Second_Temp_ctrl(void)
 			break;
 
 		case PID_STABLE_STEP:
-			time_limit = weld_controller->weld_time[3];
+			time_limit = hold_time;
 			/*temp too high*/
-			if (weld_controller->realtime_temp > weld_controller->alarm_temp[2])
+			if (weld_controller->realtime_temp > alarm_high)
 			{
 				stop_weld();
 				err_get_type(err_ctrl, TEMP_UP)->state = true;
@@ -1009,7 +1032,7 @@ static void Second_Temp_ctrl(void)
 				OSSemPost(&ERROR_HANDLE_SEM, OS_OPT_POST_1, &err);
 				break;
 			}
-			if (weld_controller->step_time_tick >= time_limit)
+			if (weld_controller->step_time_tick >= time_limit - 1)
 				break;
 
 			break;
@@ -1071,7 +1094,7 @@ static void Third_Step()
 	weld_controller->step_time_tick = 0;
 	/*2、实时控制部分*/
 	TIM_Cmd(TIM5, ENABLE);
-	while (weld_controller->step_time_tick < weld_controller->weld_time[4])
+	while (weld_controller->step_time_tick < weld_controller->weld_time[5])
 	{
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 
@@ -1194,7 +1217,7 @@ static void simulate_weld()
 	weld_controller->step_time_tick = 0;
 	weld_controller->weld_time_tick = 0;
 	TIM_Cmd(TIM3, ENABLE);
-	while (weld_controller->weld_time_tick < weld_controller->weld_time[0] + weld_controller->weld_time[1] + weld_controller->weld_time[3] + weld_controller->weld_time[4])
+	while (weld_controller->weld_time_tick < weld_controller->weld_time[0] + weld_controller->weld_time[1] + weld_controller->weld_time[3] + weld_controller->weld_time[4] + weld_controller->weld_time[5] + weld_controller->weld_time[6])
 		;
 	TIM_Cmd(TIM3, DISABLE);
 	weld_controller->weld_time_tick = 0;
@@ -1240,7 +1263,7 @@ static void weld_real_time_ctrl()
 	Preload();
 
 	/*first step*/
-	if (weld_controller->weld_time[1] != 0)
+	if (weld_controller->weld_time[2] != 0)
 	{
 		reset_forword_ctrl(weld_controller->pid_ctrl);
 		err_cnt_clear(err_ctrl);
@@ -1251,7 +1274,7 @@ static void weld_real_time_ctrl()
 	}
 
 	/*second step*/
-	if (weld_controller->weld_time[3] != 0)
+	if (weld_controller->weld_time[4] != 0)
 	{
 		reset_forword_ctrl(weld_controller->pid_ctrl);
 #if PID_DEBUG
@@ -1267,7 +1290,7 @@ static void weld_real_time_ctrl()
 	}
 
 	/*third step*/
-	if (weld_controller->weld_time[3] != 0)
+	if (weld_controller->weld_time[5] != 0)
 	{
 		weld_controller->third_step_start_temp = temp_convert(current_Thermocouple);
 		Third_Step();
@@ -1352,7 +1375,7 @@ void welding_process(START_TYPE type)
 				OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
 
 				/*weld interval*/
-				OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
+				OSTimeDly(weld_controller->weld_time[6], OS_OPT_TIME_DLY, &err);
 			}
 
 			/*check if key release*/
@@ -1367,7 +1390,7 @@ void welding_process(START_TYPE type)
 		{
 			simulate_weld();
 			/*weld interval*/
-			OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
+			OSTimeDly(weld_controller->weld_time[6], OS_OPT_TIME_DLY, &err);
 			key = RLY_INPUT_SCAN();
 			if (!(key == RLY_START0_ACTIVE || key == RLY_START1_ACTIVE))
 				break;
@@ -1412,7 +1435,7 @@ void welding_process(START_TYPE type)
 		OSSemPost(&DATA_SAVE_SEM, OS_OPT_POST_ALL, &err);
 
 		/*weld interval*/
-		OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
+		OSTimeDly(weld_controller->weld_time[6], OS_OPT_TIME_DLY, &err);
 
 		/*wait until release key*/
 		while (1)
@@ -1430,7 +1453,7 @@ void welding_process(START_TYPE type)
 	{
 		simulate_weld();
 		/*weld interval*/
-		OSTimeDly(weld_controller->weld_time[4], OS_OPT_TIME_DLY, &err);
+		OSTimeDly(weld_controller->weld_time[6], OS_OPT_TIME_DLY, &err);
 		/*wait until release key*/
 		while (1)
 		{

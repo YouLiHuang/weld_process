@@ -51,6 +51,8 @@
 #define HOLD_ADDR_15 15
 #define HOLD_ADDR_16 16
 #define HOLD_ADDR_17 17
+#define HOLD_ADDR_18 18
+#define HOLD_ADDR_19 19
 
 #define INPUT_ADDR_0 0
 #define INPUT_ADDR_1 1

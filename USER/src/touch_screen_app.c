@@ -84,6 +84,7 @@ static char *param_page_name_list[] = {
     "time4",
     "time5",
     "time6",
+    "time7",
     "RDY_SCH",
     "ION_OFF",
     "SGW_CTW",
@@ -281,6 +282,7 @@ static void TSModbus_Sync_FromUi(Page_ID id)
     {
         switch (index)
         {
+
             /*six alarm temp*/
         case HOLD_ADDR_0:
             usRegHoldingBuf[index] = weld_controller->alarm_temp[0];
@@ -300,6 +302,7 @@ static void TSModbus_Sync_FromUi(Page_ID id)
         case HOLD_ADDR_5:
             usRegHoldingBuf[index] = weld_controller->alarm_temp[5];
             break;
+
             /*two gain*/
         case HOLD_ADDR_6:
             usRegHoldingBuf[index] = weld_controller->temp_gain1 * 1000;
@@ -307,6 +310,8 @@ static void TSModbus_Sync_FromUi(Page_ID id)
         case HOLD_ADDR_7:
             usRegHoldingBuf[index] = weld_controller->temp_gain2 * 1000;
             break;
+
+            /*three step*/
         case HOLD_ADDR_8:
             usRegHoldingBuf[index] = weld_controller->weld_temp[0];
             break;
@@ -316,7 +321,8 @@ static void TSModbus_Sync_FromUi(Page_ID id)
         case HOLD_ADDR_10:
             usRegHoldingBuf[index] = weld_controller->weld_temp[2];
             break;
-            /*five time*/
+
+            /*7 time*/
         case HOLD_ADDR_11:
             usRegHoldingBuf[index] = weld_controller->weld_time[0];
             break;
@@ -324,18 +330,25 @@ static void TSModbus_Sync_FromUi(Page_ID id)
             usRegHoldingBuf[index] = weld_controller->weld_time[1];
             break;
         case HOLD_ADDR_13:
-            usRegHoldingBuf[index] = weld_controller->weld_time[3];
+            usRegHoldingBuf[index] = weld_controller->weld_time[2];
             break;
         case HOLD_ADDR_14:
-            usRegHoldingBuf[index] = weld_controller->weld_time[4];
+            usRegHoldingBuf[index] = weld_controller->weld_time[3];
             break;
         case HOLD_ADDR_15:
-            usRegHoldingBuf[index] = weld_controller->weld_time[5];
+            usRegHoldingBuf[index] = weld_controller->weld_time[4];
             break;
         case HOLD_ADDR_16:
-            usRegHoldingBuf[index] = weld_controller->weld_count;
+            usRegHoldingBuf[index] = weld_controller->weld_time[5];
             break;
         case HOLD_ADDR_17:
+            usRegHoldingBuf[index] = weld_controller->weld_time[6];
+            break;
+
+        case HOLD_ADDR_18:
+            usRegHoldingBuf[index] = weld_controller->weld_count;
+            break;
+        case HOLD_ADDR_19:
             usRegHoldingBuf[index] = cur_GP;
             break;
 
@@ -407,7 +420,8 @@ static void TSparam_pg_cb(Page_ID id)
         "time3",
         "time4",
         "time5",
-        "time6"};
+        "time6",
+        "time7"};
     const char *weld_temp_name_list[] = {
         "temp1",
         "temp2",
@@ -748,7 +762,7 @@ static void TSwave_pg_cb(Page_ID id)
     char *tick_name[] = {"tick1", "tick2", "tick3", "tick4", "tick5"};
 
     /*updata axis*/
-    for (uint8_t i = 0; i < 6; i++)
+    for (uint8_t i = 0; i < sizeof(weld_controller->weld_time) / sizeof(weld_controller->weld_time[0]); i++)
         total_time += weld_controller->weld_time[i];
     /*坐标划分ms*/
     if (total_time <= 500)

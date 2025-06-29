@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-22 15:23:39
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-22 15:59:58
+ * @LastEditTime: 2025-06-29 19:23:00
  * @Description: 
  * @
  * @Copyright (c) 2025 by huangyouli, All Rights Reserved. 
@@ -22,7 +22,7 @@
 #define MODBUS_RATE_ADRESSH 3
 #define MODBUS_RATE_ADRESSL 4
 /*param number*/
-#define TIME_NUM 6
+#define TIME_NUM 7
 #define TEMP_NUM 3
 #define ALARM_NUM 6
 #define GAIN_NUM 2

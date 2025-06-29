@@ -91,7 +91,7 @@ typedef struct weld_realtime_controller
     uint16_t realtime_temp;
 
     /*user parameter*/
-    uint16_t weld_time[6];
+    uint16_t weld_time[7];
     uint16_t weld_temp[3];
     uint16_t alarm_temp[6];
 

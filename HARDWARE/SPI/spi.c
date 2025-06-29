@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-13 19:22:56
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-22 16:25:47
+ * @LastEditTime: 2025-06-29 19:41:01
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -182,7 +182,8 @@ void Load_param(void *controller, int array_of_data)
 		"time3",
 		"time4",
 		"time5",
-		"time6"};
+		"time6",
+		"time7"};
 	char *param_temp_name_list[] = {
 		"temp1",
 		"temp2",
@@ -190,27 +191,27 @@ void Load_param(void *controller, int array_of_data)
 	};
 
 	weld_ctrl *ctrl = (weld_ctrl *)controller;
-	uint16_t welding_time_load[5] = {0}, welding_Temp_load[3] = {0};
-	for (uint8_t i = 0; i < sizeof(welding_time_load) / sizeof(uint16_t); i++)
+	uint16_t welding_time_load[TIME_NUM] = {0}, welding_Temp_load[TEMP_NUM] = {0};
+	for (uint8_t i = 0; i < TIME_NUM; i++)
 	{
 		welding_time_load[i] = SPI_Load_Word(TIME_BASE(array_of_data) + ADDR_OFFSET * i);
 	}
 
 	/* temp1~temp3*/
-	for (uint8_t i = 0; i < sizeof(welding_Temp_load) / sizeof(uint16_t); i++)
+	for (uint8_t i = 0; i < TEMP_NUM; i++)
 	{
 		welding_Temp_load[i] = SPI_Load_Word(TEMP_BASE(array_of_data) + ADDR_OFFSET * i);
 	}
 
 	/*param check & sync*/
-	// time1-time6
-	for (uint8_t i = 0; i < sizeof(welding_time_load) / sizeof(uint16_t); i++)
+	// time1-time7
+	for (uint8_t i = 0; i < TIME_NUM; i++)
 	{
 		ctrl->weld_time[i] = welding_time_load[i];
 		get_comp(list, param_time_name_list[i])->val = welding_time_load[i];
 	}
 	// temp1-temp3
-	for (uint8_t i = 0; i < sizeof(welding_Temp_load) / sizeof(uint16_t); i++)
+	for (uint8_t i = 0; i < TEMP_NUM; i++)
 	{
 		ctrl->weld_temp[i] = welding_Temp_load[i];
 		get_comp(list, param_temp_name_list[i])->val = welding_Temp_load[i];
@@ -278,7 +279,7 @@ void Load_data_from_mem(void)
 
 #if RESET_SPI_DATA
 	/*数据初始化*/
-	int time_init[] = {100, 500, 50, 2500, 500, 100};
+	int time_init[] = {100, 50, 500, 50, 2500, 500, 100};
 	int temp_init[] = {250, 400, 150};
 	int alarm_temp[] = {400, 100, 650, 100, 650, 100};
 
@@ -372,14 +373,16 @@ void Load_data_from_mem(void)
 	usRegHoldingBuf[9] = weld_controller->weld_temp[1];
 	usRegHoldingBuf[10] = weld_controller->weld_temp[2];
 
-	usRegHoldingBuf[11] = weld_controller->weld_time[0];
-	usRegHoldingBuf[12] = weld_controller->weld_time[1];
-	usRegHoldingBuf[13] = weld_controller->weld_time[2];
-	usRegHoldingBuf[14] = weld_controller->weld_time[3];
-	usRegHoldingBuf[15] = weld_controller->weld_time[4];
+	usRegHoldingBuf[11] = weld_controller->weld_time[0]; // pre load
+	usRegHoldingBuf[12] = weld_controller->weld_time[1]; // fast rise 1
+	usRegHoldingBuf[13] = weld_controller->weld_time[2]; // hold 1
+	usRegHoldingBuf[14] = weld_controller->weld_time[3]; // fast rise 2
+	usRegHoldingBuf[15] = weld_controller->weld_time[4]; // hold 2
+	usRegHoldingBuf[16] = weld_controller->weld_time[5]; // down
+	usRegHoldingBuf[17] = weld_controller->weld_time[6]; // interval
 
-	usRegHoldingBuf[16] = weld_controller->weld_count;
-	usRegHoldingBuf[17] = 0;
+	usRegHoldingBuf[18] = weld_controller->weld_count;
+	usRegHoldingBuf[19] = 0;
 
 	/*sync data to screen*/
 	char *param_time_list[] = {
@@ -388,7 +391,8 @@ void Load_data_from_mem(void)
 		"time3",
 		"time4",
 		"time5",
-		"time6"
+		"time6",
+		"time7"
 
 	};
 	char *param_temp_list[] = {
