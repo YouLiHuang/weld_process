@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-24 09:38:01
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-29 19:53:03
+ * @LastEditTime: 2025-06-30 10:13:49
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -497,18 +497,14 @@ static void Weld_Preparation()
 		weld_controller->weld_time[0] = 999;
 
 	/*first step*/
-	if (weld_controller->weld_time[1] > 200) // fast rise time1
-		weld_controller->weld_time[1] = 200;
-	if (weld_controller->weld_time[1] < 20) // fast rise time1
-		weld_controller->weld_time[1] = 20;
+	if (weld_controller->weld_time[1] > 100) // fast rise time1
+		weld_controller->weld_time[1] = 100;
 	if (weld_controller->weld_time[2] > 19999) // first step
 		weld_controller->weld_time[2] = 19999;
 
 	/*second step*/
-	if (weld_controller->weld_time[3] > 200) // fast rise time2
-		weld_controller->weld_time[3] = 200;
-	if (weld_controller->weld_time[3] < 20) // fast rise time2
-		weld_controller->weld_time[3] = 20;
+	if (weld_controller->weld_time[3] > 100) // fast rise time2
+		weld_controller->weld_time[3] = 100;
 	if (weld_controller->weld_time[4] > 49999) // second time
 		weld_controller->weld_time[4] = 49999;
 
@@ -651,15 +647,29 @@ static void First_Temp_ctrl()
 {
 	Page_ID cur_Page_id = request_PGManger()->id;
 	uint16_t last_tick = 0;
-	uint16_t time_limit = weld_controller->weld_time[1];  // fast rise
+	uint16_t time_limit = 0;							  // fast rise
 	uint16_t hold_time = weld_controller->weld_time[2];	  // hold time
 	uint16_t alarm_high = weld_controller->alarm_temp[0]; // alarm
 	uint16_t fast_rise_duty = PD_MAX * 0.75;
 
 	/*enter first step*/
 	weld_controller->state = FIRST_STATE;
-	/*temp ctrl step*/
-	weld_controller->ctrl_step = FAST_RISE_STEP;
+	if (weld_controller->weld_time[1] != 0)
+	{
+
+		/*temp ctrl step*/
+		weld_controller->ctrl_step = FAST_RISE_STEP;
+		time_limit = weld_controller->weld_time[1];
+		if (time_limit > 100)
+			time_limit = 100;
+	}
+	else
+	{
+		/*temp ctrl step*/
+		weld_controller->ctrl_step = PID_RESTRICT_STEP;
+		time_limit = RISE_TIME_LIMIT;
+	}
+
 	/*start sample*/
 	temp_draw_ctrl->first_step_index_start = 0;
 	/*reset cotroller*/
@@ -878,8 +888,25 @@ static void Second_Temp_ctrl(void)
 
 	/*enter second step*/
 	weld_controller->state = SECOND_STATE;
-	/*temp ctrl step*/
-	weld_controller->ctrl_step = FAST_RISE_STEP;
+
+	/*enter first step*/
+	weld_controller->state = FIRST_STATE;
+	if (weld_controller->weld_time[3] != 0)
+	{
+
+		/*temp ctrl step*/
+		weld_controller->ctrl_step = FAST_RISE_STEP;
+		time_limit = weld_controller->weld_time[3];
+		if (time_limit > 100)
+			time_limit = 100;
+	}
+	else
+	{
+		/*temp ctrl step*/
+		weld_controller->ctrl_step = PID_RESTRICT_STEP;
+		time_limit = RISE_TIME_LIMIT;
+	}
+
 	/*reset timer*/
 	weld_controller->step_time_tick = 0;
 	/*start sample*/
