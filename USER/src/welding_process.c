@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-24 09:38:01
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-30 10:13:49
+ * @LastEditTime: 2025-06-30 16:41:22
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -40,6 +40,7 @@ extern pid_feedforword_ctrl *pid_ctrl;
 /*---------------------------------------------------Real-time control---------------------------------------------------------*/
 static volatile WELD_MODE welding_flag = IDEAL_MODE; // Welding different stage markers
 extern weld_ctrl *weld_controller;					 // Welding controllers
+extern OS_MUTEX PWM_Mux;							 // pwm mux
 Correction_factor corrct_factor = {0.1, 1.25};		 // Steady-state fitting curve correction coefficient
 /*------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -48,6 +49,7 @@ extern uint8_t cur_GP;
 extern RDY_SCH_STATE cur_key1;
 extern ION_OFF_STATE cur_key2;
 extern SGW_CTW_STATE cur_key3;
+extern FTM_CTM_STATE cur_key4;
 extern SWITCH_STATE switch_mode;
 /*------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -1168,13 +1170,16 @@ static void End_of_Weld()
 {
 	OS_ERR err;
 
-	/*PWM off*/
-	TIM_SetCompare1(TIM1, 0);
-	TIM_SetCompare1(TIM4, 0);
-	TIM_Cmd(TIM3, DISABLE); // 关闭焊接周期计数
-	TIM_Cmd(TIM5, DISABLE); // 关闭实时控制器
-	TIM3->CNT = 0;
-	TIM5->CNT = 0;
+	if (cur_key4 == FTM)
+	{
+		/*PWM off*/
+		TIM_SetCompare1(TIM1, 0);
+		TIM_SetCompare1(TIM4, 0);
+		TIM_Cmd(TIM3, DISABLE); // 关闭焊接周期计数
+		TIM_Cmd(TIM5, DISABLE); // 关闭实时控制器
+		TIM3->CNT = 0;
+		TIM5->CNT = 0;
+	}
 
 	/*记录焊接时间*/
 	temp_draw_ctrl->tick_record = weld_controller->weld_time_tick;
@@ -1211,6 +1216,8 @@ static void End_of_Weld()
 	}
 	command_set_comp_val("count", "val", weld_controller->weld_count);
 	OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
+
+	/*active ideal thread*/
 }
 
 /**
@@ -1312,7 +1319,7 @@ static void weld_real_time_ctrl()
 	}
 
 	/*third step*/
-	if (weld_controller->weld_time[5] != 0)
+	if (weld_controller->weld_time[5] != 0 && cur_key4 == FTM)
 	{
 		weld_controller->third_step_start_temp = temp_convert(current_Thermocouple);
 		Third_Step();
@@ -1345,6 +1352,9 @@ void welding_process(START_TYPE type)
 {
 	OS_ERR err;
 	uint8_t key = 0;
+
+	/*lock pwm*/
+	OSMutexPend(&PWM_Mux, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
 
 	/*load different parameter sets based on the specific button pressed.*/
 	Load_Data(type);
@@ -1422,9 +1432,9 @@ void welding_process(START_TYPE type)
 	/*------------------------------------------------------SGW-------------------------------------------------------*/
 	if (cur_key3 == SGW && cur_key2 == ION && cur_key1 == RDY)
 	{
-		key = RLY_INPUT_SCAN();
-		if (key != RLY_START0_ACTIVE && key != RLY_START1_ACTIVE)
-			return;
+		// key = RLY_INPUT_SCAN();
+		// if (key != RLY_START0_ACTIVE && key != RLY_START1_ACTIVE)
+		// 	return;
 
 		/*clear screen*/
 		if (request_PGManger()->id == WAVE_PAGE)
@@ -1444,7 +1454,7 @@ void welding_process(START_TYPE type)
 		display_temp_cal();
 
 		/*plot temp line(down)*/
-		if (request_PGManger()->id == WAVE_PAGE)
+		if (request_PGManger()->id == WAVE_PAGE && cur_key4 == FTM)
 			down_temp_line();
 		else /*not in wave page, notify plot task to plot temp line*/
 		{
@@ -1465,9 +1475,6 @@ void welding_process(START_TYPE type)
 			key = RLY_INPUT_SCAN();
 			if (key != RLY_START0_ACTIVE && key != RLY_START1_ACTIVE)
 				break;
-
-			// main task pend
-			OSTimeDly(10, OS_OPT_TIME_DLY, &err);
 		}
 	}
 	/*weld simulate*/
@@ -1487,4 +1494,7 @@ void welding_process(START_TYPE type)
 			OSTimeDly(10, OS_OPT_TIME_DLY, &err);
 		}
 	}
+
+	/*unlock pwm*/
+	OSMutexPost(&PWM_Mux, OS_OPT_POST_NONE, &err);
 }

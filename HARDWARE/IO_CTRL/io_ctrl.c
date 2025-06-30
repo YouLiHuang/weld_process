@@ -17,7 +17,6 @@
 START_TYPE start_type = START_IDEAL;
 extern OS_SEM WELD_START_SEM;
 
-
 void TIM6_INIT(uint16_t time_outms)
 {
 
@@ -153,6 +152,8 @@ void Start_signal_irq(void)
 	if (EXTI_GetITStatus(EXTI_Line0) != RESET)
 	{
 		EXTI_ClearITPendingBit(EXTI_Line0);
+		EXTI->IMR &= ~(EXTI_Line0); // disable exit(avoid trigger twice)
+		TIM6->CNT = 0;				// claer cnt
 		/*software delay*/
 		TIM_Cmd(TIM6, ENABLE);
 	}
@@ -160,6 +161,8 @@ void Start_signal_irq(void)
 	else if (EXTI_GetITStatus(EXTI_Line1) != RESET)
 	{
 		EXTI_ClearITPendingBit(EXTI_Line1);
+		EXTI->IMR &= ~(EXTI_Line1); // disable exit(avoid trigger twice)
+		TIM6->CNT = 0;				// claer cnt
 		/*software delay*/
 		TIM_Cmd(TIM6, ENABLE);
 	}

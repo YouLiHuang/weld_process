@@ -116,9 +116,16 @@ typedef enum ION_OFF_STATE
 
 typedef enum SGW_CTW_STATE
 {
-    SGW = 30,
-    CTW = 26
+    SGW = 29,
+    CTW = 30
 } SGW_CTW_STATE;
+
+typedef enum FTM_CTM_STATE
+{
+    FTM = 52,
+    CTM = 51
+
+} FTM_CTM_STATE;
 
 typedef enum UP_DOWN
 {

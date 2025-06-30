@@ -51,6 +51,7 @@ extern uint8_t cur_GP;
 extern RDY_SCH_STATE cur_key1;
 extern ION_OFF_STATE cur_key2;
 extern SGW_CTW_STATE cur_key3;
+extern FTM_CTM_STATE cur_key4;
 extern SWITCH_STATE switch_mode;
 
 /*-------------------------APP variables---------------------------*/
@@ -69,6 +70,7 @@ static char *temp_page_name_list[] = {
     "RDY_SCH",
     "ION_OFF",
     "SGW_CTW",
+    "FTM_CTM",
     "UP_DOWN",
     "switch",
     "count",
@@ -88,6 +90,7 @@ static char *param_page_name_list[] = {
     "RDY_SCH",
     "ION_OFF",
     "SGW_CTW",
+    "FTM_CTM",
     "UP_DOWN",
     "count",
     "GP",
@@ -413,7 +416,7 @@ static void TSparam_pg_cb(Page_ID id)
     static RDY_SCH_STATE last_key1 = RDY;
     static uint8_t last_gp = 0;
 
-    const char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "UP_DOWN"};
+    const char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "FTM_CTM", "UP_DOWN"};
     const char *weld_time_name_list[] = {
         "time1",
         "time2",
@@ -452,6 +455,7 @@ static void TSparam_pg_cb(Page_ID id)
     cur_key1 = (RDY_SCH_STATE)get_comp(list, "RDY_SCH")->val;
     cur_key2 = (ION_OFF_STATE)get_comp(list, "ION_OFF")->val;
     cur_key3 = (SGW_CTW_STATE)get_comp(list, "SGW_CTW")->val;
+    cur_key4 = (FTM_CTM_STATE)get_comp(list, "FTM_CTM")->val;
     weld_controller->Count_Dir = (get_comp(list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
     cur_GP = get_comp(list, "GP")->val;
 
@@ -566,7 +570,7 @@ static void TStemp_pg_cb(Page_ID id)
     static RDY_SCH_STATE last_key1 = RDY;
     static uint8_t last_gp = 0;
 
-    const char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "UP_DOWN"};
+    const char *key_name_list[] = {"RDY_SCH", "ION_OFF", "SGW_CTW", "FTM_CTM", "UP_DOWN"};
     const char *val_name_list[] = {"GP", "switch"};
     const char *alarm_temp_name_list[] = {
         "alarm1",
@@ -606,6 +610,7 @@ static void TStemp_pg_cb(Page_ID id)
     cur_key1 = (RDY_SCH_STATE)get_comp(list, "RDY_SCH")->val;
     cur_key2 = (ION_OFF_STATE)get_comp(list, "ION_OFF")->val;
     cur_key3 = (SGW_CTW_STATE)get_comp(list, "SGW_CTW")->val;
+    cur_key4 = (FTM_CTM_STATE)get_comp(list, "FTM_CTM")->val;
     weld_controller->Count_Dir = (get_comp(list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
     switch_mode = (SWITCH_STATE)(get_comp(list, "switch")->val == 1) ? AUTO_MODE : USER_MODE;
     cur_GP = get_comp(list, "GP")->val;

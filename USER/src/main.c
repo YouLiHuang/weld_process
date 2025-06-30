@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-23 21:33:57
+ * @LastEditTime: 2025-06-30 16:23:19
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -59,8 +59,14 @@ OS_TCB Main_TaskTCB;
 CPU_STK MAIN_TASK_STK[MAIN_STK_SIZE];
 void main_task(void *p_arg);
 
+#define IDEAL_TASK_PRIO 6
+#define IDEAL_STK_SIZE 512
+OS_TCB Ideal_TaskTCB;
+CPU_STK IDEAL_TASK_STK[IDEAL_STK_SIZE];
+void ideal_task(void *p_arg);
+
 #define READ_TASK_PRIO 6
-#define READ_STK_SIZE 3072
+#define READ_STK_SIZE 2048
 OS_TCB READ_TaskTCB;
 CPU_STK READ_TASK_STK[READ_STK_SIZE];
 
@@ -137,6 +143,7 @@ static Thermocouple Thermocouple_Lists[] = {
 /* Private variables ---------------------------------------------------------*/
 /*UART3 Resource Protection: Mutex (Temporarily Unused)*/
 OS_MUTEX ModBus_Mux;
+OS_MUTEX PWM_Mux;
 /*UART4 Resource Protection: Mutex (Temporarily Unused)*/
 OS_MUTEX PLOT_Mux;
 /*Thread Synchronization: Semaphore*/
@@ -158,6 +165,8 @@ OS_SEM ERROR_HANDLE_SEM;
 OS_SEM DATA_SAVE_SEM;
 // plot sem
 OS_SEM PLOT_SEM;
+// ideal sem
+OS_SEM IDEAL_SEM;
 
 // error controller
 Error_ctrl *err_ctrl = NULL;
@@ -178,6 +187,7 @@ uint8_t cur_GP = 0;
 RDY_SCH_STATE cur_key1 = RDY;
 ION_OFF_STATE cur_key2 = ION;
 SGW_CTW_STATE cur_key3 = SGW;
+FTM_CTM_STATE cur_key4 = FTM;
 SWITCH_STATE switch_mode = USER_MODE;
 
 // USB device
@@ -324,6 +334,9 @@ and the time slice length is 1 system clock beat, 1 ms
 	// Create a mutex - serial port resource access (temporarily unused)
 	OSMutexCreate(&ModBus_Mux, "MODBUS_Mutex", &err);
 
+	// pwm protect
+	OSMutexCreate(&PWM_Mux, "PWM Mux", &err);
+
 	// Create a mutex - serial port resource access (temporarily unused)
 	OSMutexCreate(&PLOT_Mux, "plot mux", &err);
 
@@ -347,6 +360,9 @@ and the time slice length is 1 system clock beat, 1 ms
 	OSSemCreate(&ERROR_HANDLE_SEM, "err sem", 0, &err);
 	// data save sem
 	OSSemCreate(&DATA_SAVE_SEM, "data save", 0, &err);
+
+	// ideal thread
+	OSSemCreate(&IDEAL_SEM, "ideal", 0, &err);
 
 	// err task
 	// 100ms调度——10ms时间片
@@ -996,6 +1012,20 @@ void main_task(void *p_arg)
 	OS_ERR err;
 	Power_on_check();
 
+	OSTaskCreate((OS_TCB *)&Ideal_TaskTCB,
+				 (CPU_CHAR *)"Ideal task",
+				 (OS_TASK_PTR)ideal_task,
+				 (void *)0,
+				 (OS_PRIO)IDEAL_TASK_PRIO,
+				 (CPU_STK *)&IDEAL_TASK_STK[0],
+				 (CPU_STK_SIZE)IDEAL_STK_SIZE / 10,
+				 (CPU_STK_SIZE)IDEAL_STK_SIZE,
+				 (OS_MSG_QTY)0,
+				 (OS_TICK)5,
+				 (void *)0,
+				 (OS_OPT)OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR,
+				 (OS_ERR *)&err);
+
 	// UI task
 	// 20ms调度
 	OSTaskCreate((OS_TCB *)&READ_TaskTCB,
@@ -1089,6 +1119,73 @@ void main_task(void *p_arg)
 		}
 
 		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
+	}
+}
+
+/*-------------------------------------------------------------------------------------------------------------------------*/
+/*----------------------------------------------------touch screan Thread--------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------------------------------*/
+
+/**
+ * @description:
+ * @param {void} *p_arg
+ * @return {*}
+ */
+void ideal_task(void *p_arg)
+{
+
+	OS_ERR err;
+	uint16_t hold_temp = 0;
+	pid_feedforword_ctrl *pid_ctrl_ideal = new_pid_forword_ctrl(0, DEFAULT_KP, DEFAULT_KI, DEFAULT_KD);
+	reset_forword_ctrl(pid_ctrl_ideal);
+
+	while (1)
+	{
+		
+#if 0
+		/*lock PWM*/
+		OSMutexPend(&PWM_Mux, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+
+		/*PWM deninit*/
+		uint16_t tmp_ccmr1 = 0;
+		tmp_ccmr1 = TIM1->CCMR1;
+		tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
+		tmp_ccmr1 |= ((uint16_t)0x0060);
+		TIM1->CCMR1 = tmp_ccmr1;
+
+		tmp_ccmr1 = TIM4->CCMR1;
+		tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
+		tmp_ccmr1 |= ((uint16_t)0x0060);
+		TIM4->CCMR1 = tmp_ccmr1;
+		TIM_SetCompare1(TIM1, 0);
+		TIM_SetCompare1(TIM4, 0);
+		TIM_Cmd(TIM4, ENABLE);
+		TIM_Cmd(TIM1, ENABLE);
+
+		/*restrict*/
+		hold_temp = weld_controller->weld_temp[2] + weld_controller->temp_comp;
+		if (hold_temp > 200)
+			hold_temp = 200;
+
+		/*feed back*/
+		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
+
+		/*pid*/
+		weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[2] + weld_controller->temp_comp,
+													 weld_controller->realtime_temp,
+													 weld_controller->Duty_Cycle,
+													 pid_ctrl_ideal);
+		/*restrict(output)*/
+		if (weld_controller->Duty_Cycle > PD_MAX / 4)
+			weld_controller->Duty_Cycle = PD_MAX / 4;
+		TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
+		TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
+
+		/*unlock pwm*/
+		OSMutexPost(&PWM_Mux, OS_OPT_POST_NONE, &err);
+#endif
+
+		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
 	}
 }
 
