@@ -676,9 +676,20 @@ static void First_Temp_ctrl()
 	/*CTM do not fast rise*/
 	else
 	{
-		/*temp ctrl step*/
-		weld_controller->ctrl_step = PID_RESTRICT_STEP;
-		time_limit = RISE_TIME_LIMIT;
+		if (weld_controller->weld_time[1] != 0)
+		{
+
+			weld_controller->ctrl_step = FAST_RISE_STEP;
+			time_limit = weld_controller->weld_time[1];
+			if (time_limit > 50)
+				time_limit = 50;
+		}
+		else
+		{
+			/*temp ctrl step*/
+			weld_controller->ctrl_step = PID_RESTRICT_STEP;
+			time_limit = RISE_TIME_LIMIT;
+		}
 	}
 
 	/*start sample*/
@@ -1451,7 +1462,7 @@ void welding_process(START_TYPE type)
 
 		if (cur_key4 == CTM)
 		{
-			if (weld_controller->realtime_temp > MAX_START_TEMP)
+			if (weld_controller->realtime_temp > weld_controller->weld_temp[2] + 25)
 				return;
 		}
 		else if (cur_key4 == FTM)

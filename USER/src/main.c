@@ -1156,8 +1156,8 @@ void ideal_task(void *p_arg)
 
 	while (1)
 	{
-#if 1
-		if (cur_key4 == CTM && cur_key1 == RDY)
+
+		if (cur_key4 == CTM && cur_key1 == RDY && weld_controller->realtime_temp < weld_controller->weld_temp[2] * 1.25)
 		{
 			/*lock PWM*/
 			OSMutexPend(&PWM_Mux, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
@@ -1199,7 +1199,7 @@ void ideal_task(void *p_arg)
 			TIM_Cmd(TIM5, DISABLE);
 			reset_forword_ctrl(pid_ctrl_ideal);
 		}
-#endif
+
 		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
 	}
 }
