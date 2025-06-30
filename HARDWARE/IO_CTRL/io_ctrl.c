@@ -78,6 +78,8 @@ void TIM6_irq(void)
 			start_type = KEY1;
 			OSSemPost(&WELD_START_SEM, OS_OPT_POST_ALL, &err);
 		}
+		EXTI->IMR |= (EXTI_Line0); // disable exit(avoid trigger twice)
+		EXTI->IMR |= (EXTI_Line0); // disable exit(avoid trigger twice)
 	}
 
 #if SYSTEM_SUPPORT_OS

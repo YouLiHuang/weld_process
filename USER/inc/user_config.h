@@ -44,6 +44,7 @@
 #define COMPENSATION_THRESHOLD 0.98f // Heat compensation temperature detection threshold
 #define RESTRICT_TEMP_ERR 20         // restrict err
 #define RESTRICT_BASE_COFF 0.1       // restrict output coff
+#define MAX_START_TEMP 250           // max start temp
 
 /* Temperature calibration macro------------------------------------------------------------------*/
 #define ROOM_TEMP 20     // Default room temperature

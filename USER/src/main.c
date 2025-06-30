@@ -1104,14 +1104,29 @@ void main_task(void *p_arg)
 				start_type = START_IDEAL;
 				if (Thermocouple_check() == true)
 				{
-					welding_process(KEY0);
+
+					/*lock pwm*/
+					OSMutexPend(&PWM_Mux, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+					if (err == OS_ERR_NONE)
+					{
+						welding_process(KEY0);
+						/*unlock pwm*/
+						OSMutexPost(&PWM_Mux, OS_OPT_POST_NONE, &err);
+					}
 				}
 				break;
 			case KEY1:
 				start_type = START_IDEAL;
 				if (Thermocouple_check() == true)
 				{
-					welding_process(KEY1);
+					/*lock pwm*/
+					OSMutexPend(&PWM_Mux, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+					if (err == OS_ERR_NONE)
+					{
+						welding_process(KEY1);
+						/*unlock pwm*/
+						OSMutexPost(&PWM_Mux, OS_OPT_POST_NONE, &err);
+					}
 				}
 
 				break;
@@ -1141,50 +1156,50 @@ void ideal_task(void *p_arg)
 
 	while (1)
 	{
-		
-#if 0
-		/*lock PWM*/
-		OSMutexPend(&PWM_Mux, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+#if 1
+		if (cur_key4 == CTM && cur_key1 == RDY)
+		{
+			/*lock PWM*/
+			OSMutexPend(&PWM_Mux, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+			if (err == OS_ERR_NONE)
+			{
+				/*PWM deninit*/
+				TIM_Cmd(TIM4, ENABLE);
+				TIM_Cmd(TIM1, ENABLE);
 
-		/*PWM deninit*/
-		uint16_t tmp_ccmr1 = 0;
-		tmp_ccmr1 = TIM1->CCMR1;
-		tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
-		tmp_ccmr1 |= ((uint16_t)0x0060);
-		TIM1->CCMR1 = tmp_ccmr1;
+				/*restrict*/
+				hold_temp = weld_controller->weld_temp[2] + weld_controller->temp_comp;
+				if (hold_temp > 200)
+					hold_temp = 200;
 
-		tmp_ccmr1 = TIM4->CCMR1;
-		tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
-		tmp_ccmr1 |= ((uint16_t)0x0060);
-		TIM4->CCMR1 = tmp_ccmr1;
-		TIM_SetCompare1(TIM1, 0);
-		TIM_SetCompare1(TIM4, 0);
-		TIM_Cmd(TIM4, ENABLE);
-		TIM_Cmd(TIM1, ENABLE);
+				/*feed back*/
+				weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 
-		/*restrict*/
-		hold_temp = weld_controller->weld_temp[2] + weld_controller->temp_comp;
-		if (hold_temp > 200)
-			hold_temp = 200;
+				/*pid*/
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[2] + weld_controller->temp_comp,
+															 weld_controller->realtime_temp,
+															 weld_controller->Duty_Cycle,
+															 pid_ctrl_ideal);
+				/*restrict(output)*/
+				if (weld_controller->Duty_Cycle > PD_MAX / 3)
+					weld_controller->Duty_Cycle = PD_MAX / 3;
+				TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
+				TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
 
-		/*feed back*/
-		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
+				/*unlock pwm*/
+				OSMutexPost(&PWM_Mux, OS_OPT_POST_NONE, &err);
+			}
+		}
+		else
+		{
 
-		/*pid*/
-		weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[2] + weld_controller->temp_comp,
-													 weld_controller->realtime_temp,
-													 weld_controller->Duty_Cycle,
-													 pid_ctrl_ideal);
-		/*restrict(output)*/
-		if (weld_controller->Duty_Cycle > PD_MAX / 4)
-			weld_controller->Duty_Cycle = PD_MAX / 4;
-		TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
-		TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
-
-		/*unlock pwm*/
-		OSMutexPost(&PWM_Mux, OS_OPT_POST_NONE, &err);
+			TIM_SetCompare1(TIM1, 0);
+			TIM_SetCompare1(TIM4, 0);
+			TIM_Cmd(TIM3, DISABLE);
+			TIM_Cmd(TIM5, DISABLE);
+			reset_forword_ctrl(pid_ctrl_ideal);
+		}
 #endif
-
 		OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_PERIODIC, &err);
 	}
 }

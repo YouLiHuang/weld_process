@@ -423,10 +423,8 @@ static void PMW_TIMER_DEINIT(void)
 	/*TIMER DEINIT*/
 	TIM_SetCompare1(TIM1, 0);
 	TIM_SetCompare1(TIM4, 0);
-	TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
-	TIM_ForcedOC1Config(TIM4, TIM_ForcedAction_InActive);
-	TIM_Cmd(TIM1, DISABLE);
-	TIM_Cmd(TIM4, DISABLE);
+	TIM_Cmd(TIM4, ENABLE);
+	TIM_Cmd(TIM1, ENABLE);
 
 	TIM_Cmd(TIM3, DISABLE);
 	TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
@@ -573,20 +571,20 @@ static void Weld_Preparation()
 	OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
 
 	/*------------------------------------------pwm deinit-------------------------------------------*/
-	uint16_t tmp_ccmr1 = 0;
-	tmp_ccmr1 = TIM1->CCMR1;
-	tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
-	tmp_ccmr1 |= ((uint16_t)0x0060);
-	TIM1->CCMR1 = tmp_ccmr1;
+	// uint16_t tmp_ccmr1 = 0;
+	// tmp_ccmr1 = TIM1->CCMR1;
+	// tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
+	// tmp_ccmr1 |= ((uint16_t)0x0060);
+	// TIM1->CCMR1 = tmp_ccmr1;
 
-	tmp_ccmr1 = TIM4->CCMR1;
-	tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
-	tmp_ccmr1 |= ((uint16_t)0x0060);
-	TIM4->CCMR1 = tmp_ccmr1;
-	TIM_SetCompare1(TIM1, 0);
-	TIM_SetCompare1(TIM4, 0);
-	TIM_Cmd(TIM4, ENABLE);
-	TIM_Cmd(TIM1, ENABLE);
+	// tmp_ccmr1 = TIM4->CCMR1;
+	// tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
+	// tmp_ccmr1 |= ((uint16_t)0x0060);
+	// TIM4->CCMR1 = tmp_ccmr1;
+	// TIM_SetCompare1(TIM1, 0);
+	// TIM_SetCompare1(TIM4, 0);
+	// TIM_Cmd(TIM4, ENABLE);
+	// TIM_Cmd(TIM1, ENABLE);
 }
 
 /**
@@ -656,20 +654,33 @@ static void First_Temp_ctrl()
 
 	/*enter first step*/
 	weld_controller->state = FIRST_STATE;
-	if (weld_controller->weld_time[1] != 0)
-	{
 
-		weld_controller->ctrl_step = FAST_RISE_STEP;
-		time_limit = weld_controller->weld_time[1];
-		if (time_limit > 100)
-			time_limit = 100;
+	/*FTM fast rise*/
+	if (cur_key4 == FTM)
+	{
+		if (weld_controller->weld_time[1] != 0)
+		{
+
+			weld_controller->ctrl_step = FAST_RISE_STEP;
+			time_limit = weld_controller->weld_time[1];
+			if (time_limit > 100)
+				time_limit = 100;
+		}
+		else
+		{
+			/*temp ctrl step*/
+			weld_controller->ctrl_step = PID_RESTRICT_STEP;
+			time_limit = RISE_TIME_LIMIT;
+		}
 	}
+	/*CTM do not fast rise*/
 	else
 	{
 		/*temp ctrl step*/
 		weld_controller->ctrl_step = PID_RESTRICT_STEP;
 		time_limit = RISE_TIME_LIMIT;
 	}
+
 	/*start sample*/
 	temp_draw_ctrl->first_step_index_start = 0;
 	/*reset cotroller*/
@@ -1353,9 +1364,6 @@ void welding_process(START_TYPE type)
 	OS_ERR err;
 	uint8_t key = 0;
 
-	/*lock pwm*/
-	OSMutexPend(&PWM_Mux, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
-
 	/*load different parameter sets based on the specific button pressed.*/
 	Load_Data(type);
 
@@ -1432,10 +1440,6 @@ void welding_process(START_TYPE type)
 	/*------------------------------------------------------SGW-------------------------------------------------------*/
 	if (cur_key3 == SGW && cur_key2 == ION && cur_key1 == RDY)
 	{
-		// key = RLY_INPUT_SCAN();
-		// if (key != RLY_START0_ACTIVE && key != RLY_START1_ACTIVE)
-		// 	return;
-
 		/*clear screen*/
 		if (request_PGManger()->id == WAVE_PAGE)
 		{
@@ -1444,8 +1448,17 @@ void welding_process(START_TYPE type)
 		}
 		/*enter weld*/
 		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
-		if (weld_controller->realtime_temp > weld_controller->weld_temp[2])
-			return;
+
+		if (cur_key4 == CTM)
+		{
+			if (weld_controller->realtime_temp > MAX_START_TEMP)
+				return;
+		}
+		else if (cur_key4 == FTM)
+		{
+			if (weld_controller->realtime_temp > weld_controller->weld_temp[2])
+				return;
+		}
 
 		/*weld real-time control*/
 		weld_real_time_ctrl();
@@ -1494,7 +1507,4 @@ void welding_process(START_TYPE type)
 			OSTimeDly(10, OS_OPT_TIME_DLY, &err);
 		}
 	}
-
-	/*unlock pwm*/
-	OSMutexPost(&PWM_Mux, OS_OPT_POST_NONE, &err);
 }

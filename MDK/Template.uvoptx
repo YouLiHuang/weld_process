@@ -590,17 +590,7 @@
         <Ww>
           <count>20</count>
           <WinNumber>2</WinNumber>
-          <ItemText>PAGE_CB_MAP,0x0A</ItemText>
-        </Ww>
-        <Ww>
-          <count>21</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>target_temp_enter</ItemText>
-        </Ww>
-        <Ww>
-          <count>22</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>restrict_temp_enter</ItemText>
+          <ItemText>cur_key4</ItemText>
         </Ww>
       </WatchWindow2>
       <MemoryWindow1>
@@ -904,7 +894,7 @@
 
   <Group>
     <GroupName>HARDWARE</GroupName>
-    <tvExp>0</tvExp>
+    <tvExp>1</tvExp>
     <tvExpOptDlg>0</tvExpOptDlg>
     <cbSel>0</cbSel>
     <RteFlg>0</RteFlg>
