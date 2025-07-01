@@ -2,20 +2,12 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-24 09:38:01
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-07-01 16:17:50
+ * @LastEditTime: 2025-07-01 16:30:04
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
  */
-/*
- * @Author: huangyouli.scut@gmail.com
- * @Date: 2025-06-13 09:22:31
- * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-23 15:09:46
- * @Description:
- *
- * Copyright (c) 2025 by huangyouli, All Rights Reserved.
- */
+
 #include "user_config.h"
 #include "welding_process.h"
 #include "includes.h"
@@ -472,13 +464,14 @@ static void Weld_Preparation()
 {
 
 	OS_ERR err;
-	/*表示进入焊接过程*/
+
+	/*enter weld*/
 	welding_flag = BUSY_MODE;
-	/*----------------------------------------时间刻度复位----------------------------------------*/
+	/*----------------------------------------tick reset----------------------------------------*/
 	weld_controller->step_time_tick = 0;
 	weld_controller->weld_time_tick = 0;
-	/*------------------------------------------参数限制------------------------------------------*/
-	/*稳态温度误差补偿*/
+	/*-------------------------------------parameter restrict------------------------------------*/
+	/*stable err*/
 	switch (current_Thermocouple->type)
 	{
 	case E_TYPE:
@@ -491,8 +484,9 @@ static void Weld_Preparation()
 		weld_controller->temp_comp = STABLE_ERR_K;
 		break;
 	}
+
 	/*pre load*/
-	if (weld_controller->weld_time[0] > 999) //
+	if (weld_controller->weld_time[0] > 999)
 		weld_controller->weld_time[0] = 999;
 
 	/*first step*/
@@ -535,7 +529,7 @@ static void Weld_Preparation()
 	if (weld_controller->temp_gain2 <= 0)
 		weld_controller->temp_gain2 = 0;
 
-/*------------------------------------------算法部分------------------------------------------*/
+/*------------------------------------------algorithm------------------------------------------*/
 #if PID_DEBUG
 	reset_forword_ctrl(pid_ctrl_debug);
 #endif
@@ -568,22 +562,6 @@ static void Weld_Preparation()
 	RLY_CNT = 0; // 1为计数，0清除计数信号
 	ucRegCoilsBuf[0] &= ~(0x01 << COIL_ADDR_5);
 	OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
-
-	/*------------------------------------------pwm deinit-------------------------------------------*/
-	// uint16_t tmp_ccmr1 = 0;
-	// tmp_ccmr1 = TIM1->CCMR1;
-	// tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
-	// tmp_ccmr1 |= ((uint16_t)0x0060);
-	// TIM1->CCMR1 = tmp_ccmr1;
-
-	// tmp_ccmr1 = TIM4->CCMR1;
-	// tmp_ccmr1 &= (uint16_t)~TIM_CCMR1_OC1M;
-	// tmp_ccmr1 |= ((uint16_t)0x0060);
-	// TIM4->CCMR1 = tmp_ccmr1;
-	// TIM_SetCompare1(TIM1, 0);
-	// TIM_SetCompare1(TIM4, 0);
-	// TIM_Cmd(TIM4, ENABLE);
-	// TIM_Cmd(TIM1, ENABLE);
 }
 
 /**
@@ -592,7 +570,7 @@ static void Weld_Preparation()
  */
 static void stop_weld(void)
 {
-	/*确保PWM关闭*/
+	/*ensure PWM off*/
 	TIM_SetCompare1(TIM1, 0);
 	TIM_SetCompare1(TIM4, 0);
 	TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
@@ -1202,12 +1180,12 @@ static void End_of_Weld()
 		TIM5->CNT = 0;
 	}
 
-	/*记录焊接时间*/
+	/*time record*/
 	temp_draw_ctrl->tick_record = weld_controller->weld_time_tick;
-	/*焊接终了，时间记录复位*/
+	/*tick reset*/
 	weld_controller->weld_time_tick = 0;
 	weld_controller->step_time_tick = 0;
-	/*焊接结束*/
+	/*end of weld*/
 	welding_flag = IDEAL_MODE;
 	weld_controller->Duty_Cycle = 0;
 	weld_controller->state = IDEAL_STATE;
@@ -1340,7 +1318,7 @@ static void weld_real_time_ctrl()
 	}
 
 	/*third step*/
-	if (weld_controller->weld_time[5] != 0 && cur_key4 == FTM)
+	if (weld_controller->weld_time[5] != 0)
 	{
 		weld_controller->third_step_start_temp = temp_convert(current_Thermocouple);
 		Third_Step();
