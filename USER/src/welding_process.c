@@ -573,8 +573,6 @@ static void stop_weld(void)
 	/*ensure PWM off*/
 	TIM_SetCompare1(TIM1, 0);
 	TIM_SetCompare1(TIM4, 0);
-	TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
-	TIM_ForcedOC1Config(TIM4, TIM_ForcedAction_InActive);
 	TIM_Cmd(TIM4, DISABLE);
 	TIM_Cmd(TIM1, DISABLE);
 
@@ -1455,8 +1453,13 @@ void welding_process(START_TYPE type)
 		display_temp_cal();
 
 		/*plot temp line(down)*/
-		if (request_PGManger()->id == WAVE_PAGE && cur_key4 == FTM)
-			down_temp_line();
+		if (request_PGManger()->id == WAVE_PAGE)
+		{
+			if (cur_key4 == FTM)
+			{
+				down_temp_line();
+			}
+		}
 		else /*not in wave page, notify plot task to plot temp line*/
 		{
 			/*avoid send one more time, which will plot one more line*/

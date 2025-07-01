@@ -245,7 +245,7 @@ int main(void)
 	TIM4_PWM_Init();								// tim4 PWM(change RCC must init first)
 	TIM3_INIT();									// PID TIMER
 	TIM5_INIT();									// COUNT TIMER
-	TIM6_INIT(10);									// 5ms key scan timer
+	TIM6_INIT(25);									// 5ms key scan timer
 	uart_init(115200);								// Touch screen communication interface initialization
 	log_bsp_init(115200);
 
@@ -936,8 +936,6 @@ void error_task(void *p_arg)
 			/*PWM OFF / Timer Reset*/
 			TIM_SetCompare1(TIM1, 0);
 			TIM_SetCompare1(TIM4, 0);
-			TIM_ForcedOC1Config(TIM1, TIM_ForcedAction_InActive);
-			TIM_ForcedOC1Config(TIM4, TIM_ForcedAction_InActive);
 			TIM_Cmd(TIM4, DISABLE);
 			TIM_Cmd(TIM1, DISABLE);
 
@@ -1094,6 +1092,9 @@ void main_task(void *p_arg)
 		OSSemPend(&WELD_START_SEM, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
 		if (err == OS_ERR_NONE)
 		{
+			TIM_Cmd(TIM6, DISABLE);
+			EXTI->IMR &= ~(EXTI_Line0); // disable exit(avoid trigger twice)
+			EXTI->IMR &= ~(EXTI_Line1); // disable exit(avoid trigger twice)
 			/*clear sem*/
 			OSSemSet(&WELD_START_SEM, 0, &err);
 			/*only check sensor before weld(avoid temp display error)*/
@@ -1131,6 +1132,9 @@ void main_task(void *p_arg)
 
 				break;
 			}
+
+			EXTI->IMR |= (EXTI_Line0); // disable exit(avoid trigger twice)
+			EXTI->IMR |= (EXTI_Line1); // disable exit(avoid trigger twice)
 		}
 
 		OSTimeDlyHMSM(0, 0, 0, 50, OS_OPT_TIME_PERIODIC, &err); // 休眠
@@ -1157,6 +1161,7 @@ void ideal_task(void *p_arg)
 	while (1)
 	{
 
+		weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 		if (cur_key4 == CTM && cur_key1 == RDY && weld_controller->realtime_temp < weld_controller->weld_temp[3] * 1.25)
 		{
 			/*lock PWM*/
@@ -1181,8 +1186,8 @@ void ideal_task(void *p_arg)
 															 weld_controller->Duty_Cycle,
 															 pid_ctrl_ideal);
 				/*restrict(output)*/
-				if (weld_controller->Duty_Cycle > PD_MAX / 3)
-					weld_controller->Duty_Cycle = PD_MAX / 3;
+				if (weld_controller->Duty_Cycle > PD_MAX)
+					weld_controller->Duty_Cycle = PD_MAX;
 				TIM_SetCompare1(TIM1, weld_controller->Duty_Cycle);
 				TIM_SetCompare1(TIM4, weld_controller->Duty_Cycle);
 

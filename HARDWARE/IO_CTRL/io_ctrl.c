@@ -64,22 +64,27 @@ void TIM6_irq(void)
 	{
 		TIM_ClearITPendingBit(TIM6, TIM_IT_Update);
 		TIM_Cmd(TIM6, DISABLE);
+		EXTI->IMR &= ~(EXTI_Line0); // disable exit(avoid trigger twice)
+		EXTI->IMR &= ~(EXTI_Line1); // disable exit(avoid trigger twice)
+		TIM6->CNT = 0;				// claer cnt
 
 		/*check which key is pressed*/
 		if (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_0) == RESET)
 		{
 			/*notify main task to start weld*/
 			start_type = KEY0;
+			OSSemSet(&WELD_START_SEM, 0, &err);
 			OSSemPost(&WELD_START_SEM, OS_OPT_POST_ALL, &err);
 		}
 		if (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_1) == RESET)
 		{
 			/*notify main task to start weld*/
 			start_type = KEY1;
+			OSSemSet(&WELD_START_SEM, 0, &err);
 			OSSemPost(&WELD_START_SEM, OS_OPT_POST_ALL, &err);
 		}
 		EXTI->IMR |= (EXTI_Line0); // disable exit(avoid trigger twice)
-		EXTI->IMR |= (EXTI_Line0); // disable exit(avoid trigger twice)
+		EXTI->IMR |= (EXTI_Line1); // disable exit(avoid trigger twice)
 	}
 
 #if SYSTEM_SUPPORT_OS
