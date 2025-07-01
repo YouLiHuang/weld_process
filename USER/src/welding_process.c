@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-24 09:38:01
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-30 16:41:22
+ * @LastEditTime: 2025-07-01 16:17:50
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -143,7 +143,6 @@ weld_ctrl *new_weld_ctrl(pid_feedforword_ctrl *pid_ctrl)
 		}
 		ctrl->temp_gain1 = DEFAULT_GAIN1;
 		ctrl->temp_gain2 = DEFAULT_GAIN2;
-		ctrl->hold_temp = 0;
 		ctrl->final_duty = 0;
 		ctrl->temp_comp = STABLE_ERR_E;
 		ctrl->restrict_temp = 0;

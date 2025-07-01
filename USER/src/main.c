@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-30 16:23:19
+ * @LastEditTime: 2025-07-01 16:16:46
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -1157,7 +1157,7 @@ void ideal_task(void *p_arg)
 	while (1)
 	{
 
-		if (cur_key4 == CTM && cur_key1 == RDY && weld_controller->realtime_temp < weld_controller->weld_temp[2] * 1.25)
+		if (cur_key4 == CTM && cur_key1 == RDY && weld_controller->realtime_temp < weld_controller->weld_temp[3] * 1.25)
 		{
 			/*lock PWM*/
 			OSMutexPend(&PWM_Mux, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
@@ -1168,7 +1168,7 @@ void ideal_task(void *p_arg)
 				TIM_Cmd(TIM1, ENABLE);
 
 				/*restrict*/
-				hold_temp = weld_controller->weld_temp[2] + weld_controller->temp_comp;
+				hold_temp = weld_controller->weld_temp[3];
 				if (hold_temp > 200)
 					hold_temp = 200;
 
@@ -1176,7 +1176,7 @@ void ideal_task(void *p_arg)
 				weld_controller->realtime_temp = temp_convert(current_Thermocouple);
 
 				/*pid*/
-				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[2] + weld_controller->temp_comp,
+				weld_controller->Duty_Cycle = PI_ctrl_output(weld_controller->weld_temp[3],
 															 weld_controller->realtime_temp,
 															 weld_controller->Duty_Cycle,
 															 pid_ctrl_ideal);

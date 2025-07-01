@@ -289,7 +289,6 @@ void Modbus_reg_sync(void)
             }
         }
 
-#if 1
         /*holding reg*/
         for (hold_reg_index = HOLD_ADDR_0; hold_reg_index <= HOLD_ADDR_17; hold_reg_index++)
         {
@@ -346,7 +345,7 @@ void Modbus_reg_sync(void)
                 }
                 break;
 
-                /*three step set(param_page_list)*/
+                /*four temp*/
             case HOLD_ADDR_8:
                 if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_temp[0] && usRegHoldingBuf[hold_reg_index] <= USER_FIRST_SET_MAX)
                 {
@@ -365,45 +364,51 @@ void Modbus_reg_sync(void)
                     weld_controller->weld_temp[2] = usRegHoldingBuf[hold_reg_index];
                 }
                 break;
+            case HOLD_ADDR_11:
+                if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_temp[2] && usRegHoldingBuf[hold_reg_index] <= USER_SET_MAX_TEMP)
+                {
+                    weld_controller->weld_temp[3] = usRegHoldingBuf[hold_reg_index];
+                }
+                break;
 
                 /*7 time*/
-            case HOLD_ADDR_11:
+            case HOLD_ADDR_12:
                 if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_time[0] && usRegHoldingBuf[hold_reg_index] <= 999) // pre load
                 {
                     weld_controller->weld_time[0] = usRegHoldingBuf[hold_reg_index];
                 }
                 break;
-            case HOLD_ADDR_12:
+            case HOLD_ADDR_13:
                 if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_time[1] && usRegHoldingBuf[hold_reg_index] <= 200) // fast rise time1
                 {
                     weld_controller->weld_time[1] = usRegHoldingBuf[hold_reg_index];
                 }
                 break;
-            case HOLD_ADDR_13:
+            case HOLD_ADDR_14:
                 if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_time[2] && usRegHoldingBuf[hold_reg_index] <= 19999) // hold time1
                 {
                     weld_controller->weld_time[2] = usRegHoldingBuf[hold_reg_index];
                 }
                 break;
-            case HOLD_ADDR_14:
+            case HOLD_ADDR_15:
                 if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_time[3] && usRegHoldingBuf[hold_reg_index] <= 200) // fast rise time2
                 {
                     weld_controller->weld_time[3] = usRegHoldingBuf[hold_reg_index];
                 }
                 break;
-            case HOLD_ADDR_15:
+            case HOLD_ADDR_16:
                 if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_time[4] && usRegHoldingBuf[hold_reg_index] <= 59999) // hold time2
                 {
                     weld_controller->weld_time[4] = usRegHoldingBuf[hold_reg_index];
                 }
                 break;
-            case HOLD_ADDR_16:
+            case HOLD_ADDR_17:
                 if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_time[5] && usRegHoldingBuf[hold_reg_index] <= 999) // down
                 {
                     weld_controller->weld_time[5] = usRegHoldingBuf[hold_reg_index];
                 }
                 break;
-            case HOLD_ADDR_17:
+            case HOLD_ADDR_18:
                 if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_time[6] && usRegHoldingBuf[hold_reg_index] <= 999) // interval
                 {
                     weld_controller->weld_time[6] = usRegHoldingBuf[hold_reg_index];
@@ -411,7 +416,7 @@ void Modbus_reg_sync(void)
                 break;
 
                 /*count(param_page_list)*/
-            case HOLD_ADDR_18:
+            case HOLD_ADDR_19:
                 if (usRegHoldingBuf[hold_reg_index] != weld_controller->weld_count && usRegHoldingBuf[hold_reg_index] <= USER_MAX_COUNT)
                 {
                     weld_controller->weld_count = usRegHoldingBuf[hold_reg_index];
@@ -419,7 +424,7 @@ void Modbus_reg_sync(void)
                 break;
 
                 /*GP*/
-            case HOLD_ADDR_19:
+            case HOLD_ADDR_20:
                 if (usRegHoldingBuf[hold_reg_index] != cur_GP && usRegHoldingBuf[hold_reg_index] <= MAX_GP)
                 {
                     cur_GP = usRegHoldingBuf[hold_reg_index];
@@ -482,7 +487,7 @@ void Modbus_reg_sync(void)
                 break;
             }
         }
-#endif
+
         /*discrete reg - read only*/
         for (discrete_index = DISCRETE_ADDR_0; discrete_index <= DISCRETE_ADDR_11; discrete_index++)
         {

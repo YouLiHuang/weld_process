@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2024-12-13 19:22:56
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-06-29 19:41:01
+ * @LastEditTime: 2025-07-01 16:10:34
  * @Description:
  *
  * Copyright (c) 2024 by huangyouli, All Rights Reserved.
@@ -188,7 +188,7 @@ void Load_param(void *controller, int array_of_data)
 		"temp1",
 		"temp2",
 		"temp3",
-	};
+		"temp4"};
 
 	weld_ctrl *ctrl = (weld_ctrl *)controller;
 	uint16_t welding_time_load[TIME_NUM] = {0}, welding_Temp_load[TEMP_NUM] = {0};
@@ -280,7 +280,7 @@ void Load_data_from_mem(void)
 #if RESET_SPI_DATA
 	/*数据初始化*/
 	int time_init[] = {100, 50, 500, 50, 2500, 500, 100};
-	int temp_init[] = {250, 400, 150};
+	int temp_init[] = {250, 380, 150, 100};
 	int alarm_temp[] = {400, 100, 650, 100, 650, 100};
 
 	uint32_t baud_rate_default = 115200;
@@ -366,23 +366,27 @@ void Load_data_from_mem(void)
 	usRegHoldingBuf[4] = weld_controller->alarm_temp[4];
 	usRegHoldingBuf[5] = weld_controller->alarm_temp[5];
 
+	/*two gain*/
 	usRegHoldingBuf[6] = weld_controller->temp_gain1 * 1000;
 	usRegHoldingBuf[7] = weld_controller->temp_gain2 * 1000;
 
+	/*four temps*/
 	usRegHoldingBuf[8] = weld_controller->weld_temp[0];
 	usRegHoldingBuf[9] = weld_controller->weld_temp[1];
 	usRegHoldingBuf[10] = weld_controller->weld_temp[2];
+	usRegHoldingBuf[11] = weld_controller->weld_temp[3];
 
-	usRegHoldingBuf[11] = weld_controller->weld_time[0]; // pre load
-	usRegHoldingBuf[12] = weld_controller->weld_time[1]; // fast rise 1
-	usRegHoldingBuf[13] = weld_controller->weld_time[2]; // hold 1
-	usRegHoldingBuf[14] = weld_controller->weld_time[3]; // fast rise 2
-	usRegHoldingBuf[15] = weld_controller->weld_time[4]; // hold 2
-	usRegHoldingBuf[16] = weld_controller->weld_time[5]; // down
-	usRegHoldingBuf[17] = weld_controller->weld_time[6]; // interval
+	/*seven times*/
+	usRegHoldingBuf[12] = weld_controller->weld_time[0]; // pre load
+	usRegHoldingBuf[13] = weld_controller->weld_time[1]; // fast rise 1
+	usRegHoldingBuf[14] = weld_controller->weld_time[2]; // hold 1
+	usRegHoldingBuf[15] = weld_controller->weld_time[3]; // fast rise 2
+	usRegHoldingBuf[16] = weld_controller->weld_time[4]; // hold 2
+	usRegHoldingBuf[17] = weld_controller->weld_time[5]; // down
+	usRegHoldingBuf[18] = weld_controller->weld_time[6]; // interval
 
-	usRegHoldingBuf[18] = weld_controller->weld_count;
-	usRegHoldingBuf[19] = 0;
+	usRegHoldingBuf[19] = weld_controller->weld_count;
+	usRegHoldingBuf[20] = cur_GP;
 
 	/*sync data to screen*/
 	char *param_time_list[] = {

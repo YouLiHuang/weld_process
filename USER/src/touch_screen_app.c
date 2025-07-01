@@ -80,6 +80,7 @@ static char *param_page_name_list[] = {
     "temp1",
     "temp2",
     "temp3",
+    "temp4",
     "time1",
     "time2",
     "time3",
@@ -324,34 +325,37 @@ static void TSModbus_Sync_FromUi(Page_ID id)
         case HOLD_ADDR_10:
             usRegHoldingBuf[index] = weld_controller->weld_temp[2];
             break;
+        case HOLD_ADDR_11:
+            usRegHoldingBuf[index] = weld_controller->weld_temp[3];
+            break;
 
             /*7 time*/
-        case HOLD_ADDR_11:
+        case HOLD_ADDR_12:
             usRegHoldingBuf[index] = weld_controller->weld_time[0];
             break;
-        case HOLD_ADDR_12:
+        case HOLD_ADDR_13:
             usRegHoldingBuf[index] = weld_controller->weld_time[1];
             break;
-        case HOLD_ADDR_13:
+        case HOLD_ADDR_14:
             usRegHoldingBuf[index] = weld_controller->weld_time[2];
             break;
-        case HOLD_ADDR_14:
+        case HOLD_ADDR_15:
             usRegHoldingBuf[index] = weld_controller->weld_time[3];
             break;
-        case HOLD_ADDR_15:
+        case HOLD_ADDR_16:
             usRegHoldingBuf[index] = weld_controller->weld_time[4];
             break;
-        case HOLD_ADDR_16:
+        case HOLD_ADDR_17:
             usRegHoldingBuf[index] = weld_controller->weld_time[5];
             break;
-        case HOLD_ADDR_17:
+        case HOLD_ADDR_18:
             usRegHoldingBuf[index] = weld_controller->weld_time[6];
             break;
 
-        case HOLD_ADDR_18:
+        case HOLD_ADDR_19:
             usRegHoldingBuf[index] = weld_controller->weld_count;
             break;
-        case HOLD_ADDR_19:
+        case HOLD_ADDR_20:
             usRegHoldingBuf[index] = cur_GP;
             break;
 
@@ -429,7 +433,7 @@ static void TSparam_pg_cb(Page_ID id)
         "temp1",
         "temp2",
         "temp3",
-    };
+        "temp4"};
 
     /*match the page list*/
     for (index = 0; index < sizeof(PAGE_CB_MAP) / sizeof(PAGE_CB_MAP[0]); index++)
@@ -456,6 +460,7 @@ static void TSparam_pg_cb(Page_ID id)
     cur_key2 = (ION_OFF_STATE)get_comp(list, "ION_OFF")->val;
     cur_key3 = (SGW_CTW_STATE)get_comp(list, "SGW_CTW")->val;
     cur_key4 = (FTM_CTM_STATE)get_comp(list, "FTM_CTM")->val;
+
     weld_controller->Count_Dir = (get_comp(list, "UP_DOWN")->val == UP_CNT) ? UP : DOWN;
     cur_GP = get_comp(list, "GP")->val;
 
@@ -536,6 +541,7 @@ static void TSparam_pg_cb(Page_ID id)
         {
             weld_controller->weld_temp[i] = get_comp(list, weld_temp_name_list[i])->val;
         }
+
         for (uint8_t i = 0; i < sizeof(weld_time_name_list) / sizeof(char *); i++)
         {
             weld_controller->weld_time[i] = get_comp(list, weld_time_name_list[i])->val;

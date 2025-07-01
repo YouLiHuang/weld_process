@@ -18,7 +18,7 @@
 //保持寄存器起始地址
 #define REG_HOLDING_START     0x0000
 //保持寄存器数量
-#define REG_HOLDING_NREGS     20
+#define REG_HOLDING_NREGS     24
 
 //线圈起始地址
 #define REG_COILS_START       0x0000
@@ -53,6 +53,8 @@
 #define HOLD_ADDR_17 17
 #define HOLD_ADDR_18 18
 #define HOLD_ADDR_19 19
+#define HOLD_ADDR_20 20
+
 
 #define INPUT_ADDR_0 0
 #define INPUT_ADDR_1 1
