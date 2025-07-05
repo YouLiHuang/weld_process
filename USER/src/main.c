@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-03-19 08:22:00
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-07-01 16:16:46
+ * @LastEditTime: 2025-07-05 16:48:44
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -95,6 +95,8 @@ void check_task(void *p_arg);
 /*Error handling callbacks ---------------------------------------------------*/
 static bool Temp_up_err_callback(uint8_t index);
 static bool Temp_down_err_callback(uint8_t index);
+static bool Voltage_high_err_callback(uint8_t index);
+static bool Voltage_low_err_callback(uint8_t index);
 static bool Current_out_of_ctrl_callback(uint8_t index);
 static bool Thermocouple_recheck_callback(uint8_t index);
 static bool Transformer_over_heat_callback(uint8_t index);
@@ -105,6 +107,8 @@ static bool Thermocouple_reset_callback(uint8_t index);
 static bool Current_out_of_ctrl_reset_callback(uint8_t index);
 static bool Temp_up_reset_callback(uint8_t index);
 static bool Temp_down_reset_callback(uint8_t index);
+static bool Voltage_high_reset_callback(uint8_t index);
+static bool Voltage_low_reset_callback(uint8_t index);
 static bool Transformer_reset_callback(uint8_t index);
 static bool Radiator_reset_callback(uint8_t index);
 static bool Temp_rise_slow_reset_Callback(uint8_t index);
@@ -118,8 +122,8 @@ const error_match_list match_list[] = {
 	{CURRENT_OUT_OT_CTRL, "f1", Current_out_of_ctrl_callback, Current_out_of_ctrl_reset_callback},
 	{TEMP_UP, "f2", Temp_up_err_callback, Temp_up_reset_callback},
 	{TEMP_DOWN, "f3", Temp_down_err_callback, Temp_down_reset_callback},
-	{VOLTAGE_TOO_HIGH, "f4", NULL, NULL},
-	{VOLTAGE_TOO_LOW, "f5", NULL, NULL},
+	{VOLTAGE_TOO_HIGH, "f4", Voltage_high_err_callback, Voltage_high_reset_callback},
+	{VOLTAGE_TOO_LOW, "f5", Voltage_low_err_callback, Voltage_low_reset_callback},
 	{RADIATOR, "f6", Radiator_over_heat_callback, Radiator_reset_callback},
 	{TRANSFORMER_OVER_HEAT, "f7", Transformer_over_heat_callback, Transformer_reset_callback},
 	{SENSOR_ERROR, "f8", Thermocouple_recheck_callback, Thermocouple_reset_callback},
@@ -245,7 +249,7 @@ int main(void)
 	TIM4_PWM_Init();								// tim4 PWM(change RCC must init first)
 	TIM3_INIT();									// PID TIMER
 	TIM5_INIT();									// COUNT TIMER
-	TIM6_INIT(25);									// 5ms key scan timer
+	TIM6_INIT(20);									// 5ms key scan timer
 	uart_init(115200);								// Touch screen communication interface initialization
 	log_bsp_init(115200);
 
@@ -424,6 +428,24 @@ static bool Temp_down_err_callback(uint8_t index)
 	return true;
 }
 
+static bool Voltage_high_err_callback(uint8_t index)
+{
+	Page_ID cur_id;
+	cur_id = request_PGManger()->id;
+	Page_to(cur_id, ALARM_PAGE);
+	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
+	return true;
+}
+
+static bool Voltage_low_err_callback(uint8_t index)
+{
+	Page_ID cur_id;
+	cur_id = request_PGManger()->id;
+	Page_to(cur_id, ALARM_PAGE);
+	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_ON);
+	return true;
+}
+
 static bool Current_out_of_ctrl_callback(uint8_t index)
 {
 	Page_ID cur_id;
@@ -538,6 +560,23 @@ static bool Temp_down_reset_callback(uint8_t index)
 
 	return true;
 }
+
+static bool Voltage_high_reset_callback(uint8_t index)
+{
+	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
+	err_ctrl->err_list[index]->state = false; // clear error state
+
+	return true;
+}
+
+static bool Voltage_low_reset_callback(uint8_t index)
+{
+	command_set_comp_val(err_ctrl->err_list[index]->pic_name, "aph", SHOW_OFF);
+	err_ctrl->err_list[index]->state = false; // clear error state
+
+	return true;
+}
+
 static bool Transformer_reset_callback(uint8_t index)
 {
 	bool ret = false;

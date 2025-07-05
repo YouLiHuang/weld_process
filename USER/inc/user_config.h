@@ -31,9 +31,9 @@
 /* Temperature control ---------------------------------------------------------------------------*/
 
 /*Temperature control parameters*/
-#define STABLE_ERR_E 15              // Steady-state error compensation
-#define STABLE_ERR_K 35              // Steady-state error compensation
-#define STABLE_ERR_J 35              // Steady-state error compensation
+#define STABLE_ERR_E 5              // Steady-state error compensation
+#define STABLE_ERR_K 12              // Steady-state error compensation
+#define STABLE_ERR_J 12              // Steady-state error compensation
 #define FAST_RISE_TIME_DEFAULT 100   // Cold-start temperature compensation time
 #define RISE_TIME_LIMIT 1500         // max of the rise time
 #define DEFAULT_SLOPE 1.3            // dynamic algorithm coff
