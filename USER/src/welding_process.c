@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-24 09:38:01
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-07-01 16:30:04
+ * @LastEditTime: 2025-07-11 11:00:50
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -633,7 +633,7 @@ static void First_Temp_ctrl()
 	/*FTM fast rise*/
 	if (cur_key4 == FTM)
 	{
-		if (weld_controller->weld_time[1] != 0)
+		if (weld_controller->weld_time[1] > 5)
 		{
 
 			weld_controller->ctrl_step = FAST_RISE_STEP;
@@ -651,7 +651,7 @@ static void First_Temp_ctrl()
 	/*CTM do not fast rise*/
 	else
 	{
-		if (weld_controller->weld_time[1] != 0)
+		if (weld_controller->weld_time[1] > 5)
 		{
 
 			weld_controller->ctrl_step = FAST_RISE_STEP;
@@ -876,14 +876,9 @@ static void Second_Temp_ctrl(void)
 	uint16_t time_limit = 0;							  // fast rise
 	uint16_t hold_time = weld_controller->weld_time[4];	  // hold time
 	uint16_t alarm_high = weld_controller->alarm_temp[2]; // alarm temp
-	uint16_t fast_rise_duty = 0;
+	uint16_t fast_rise_duty = PD_MAX * 0.75;
 
-	if (weld_controller->weld_time[2] != 0)
-		fast_rise_duty = PD_MAX * (RESTRICT_BASE_COFF + (1 - RESTRICT_BASE_COFF) * weld_controller->temp_gain2);
-	else
-		fast_rise_duty = PD_MAX * 0.75;
-
-	if (weld_controller->weld_time[3] != 0)
+	if (weld_controller->weld_time[3] > 5)
 	{
 
 		weld_controller->ctrl_step = FAST_RISE_STEP;
@@ -900,8 +895,6 @@ static void Second_Temp_ctrl(void)
 
 	/*enter second step*/
 	weld_controller->state = SECOND_STATE;
-	// /*temp ctrl step*/
-	// weld_controller->ctrl_step = FAST_RISE_STEP;
 	/*reset timer*/
 	weld_controller->step_time_tick = 0;
 	/*start sample*/
@@ -1309,7 +1302,6 @@ static void weld_real_time_ctrl()
 #endif
 		err_cnt_clear(err_ctrl);
 		weld_controller->second_step_start_temp = temp_convert(current_Thermocouple);
-		// Second_Step();
 		Second_Temp_ctrl();
 		if (true == err_occur(err_ctrl))
 			goto STOP_LABEL;
