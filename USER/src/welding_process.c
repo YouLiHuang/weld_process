@@ -2,7 +2,7 @@
  * @Author: huangyouli.scut@gmail.com
  * @Date: 2025-06-24 09:38:01
  * @LastEditors: YouLiHuang huangyouli.scut@gmail.com
- * @LastEditTime: 2025-07-11 11:00:50
+ * @LastEditTime: 2025-07-25 16:10:48
  * @Description:
  *
  * Copyright (c) 2025 by huangyouli, All Rights Reserved.
@@ -1204,7 +1204,7 @@ static void End_of_Weld()
 		weld_controller->weld_count--;
 		usRegHoldingBuf[HOLD_ADDR_16] = weld_controller->weld_count;
 	}
-	command_set_comp_val("count", "val", weld_controller->weld_count);
+	command_set_comp_val("param_page.count", "val", weld_controller->weld_count);
 	OSMutexPost(&ModBus_Mux, OS_OPT_POST_NONE, &err);
 
 	/*active ideal thread*/
